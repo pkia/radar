@@ -10,13 +10,16 @@ of each section; keep Done and Skipped as an append-only ledger.
 - **Grow pi-cicd into the single architecture reference** for how everything
   on this Pi builds, tests, deploys and rolls back.
   *(first seen 2026-08-21, posts/2026-08-21.html)*
-- **Make sense of the AIS data pile in ais_analysis** — first proper look at
-  what the station has been collecting.
-  *(first seen 2026-08-21, posts/2026-08-21.html)*
 
 ## In progress
 
-_(nothing right now)_
+- **Make sense of the AIS data pile in ais_analysis** — first proper look at
+  what the station has been collecting.
+  *(first seen 2026-08-21, posts/2026-08-21.html; started 2026-08-21)*
+  Concrete scope for this run: turn the scratch IQ scripts into a real,
+  tested CU8→AIS-decode toolchain (burst detect → GMSK demod → HDLC/CRC →
+  MMSI/message type) with synthetic round-trip pytest tests, run it on the
+  2-min 162 MHz capture, and commit an honest findings report.
 
 ## Done
 
