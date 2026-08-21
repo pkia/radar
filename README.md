@@ -6,7 +6,7 @@ Pi:
 - **07:00** — the [devlog job](https://pkia.github.io/blog/) reviews the
   last day's commits across my repos, publishes a daily post, and proposes
   next steps in its "On the radar" section.
-- **09:00** — the **radar implementer** (this repo is its workdir) picks
+- **14:00** — the **radar implementer** (this repo is its workdir) picks
   one radar idea and implements it for real: code, tests, docs — in an
   existing repo or a brand-new one. If an idea is already In progress it
   resumes that first; it checkpoints with local commits as it goes, so a
@@ -35,11 +35,12 @@ remote points at `pkia` on GitHub):
 
 ## Known constraints
 
-- **Shared API usage window.** The 07:00 devlog job and the 09:00
-  implementer draw from the same provider quota; on 2026-08-21 the devlog
-  (plus retries) exhausted it and all three implementer attempts failed
-  with HTTP 429. The protocol now treats this as normal — checkpoint and
-  resume — but the structural fix is scheduling: move the implementer at
-  least 5 hours after the devlog typically *finishes* (e.g. 14:00), or
-  slim the devlog job. That's a hermes cron edit, which only the owner
-  does.
+- **Shared API quota.** The devlog and implementer jobs draw from the
+  same provider quota; on 2026-08-21 the 07:00 devlog (plus retries)
+  exhausted the 5-hour usage window and all three same-day implementer
+  attempts failed with HTTP 429. Fixed structurally the same day, by the
+  owner's direction, via `hermes cron edit`: the implementer now runs at
+  **14:00** — clear of any usage window containing the morning devlog —
+  and run-to-run continuity was disabled so each run starts with a fresh
+  context (the board is the state). The protocol additionally treats
+  budget errors as normal: checkpoint, stop, resume next run.

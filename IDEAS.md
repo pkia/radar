@@ -96,6 +96,10 @@ Append-only, one line per run — including failures and no-ops.
 - 2026-08-21 — owner-directed session: researched external sources,
   rewrote the protocol (resume-first, checkpointing, run log, external
   idea sourcing) and seeded this board. Loop machinery untouched.
+- 2026-08-21 — owner-directed follow-up: via `hermes cron edit`, the
+  implementer moved 09:00 → 14:00 (out of the devlog's usage window) and
+  run-to-run continuity was disabled (fresh context; board is the state);
+  the devlog prompt's "09:00 implementer" reference corrected.
 
 ## Notes
 

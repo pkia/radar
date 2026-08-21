@@ -68,11 +68,13 @@ LESSONS.md, or a git commit before the run ends.
 
 ## Failure playbook (rate limits, timeouts, usage caps)
 
-This run shares one API usage window with the 07:00 devlog job — budget
-starvation is normal, not exceptional. If the API starts erroring: finish
-the current thought, commit whatever passes tests, write the resume pointer
-and the Run-log line, and stop. Never burn remaining budget on retry
-spins; the next run resumes from the board.
+This run and the devlog job draw from the same provider quota — the
+schedule keeps them apart (devlog 07:00, implementer 14:00), but budget
+starvation can still happen, and it is normal, not exceptional. If the
+API starts erroring: finish the current thought, commit whatever passes
+tests, write the resume pointer and the Run-log line, and stop. Never
+burn remaining budget on retry spins; the next run resumes from the
+board.
 
 ## Guardrails
 
