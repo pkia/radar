@@ -69,7 +69,7 @@ LESSONS.md, or a git commit before the run ends.
 ## Failure playbook (rate limits, timeouts, usage caps)
 
 This run and the devlog job draw from the same provider quota — the
-schedule keeps them apart (devlog 07:00, implementer 14:00), but budget
+schedule keeps them apart (devlog 01:00, implementer 04:00), but budget
 starvation can still happen, and it is normal, not exceptional. If the
 API starts erroring: finish the current thought, commit whatever passes
 tests, write the resume pointer and the Run-log line, and stop. Never
