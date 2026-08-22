@@ -5,8 +5,9 @@ run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
 - 429/usage-limit hits are coordination, not bad luck: devlog and
-  implementer share one provider quota (schedules now staggered 07:00 /
-  14:00). Checkpoint early, stop, resume next run — never retry-spin.
+  implementer share one provider quota (schedules now staggered 01:00 /
+  04:00, overnight). Checkpoint early, stop, resume next run — never
+  retry-spin.
   *(2026-08-21)*
 - The board is the state, not the context. Untracked scratch files are
   invisible to the next run — commit WIP on a `wip/` branch instead.
