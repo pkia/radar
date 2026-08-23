@@ -3,8 +3,8 @@
 Single source of truth for the self-improvement loop. Ideas arrive from
 the "On the radar" section of daily devlog posts, from repo evidence, and
 from occasional external research; the radar implementer picks one per
-run, builds it, and records the outcome here. Oldest entries at the bottom
-of each section; keep Done, Skipped and the Run log as append-only
+run, builds it, and records the outcome here. Oldest entries at the
+bottom of each section; keep Done, Skipped and the Run log as append-only
 ledgers.
 
 Proposed entries carry an effort tag — **S** (one session), **M** (a few
@@ -21,11 +21,6 @@ Externally researched 2026-08-21 (owner-directed session; sources linked.
 Monitoring/infra theme — the RF ideas from this session were moved to
 Skipped when the owner paused the AIS project on 2026-08-23):
 
-- **Dead-man's switch on the loop itself (healthchecks.io)** — every
-  scheduled job (devlog, implementer, watchdog) pings healthchecks.io on
-  completion; silence pages the owner. On 2026-08-21 the implementer
-  failed 3× silently — this would have caught it. **S**
-  <https://healthchecks.io/docs/>
 - **ntfy push notifications** — small self-hosted pub/sub server as the
   notification backbone: radar shipped/blocked pings, backup results. **S**
   <https://docs.ntfy.sh/install/>
@@ -45,7 +40,24 @@ Skipped when the owner paused the AIS project on 2026-08-23):
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Dead-man's switch on the loop itself** — *(external;
+  <https://healthchecks.io/docs/>; picked 2026-08-23)*. On 2026-08-21 the
+  implementer failed 3× silently; the loop needs silence to become a page.
+  **Buildable version picked:** `loop-heartbeat` monitor in pi-cicd — a
+  systemd-timer script that resolves the scheduled jobs (devlog,
+  implementer, X writer, watchdog) via `hermes cron list`, inspects each
+  one's real execution history via `hermes cron runs` for missed
+  schedules and failure streaks, checks services and deploy timers, and
+  alerts through `hermes send` with alert-state dedupe (state file under
+  /var/lib or ~/.local/state). **Acceptance criterion:** watchdog-style
+  script + unit/timer installed and active, pytest suite green in CI with
+  fixtures generated from real `hermes cron` output, README documents the
+  wiring, alerts deduped, and a live check within one timer period shows
+  it evaluates all jobs and stays silent when all is green. Poll-based by
+  design: the guardrail forbids editing the hermes cron jobs themselves,
+  so nothing pings on the job's success path — the monitor polls durable
+  state instead (works for jobs that die mid-run, not just ones that
+  never fire).
 
 ## Done
 
