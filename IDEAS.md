@@ -40,28 +40,25 @@ Skipped when the owner paused the AIS project on 2026-08-23):
 
 ## In progress
 
-- **Dead-man's switch on the loop itself** — *(external;
-  <https://healthchecks.io/docs/>; picked 2026-08-23)*. On 2026-08-21 the
-  implementer failed 3× silently; the loop needs silence to become a page.
-  **Buildable version picked:** `loop-heartbeat` monitor in pi-cicd — a
-  systemd-timer script that resolves the scheduled jobs (devlog,
-  implementer, X writer, watchdog) via `hermes cron list`, inspects each
-  one's real execution history via `hermes cron runs` for missed
-  schedules and failure streaks, checks services and deploy timers, and
-  alerts through `hermes send` with alert-state dedupe (state file under
-  /var/lib or ~/.local/state). **Acceptance criterion:** watchdog-style
-  script + unit/timer installed and active, pytest suite green in CI with
-  fixtures generated from real `hermes cron` output, README documents the
-  wiring, alerts deduped, and a live check within one timer period shows
-  it evaluates all jobs and stays silent when all is green. Poll-based by
-  design: the guardrail forbids editing the hermes cron jobs themselves,
-  so nothing pings on the job's success path — the monitor polls durable
-  state instead (works for jobs that die mid-run, not just ones that
-  never fire).
+_(nothing — pick from Proposed)_
 
 ## Done
 
-_(nothing yet — first implementer run has not happened)_
+- **Dead-man's switch on the loop itself** — done 2026-08-23. Built
+  `loop-heartbeat` in pi-cicd: a poll-based systemd-timer monitor (30 min)
+  that reads the hermes cron jobs' durable execution history
+  (`hermes cron list`/`runs`) and alerts via `hermes send` on missed
+  schedules, failure streaks, zombie "running" entries, vanished jobs,
+  plus systemd service/timer staleness; deduped with recovery notices,
+  silent when green. Config at `/etc/loop-heartbeat.conf` keeps the alert
+  target out of the public repo. First live sweep immediately caught the
+  real 2026-08-21 implementer outage (4 failed/unknown runs) and paged
+  WhatsApp. Repo: <https://github.com/pkia/pi-cicd> commits `59597ba`
+  + `3c006c0`; CI green (runs 32615681707, 32615767382 — 27 tests);
+  timer active on the Pi
+  (first run 04:33 IST, exit 0, alert delivered — state file proves the
+  send). Poll-based by design because the protocol forbids editing the
+  hermes cron jobs themselves.
 
 ## Skipped
 
@@ -100,6 +97,10 @@ Append-only, one line per run — including failures and no-ops.
   pointer preserved); monitoring ideas kept, descriptions generalised.
   No code work in this change. Overnight schedule (devlog 01:00, X writer
   02:30, implementer 04:00) starts tonight.
+- 2026-08-23 — implementer run: synced devlog radar lists (no new ideas —
+  all already on the board), picked the dead-man's switch, shipped
+  `loop-heartbeat` in pi-cicd (see Done). First sweep caught the real
+  2026-08-21 implementer outage and paged; CI green.
 
 ## Notes
 
