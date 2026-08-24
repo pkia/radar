@@ -22,8 +22,14 @@ Monitoring/infra theme — the RF ideas from this session were moved to
 Skipped when the owner paused the AIS project on 2026-08-23):
 
 - **ntfy push notifications** — small self-hosted pub/sub server as the
-  notification backbone: radar shipped/blocked pings, backup results. **S**
-  <https://docs.ntfy.sh/install/>
+  notification backbone: radar shipped/blocked pings, backup results.
+  Refined 2026-08-24 devlog with concrete steps: apt install, systemd
+  unit, topic-per-job convention, first subscriber over the tailnet, then
+  point loop-heartbeat and the radar implementer's pings at it.
+  **Acceptance: ntfy live on the Pi reachable over the tailnet,
+  topic-per-job convention documented in pi-cicd, loop-heartbeat
+  publishing alerts to an ntfy topic, tests green, delivery verified.**
+  **S** <https://docs.ntfy.sh/install/>
 - **Uptime Kuma service monitoring** — watch AdGuardHome, kiosk, portal
   and the other long-running services. **S**
   <https://github.com/louislam/uptime-kuma>
@@ -40,7 +46,12 @@ Skipped when the owner paused the AIS project on 2026-08-23):
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **ntfy push notifications** — picked 2026-08-24 (see Proposed for the
+  refined description + acceptance criterion). Plan: Debian-packaged
+  ntfy on the Pi (auth + deny-all, tailnet-reachable), topic-per-job
+  convention in pi-cicd, loop-heartbeat gains ntfy as an alert
+  transport, small `ntfy-notify` publisher helper for the radar pings.
+  Repo: /home/ev/pi-cicd.
 
 ## Done
 
