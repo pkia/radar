@@ -17,28 +17,19 @@ found by web research and keep their source URL.
   everything on this Pi builds, tests, deploys and rolls back.
   *(M; first seen 2026-08-21, posts/2026-08-21.html)*
 
-Externally researched 2026-08-21 (owner-directed session; sources linked.
-Monitoring/infra theme — the RF ideas from this session were moved to
-Skipped when the owner paused the AIS project on 2026-08-23):
+Externally researched 2026-08-21 (owner-directed session; sources linked;
+monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
+rest now build on it:
 
-- **ntfy push notifications** — small self-hosted pub/sub server as the
-  notification backbone: radar shipped/blocked pings, backup results.
-  Refined 2026-08-24 devlog with concrete steps: apt install, systemd
-  unit, topic-per-job convention, first subscriber over the tailnet, then
-  point loop-heartbeat and the radar implementer's pings at it.
-  **Acceptance: ntfy live on the Pi reachable over the tailnet,
-  topic-per-job convention documented in pi-cicd, loop-heartbeat
-  publishing alerts to an ntfy topic, tests green, delivery verified.**
-  **S** <https://docs.ntfy.sh/install/>
 - **Uptime Kuma service monitoring** — watch AdGuardHome, kiosk, portal
-  and the other long-running services. **S**
-  <https://github.com/louislam/uptime-kuma>
+  and the other long-running services; wire alerts to the ntfy backbone.
+  **S** <https://github.com/louislam/uptime-kuma>
 - **changedetection.io with LLM rules** — watch upstream releases of
   deployed software and status pages, digest changes via ntfy. **S**
   <https://github.com/dgtlmoon/changedetection.io>
 - **Restic/borgmatic backups with healthchecks.io hooks** — deduplicated
-  backups of portal, dashboards and configs; the heartbeat doubles as a
-  backup-dead alert. **S**
+  backups of portal, dashboards and configs; publish results to the ntfy
+  `backups` topic (ACL already provisioned). **S**
   <https://torsion.org/borgmatic/reference/configuration/monitoring/healthchecks/>
 - **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
   CPU temp vs load, USB throughput, service health. **M**
@@ -46,15 +37,31 @@ Skipped when the owner paused the AIS project on 2026-08-23):
 
 ## In progress
 
-- **ntfy push notifications** — picked 2026-08-24 (see Proposed for the
-  refined description + acceptance criterion). Plan: Debian-packaged
-  ntfy on the Pi (auth + deny-all, tailnet-reachable), topic-per-job
-  convention in pi-cicd, loop-heartbeat gains ntfy as an alert
-  transport, small `ntfy-notify` publisher helper for the radar pings.
-  Repo: /home/ev/pi-cicd.
+_(nothing — pick from Proposed)_
 
 ## Done
 
+- **ntfy push notifications** — done 2026-08-24. The notification
+  backbone is live: ntfy 2.11 (Debian package, no third-party repo)
+  on the Pi, bound to the tailscale IP only (`:6839`, NTFY on a phone
+  keypad), `auth-default-access: deny-all` with a write-only
+  `publisher` user (scripts) and a read-only `subscriber` user (phone),
+  tokens in `/etc/loop-heartbeat.conf` and `/etc/ntfy-notify.conf`.
+  Topic-per-job convention (`radar`, `loop-heartbeat`, `backups` —
+  ACLs provisioned) documented in pi-cicd `docs/notifications.md` with
+  a runbook. loop-heartbeat now fans alerts out to both WhatsApp and
+  the `loop-heartbeat` topic (delivered if either channel accepts);
+  new `ntfy-notify` helper publishes job outcomes; install.sh links it.
+  50 tests pass locally and on CI (runs 32688026871, 32688874150,
+  32689099970); committed live check
+  `docs/e2e-ntfy-check.py` passes 7/7 (deny-all, write-only publisher,
+  read-only subscriber, publish + read-back); production
+  loop-heartbeat run green over both channels. Owner's one manual
+  step: subscribe the phone — server
+  ` token in
+  `/etc/ntfy/tokens/subscriber.txt`. Repo:
+  <https://github.com/pkia/pi-cicd> commits `f4b656b`, `43d2005`,
+  `fcab234`.
 - **Dead-man's switch on the loop itself** — done 2026-08-23. Built
   `loop-heartbeat` in pi-cicd: a poll-based systemd-timer monitor (30 min)
   that reads the hermes cron jobs' durable execution history
@@ -112,6 +119,14 @@ Append-only, one line per run — including failures and no-ops.
   all already on the board), picked the dead-man's switch, shipped
   `loop-heartbeat` in pi-cicd (see Done). First sweep caught the real
   2026-08-21 implementer outage and paged; CI green.
+- 2026-08-24 — implementer run: devlog radar lists synced — the 08-24
+  post refined the ntfy idea with concrete steps, nothing genuinely
+  new otherwise; no external research needed (four Proposed items
+  remained). Picked **ntfy notification backbone**, shipped it in
+  pi-cicd with a live server on the Pi (see Done). 50 tests + CI green
+  ×3, 7/7 live checks, production heartbeat green on both channels.
+  Fixed en route: two latent wall-clock-dependent e2e tests that
+  flipped at midnight.
 
 ## Notes
 

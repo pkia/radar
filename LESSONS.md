@@ -4,6 +4,16 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- ntfy 2.11 (Debian): `listen-http` accepts exactly ONE address string
+  (comma list and YAML list both fatal) — bind the tailnet IP, not
+  0.0.0.0. `ntfy user/access/token` commands need no `--config` (they
+  default to /etc/ntfy/server.yml) but must run as root. And `sudo -u ev
+  <tool>` loses ~/.local/bin from PATH — scripts invoking user tools must
+  use absolute paths. *(2026-08-24)*
+- `getattr(obj, "attr", default)` evaluates the default EAGERLY — as a
+  response-code fallback it crashed on objects without the method.
+  Also: any test that lets `main()` use the wall clock rots at the next
+  schedule boundary — always inject `now=`. *(2026-08-24)*
 - `hermes cron list` / `hermes cron runs <id>` expose the loop's durable
   state (statuses incl. failed/unknown/zombie-running) — monitoring
   should POLL that instead of instrumenting jobs (which the guardrail
