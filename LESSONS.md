@@ -4,10 +4,20 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- `hermes cron list` / `hermes cron runs <id>` expose the loop's durable
+  state (statuses incl. failed/unknown/zombie-running) — monitoring
+  should POLL that instead of instrumenting jobs (which the guardrail
+  forbids anyway). Note: `hermes send` to the SAME target a cron job
+  delivers to is skipped by the harness ("will already auto-deliver");
+  loop-heartbeat runs via systemd, so its alerts go through fine.
+  *(2026-08-23)*
+- Test fixtures captured from CLI output must be wall-clock-naive (strip
+  `+01:00` offsets) or tests flip outcome between the Pi (IST) and CI
+  (UTC). *(2026-08-23)*
 - 429/usage-limit hits are coordination, not bad luck: devlog and
-  implementer share one provider quota (schedules now staggered 07:00 /
-  14:00). Checkpoint early, stop, resume next run — never retry-spin.
-  *(2026-08-21)*
+  implementer share one provider quota (schedules now staggered 01:00 /
+  04:00, overnight). Checkpoint early, stop, resume next run — never
+  retry-spin. *(2026-08-21)*
 - The board is the state, not the context. Untracked scratch files are
   invisible to the next run — commit WIP on a `wip/` branch instead.
   *(2026-08-21)*

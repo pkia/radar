@@ -63,7 +63,7 @@ LESSONS.md, or a git commit before the run ends.
    (repo, branch, next step). Add any hard-won lesson to LESSONS.md.
    Commit and push this radar repo.
 6. **Report.** End with a short summary: the idea, what you built, where it
-   lives, test status. Tomorrow's 07:00 devlog will pick the commits up in
+   lives, test status. The next 01:00 devlog will pick the commits up in
    its "Shipped" section automatically — no coordination needed.
 
 ## Failure playbook (rate limits, timeouts, usage caps)

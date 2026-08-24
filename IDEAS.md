@@ -3,8 +3,8 @@
 Single source of truth for the self-improvement loop. Ideas arrive from
 the "On the radar" section of daily devlog posts, from repo evidence, and
 from occasional external research; the radar implementer picks one per
-run, builds it, and records the outcome here. Oldest entries at the bottom
-of each section; keep Done, Skipped and the Run log as append-only
+run, builds it, and records the outcome here. Oldest entries at the
+bottom of each section; keep Done, Skipped and the Run log as append-only
 ledgers.
 
 Proposed entries carry an effort tag — **S** (one session), **M** (a few
@@ -18,72 +18,70 @@ found by web research and keep their source URL.
   *(M; first seen 2026-08-21, posts/2026-08-21.html)*
 
 Externally researched 2026-08-21 (owner-directed session; sources linked.
-RF ideas note: the single RTL-SDR dongle is occupied by ais-catcher, so
-anything receiving RF needs a second dongle (~USD 30) or an SDR-sharing
-scheme like rtl_tcp/SpyServer):
+Monitoring/infra theme — the RF ideas from this session were moved to
+Skipped when the owner paused the AIS project on 2026-08-23):
 
-- **Dead-man's switch on the loop itself (healthchecks.io)** — every
-  scheduled job (devlog, implementer, watchdog) pings healthchecks.io on
-  completion; silence pages the owner. On 2026-08-21 the implementer
-  failed 3× silently — this would have caught it. **S**
-  <https://healthchecks.io/docs/>
 - **ntfy push notifications** — small self-hosted pub/sub server as the
-  notification backbone: radar shipped/blocked pings, AIS anomalies,
-  backup results. **S** <https://docs.ntfy.sh/install/>
-- **Uptime Kuma service monitoring** — watch ais-catcher, AdGuardHome,
-  kiosk, maritime-dashboard, portal; pairs with project-hub. **S**
+  notification backbone: radar shipped/blocked pings, backup results.
+  Refined 2026-08-24 devlog with concrete steps: apt install, systemd
+  unit, topic-per-job convention, first subscriber over the tailnet, then
+  point loop-heartbeat and the radar implementer's pings at it.
+  **Acceptance: ntfy live on the Pi reachable over the tailnet,
+  topic-per-job convention documented in pi-cicd, loop-heartbeat
+  publishing alerts to an ntfy topic, tests green, delivery verified.**
+  **S** <https://docs.ntfy.sh/install/>
+- **Uptime Kuma service monitoring** — watch AdGuardHome, kiosk, portal
+  and the other long-running services. **S**
   <https://github.com/louislam/uptime-kuma>
-- **changedetection.io with LLM rules** — watch AIS-catcher releases,
-  satellite status pages and marine notices, digest changes via ntfy.
-  **S** <https://github.com/dgtlmoon/changedetection.io>
-- **ACARS/VDL2 decoding (acarsdec)** — plain-text airline operational
-  messages on VHF; decoded text is ideal input for an LLM "today's air
-  traffic" digest next to the ship log. **S** + second RF front end
-  <https://github.com/TLeconte/acarsdec>
-- **ADS-B aircraft tracking (readsb + tar1090)** — the air-traffic sibling
-  of the AIS map, on the same dashboard. **M** + second dongle
-  <https://github.com/wiedehopf/tar1090>
-- **Automated NOAA/Meteor imagery (SatDump or raspberry-noaa-v2)** —
-  extend the existing NOAA audio tap and METEOR demod work into fully
-  unattended pass scheduling, image enhancement and a web gallery. **M**
-  <https://github.com/jekhokie/raspberry-noaa-v2>
-- **OpenWebRX+ browser SDR** — KiwiSDR-style web receiver to expose spare
-  SDR bandwidth remotely (works over Tailscale). **S–M** + RF front end
-  <https://www.openwebrx.de/>
+- **changedetection.io with LLM rules** — watch upstream releases of
+  deployed software and status pages, digest changes via ntfy. **S**
+  <https://github.com/dgtlmoon/changedetection.io>
 - **Restic/borgmatic backups with healthchecks.io hooks** — deduplicated
-  backups of portal, dashboards and SDR configs; the heartbeat doubles as
-  a backup-dead alert. **S**
+  backups of portal, dashboards and configs; the heartbeat doubles as a
+  backup-dead alert. **S**
   <https://torsion.org/borgmatic/reference/configuration/monitoring/healthchecks/>
 - **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
-  CPU temp vs satellite-pass load, SDR USB throughput, service health.
-  **M**
+  CPU temp vs load, USB throughput, service health. **M**
   <https://artofinfra.com/monitor-raspberry-pi-and-linux-metrics-with-grafana-prometheus-on-docker/>
 
 ## In progress
 
-- **Make sense of the AIS data pile in ais_analysis** — first proper look
-  at what the station has been collecting.
-  *(first seen 2026-08-21, posts/2026-08-21.html; started 2026-08-21)*
-  Concrete scope for this run: turn the scratch IQ scripts into a real,
-  tested CU8→AIS-decode toolchain (burst detect → GMSK demod → HDLC/CRC →
-  MMSI/message type) with synthetic round-trip pytest tests, run it on the
-  2-min 162 MHz capture, and commit an honest findings report.
-  **Resume pointer (2026-08-21, after 3 API-failed runs):** the
-  `aisdecode` package (dsp + hdlc modules) and `tests/` exist in
-  `/home/ev/ais_analysis`; ~15 untracked `_probe_*.py` scratch scripts and
-  `_refdecode.py` debug the AWGN round-trip alignment (start with
-  `_probe_chain.py`); the capture is `cap_2min.raw`. Next step: fold the
-  useful probes into the package, land the round-trip test, decode the
-  capture. First run after this note: finish this before picking anything
-  new.
+_(nothing — pick from Proposed)_
 
 ## Done
 
-_(nothing yet — first implementer run has not happened)_
+- **Dead-man's switch on the loop itself** — done 2026-08-23. Built
+  `loop-heartbeat` in pi-cicd: a poll-based systemd-timer monitor (30 min)
+  that reads the hermes cron jobs' durable execution history
+  (`hermes cron list`/`runs`) and alerts via `hermes send` on missed
+  schedules, failure streaks, zombie "running" entries, vanished jobs,
+  plus systemd service/timer staleness; deduped with recovery notices,
+  silent when green. Config at `/etc/loop-heartbeat.conf` keeps the alert
+  target out of the public repo. First live sweep immediately caught the
+  real 2026-08-21 implementer outage (4 failed/unknown runs) and paged
+  WhatsApp. Repo: <https://github.com/pkia/pi-cicd> commits `59597ba`
+  + `3c006c0`; CI green (runs 32615681707, 32615767382 — 27 tests);
+  timer active on the Pi
+  (first run 04:33 IST, exit 0, alert delivered — state file proves the
+  send). Poll-based by design because the protocol forbids editing the
+  hermes cron jobs themselves.
 
 ## Skipped
 
-_(nothing yet)_
+- **ACARS/VDL2 decoding (acarsdec)**, **ADS-B tracking (readsb +
+  tar1090)**, **OpenWebRX+ browser SDR** — the RF-extension ideas from the
+  2026-08-21 research session. Skipped 2026-08-23: owner paused the
+  AIS/RF track for now; all three also need a second RF front end.
+  Sources: <https://github.com/TLeconte/acarsdec>
+  <https://github.com/wiedehopf/tar1090> <https://www.openwebrx.de/>
+- **Make sense of the AIS data pile in ais_analysis** — paused (not
+  abandoned) 2026-08-23: owner is done with the AIS project for now.
+  **Resume pointer if ever un-paused:** the `aisdecode` package (dsp +
+  hdlc modules) and `tests/` exist in `/home/ev/ais_analysis`; the
+  scratch probes are preserved on the `wip/aisdecode` branch (start with
+  `_probe_chain.py`); the capture is `cap_2min.raw`. Next: fold the
+  useful probes into the package, land the AWGN round-trip test, decode
+  the capture, write the findings report.
 
 ## Run log
 
@@ -100,9 +98,22 @@ Append-only, one line per run — including failures and no-ops.
   implementer moved 09:00 → 14:00 (out of the devlog's usage window) and
   run-to-run continuity was disabled (fresh context; board is the state);
   the devlog prompt's "09:00 implementer" reference corrected.
+- 2026-08-23 — owner-directed: AIS project paused for now. The In-progress
+  AIS item and the three RF-hardware ideas moved to Skipped (resume
+  pointer preserved); monitoring ideas kept, descriptions generalised.
+  No code work in this change. Overnight schedule (devlog 01:00, X writer
+  02:30, implementer 04:00) starts tonight.
+- 2026-08-23 — implementer run: synced devlog radar lists (no new ideas —
+  all already on the board), picked the dead-man's switch, shipped
+  `loop-heartbeat` in pi-cicd (see Done). First sweep caught the real
+  2026-08-21 implementer outage and paged; CI green.
 
 ## Notes
 
+- **AIS/RF track paused by owner 2026-08-23** — do not re-add AIS ideas
+  (including from older devlog posts' "On the radar" lists) unless the
+  owner lifts the pause. ais-catcher itself keeps running as the X bot's
+  data source; treat it as maintenance-only, not a development target.
 - "Keep this devlog honest and boring: tests green, deploys dull,
   rollback never needed" — standing quality bar for everything above, not
   a build task. *(2026-08-21)*
