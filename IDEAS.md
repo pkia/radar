@@ -31,13 +31,24 @@ rest now build on it:
   backups of portal, dashboards and configs; publish results to the ntfy
   `backups` topic (ACL already provisioned). **S**
   <https://torsion.org/borgmatic/reference/configuration/monitoring/healthchecks/>
+  *(refined by posts/2026-08-25.html: do a restore drill before calling
+  it done — a backup that's never been restored is a rumour; picked
+  2026-08-25, see In progress)*
 - **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
   CPU temp vs load, USB throughput, service health. **M**
   <https://artofinfra.com/monitor-raspberry-pi-and-linux-metrics-with-grafana-prometheus-on-docker/>
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Deduplicated backups with healthchecks hooks** *(picked 2026-08-25,
+  source: 2026-08-21 external research, refined by posts/2026-08-25.html)*.
+  **Acceptance:** `pi-backup` shipped in pi-cicd — borg-based
+  snapshot + prune + notify tool for the configs and data that git does
+  not cover (/etc service configs, ntfy server state), daily systemd
+  timer, **restore drill executed live on the Pi and passing**, results
+  published to the ntfy `backups` topic, pytest green locally and on CI.
+  Note: no USB storage attached — repo lands on the SD card first, path
+  configurable for a one-line move to real storage later.
 
 ## Done
 
