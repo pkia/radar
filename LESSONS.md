@@ -4,6 +4,12 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- borg 1.4 quirks that cost a test cycle: `borg info --json` nests
+  per-archive stats under `archives[0]` (not `archive`); archives of
+  absolute paths are stored WITHOUT the leading `/`, so restores land
+  under `dest/tmp/.../src/...` — map restored rel paths back to
+  `/`+rel when byte-comparing against sources. Also: borg on GitHub CI
+  is just `apt-get install borgbackup`. *(2026-08-25)*
 - ntfy 2.11 (Debian): `listen-http` accepts exactly ONE address string
   (comma list and YAML list both fatal) — bind the tailnet IP, not
   0.0.0.0. `ntfy user/access/token` commands need no `--config` (they

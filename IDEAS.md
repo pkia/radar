@@ -27,31 +27,33 @@ rest now build on it:
 - **changedetection.io with LLM rules** — watch upstream releases of
   deployed software and status pages, digest changes via ntfy. **S**
   <https://github.com/dgtlmoon/changedetection.io>
-- **Restic/borgmatic backups with healthchecks.io hooks** — deduplicated
-  backups of portal, dashboards and configs; publish results to the ntfy
-  `backups` topic (ACL already provisioned). **S**
-  <https://torsion.org/borgmatic/reference/configuration/monitoring/healthchecks/>
-  *(refined by posts/2026-08-25.html: do a restore drill before calling
-  it done — a backup that's never been restored is a rumour; picked
-  2026-08-25, see In progress)*
 - **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
   CPU temp vs load, USB throughput, service health. **M**
   <https://artofinfra.com/monitor-raspberry-pi-and-linux-metrics-with-grafana-prometheus-on-docker/>
 
 ## In progress
 
-- **Deduplicated backups with healthchecks hooks** *(picked 2026-08-25,
-  source: 2026-08-21 external research, refined by posts/2026-08-25.html)*.
-  **Acceptance:** `pi-backup` shipped in pi-cicd — borg-based
-  snapshot + prune + notify tool for the configs and data that git does
-  not cover (/etc service configs, ntfy server state), daily systemd
-  timer, **restore drill executed live on the Pi and passing**, results
-  published to the ntfy `backups` topic, pytest green locally and on CI.
-  Note: no USB storage attached — repo lands on the SD card first, path
-  configurable for a one-line move to real storage later.
+_(nothing — pick from Proposed)_
 
 ## Done
 
+- **Deduplicated backups with restore drill** — done 2026-08-25. Built
+  `pi-backup` in pi-cicd: a stdlib-Python wrapper around borg 1.4
+  (Debian package — no containers on this Pi) covering the /etc state
+  git cannot hold (ntfy server config + user db, loop configs, units).
+  Daily 03:30 create+prune timer (7 daily / 4 weekly / 6 monthly) and a
+  weekly Sunday 05:30 **restore drill** that extracts a fresh archive
+  and byte-compares it (sha256, sampled) against the live sources —
+  PASS/FAIL published to the ntfy `backups` topic. Config at
+  `/etc/pi-backup.conf` (600, root-only; passphrase + ntfy keys, never
+  committed — verified no secret values in the pushed tree). Live
+  evidence: first `run` archived 6 files; **live drill PASS (6/6
+  byte-compared)**; both notifications read back off the `backups`
+  topic via the subscriber token; 71/71 pytest green locally and CI
+  green (run 32804861591). Repo:
+  <https://github.com/pkia/pi-cicd> commit `559e517`. No USB storage
+  attached yet — repo on SD at `/var/backups/pi-borg`, one config line
+  to move it (docs/backups.md has the runbook).
 - **ntfy push notifications** — done 2026-08-24. The notification
   backbone is live: ntfy 2.11 (Debian package, no third-party repo)
   on the Pi, bound to the tailscale IP only (`:6839`, NTFY on a phone
@@ -138,6 +140,14 @@ Append-only, one line per run — including failures and no-ops.
   ×3, 7/7 live checks, production heartbeat green on both channels.
   Fixed en route: two latent wall-clock-dependent e2e tests that
   flipped at midnight.
+- 2026-08-25 — implementer run: synced the 08-25 devlog radar list (it
+  refined the three monitoring ideas with concrete next steps — folded
+  the restore-drill requirement into the backups item; nothing
+  genuinely new). Picked **deduplicated backups + restore drill**,
+  shipped `pi-backup` in pi-cicd: borg wrapper, daily + drill timers,
+  first live drill PASS, ntfy `backups` topic live, CI green (see
+  Done). Remaining Proposed: Uptime Kuma, changedetection.io, Prom
+  stack, pi-cicd architecture doc.
 
 ## Notes
 
