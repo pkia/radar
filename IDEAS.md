@@ -25,36 +25,41 @@ rest now build on it:
   and the other long-running services; wire alerts to the ntfy backbone.
   **S** <https://github.com/louislam/uptime-kuma>
 - **changedetection.io with LLM rules** → concretised 2026-08-26 as
-  **upstream release watcher (pi-cicd native)** — see In progress: the
-  changedetection.io app itself is not in Debian and conflicts with the
-  no-container rule; the underlying need (watch upstream releases of the
-  deployed software, digest changes to the notifications topic) ships as
-  a stdlib `release-watch` tool instead. Remaining from the original
-  item, if ever wanted: browser-based arbitrary-page diffing with visual
-  selector support. **S**
-  <https://github.com/dgtlmoon/changedetection.io>
+  **upstream release watcher (pi-cicd native)** — shipped same day, see
+  Done. The changedetection.io app itself is not in Debian and
+  conflicts with the no-container rule; the underlying need (watch
+  upstream releases of the deployed software, digest changes to the
+  notifications topic) shipped as a stdlib `release-watch` tool
+  instead. Remaining from the original item, if ever wanted:
+  browser-based arbitrary-page diffing with visual selector support.
+  **S** <https://github.com/dgtlmoon/changedetection.io>
 - **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
   CPU temp vs load, USB throughput, service health. **M**
   <https://artofinfra.com/monitor-raspberry-pi-and-linux-metrics-with-grafana-prometheus-on-docker/>
 
 ## In progress
 
-- **Upstream release watcher (pi-cicd native)** — picked 2026-08-26
-  (concretised from the changedetection.io idea). Build `release-watch`
-  in pi-cicd: stdlib Python, watches the upstream releases of the
-  deployed software (ntfy, AdGuardHome, ais-catcher) via the GitHub
-  releases API plus generic URL-page digests, state in
-  `~/.local/state/release-watch/state.json`, one digest notification per
-  run through `ntfy-notify` to a new `releases` topic, systemd timer
-  (additive, twice daily). **Acceptance criterion:** pytest green locally
-  and on CI; live run on the Pi baselines the three real upstreams
-  (first observation = baseline, no alert); seeded-change drill publishes
-  a real digest to the `releases` ntfy topic and it reads back via the
-  subscriber token. No new packages, no containers, no edits to running
-  services.
+_(nothing — pick from Proposed)_
 
 ## Done
 
+- **Upstream release watcher (pi-cicd native)** — done 2026-08-26
+  (concretised from the changedetection.io idea: that app isn't in
+  Debian and conflicts with the no-container rule, and its LLM-rule
+  variant would need an owner-provided API key). Built `release-watch`
+  in pi-cicd: stdlib watcher over the GitHub releases API (plus
+  optional sha256 page watches for sources without an API),
+  first-observation-is-baseline, ONE digest per sweep on a new ntfy
+  `releases` topic (ACLs provisioned: publisher write-only, subscriber
+  read-only), error-streak escalation for failing sources, `--list`,
+  atomic state at `~/.local/state/release-watch/state.json`, systemd
+  timer 10:12/22:12. Live evidence: first run baselined ntfy v2.27.0,
+  AdGuardHome v0.107.79, AIS-catcher v0.70 and published the digest;
+  committed drill `docs/e2e-release-watch-check.py --drill` passes 8/8
+  live (anonymous denied / publisher writes / seeded change → digest →
+  **read back via the subscriber token** → restore → silent sweep);
+  101/101 pytest locally and CI green (run 32926074782). Repo:
+  <https://github.com/pkia/pi-cicd> commits `6d5d8fc`, `25f9a58`.
 - **Deduplicated backups with restore drill** — done 2026-08-25. Built
   `pi-backup` in pi-cicd: a stdlib-Python wrapper around borg 1.4
   (Debian package — no containers on this Pi) covering the /etc state
@@ -166,6 +171,13 @@ Append-only, one line per run — including failures and no-ops.
   first live drill PASS, ntfy `backups` topic live, CI green (see
   Done). Remaining Proposed: Uptime Kuma, changedetection.io, Prom
   stack, pi-cicd architecture doc.
+- 2026-08-26 — implementer run: synced the 08-26 devlog radar list
+  (same three monitoring ideas, further refined; nothing new to add).
+  Concretised the changedetection.io item into an **upstream release
+  watcher** and shipped it as `release-watch` in pi-cicd: baselined
+  ntfy/AdGuardHome/AIS-catcher, live seeded-change drill 8/8, `releases`
+  ntfy topic live, 101/101 tests + CI green (see Done). Remaining
+  Proposed: Uptime Kuma, Prom stack, pi-cicd architecture doc.
 
 ## Notes
 

@@ -4,6 +4,18 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- ntfy 2.11 CLI shape: `ntfy access <user> <topic> <perm>` — no `add`
+  verb, no `--config` on `user list` (defaults to server.yml), and
+  permissions are `read-only`/`write-only`/`read-write`. Also: ntfy's
+  JSON subscribe stream is `<topic>/json?poll=1` — bare `/<topic>` is
+  the web app (returns 200 for anonymous, so a wrong ACL test passes
+  for the wrong reason). *(2026-08-26)*
+- e2e drills that run a user-stateful tool as root: `~` resolves to
+  `/root`, silently writing a parallel state file instead of diffing
+  the seeded one — always `sudo -u ev <tool> --state <abs path>` and
+  chown the restored file back. And match assertion strings to the
+  actual output mode: release-watch's `-v` prints ASCII `->` while the
+  digest uses `→`. *(2026-08-26)*
 - borg 1.4 quirks that cost a test cycle: `borg info --json` nests
   per-archive stats under `archives[0]` (not `archive`); archives of
   absolute paths are stored WITHOUT the leading `/`, so restores land
