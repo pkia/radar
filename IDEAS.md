@@ -24,8 +24,14 @@ rest now build on it:
 - **Uptime Kuma service monitoring** — watch AdGuardHome, kiosk, portal
   and the other long-running services; wire alerts to the ntfy backbone.
   **S** <https://github.com/louislam/uptime-kuma>
-- **changedetection.io with LLM rules** — watch upstream releases of
-  deployed software and status pages, digest changes via ntfy. **S**
+- **changedetection.io with LLM rules** → concretised 2026-08-26 as
+  **upstream release watcher (pi-cicd native)** — see In progress: the
+  changedetection.io app itself is not in Debian and conflicts with the
+  no-container rule; the underlying need (watch upstream releases of the
+  deployed software, digest changes to the notifications topic) ships as
+  a stdlib `release-watch` tool instead. Remaining from the original
+  item, if ever wanted: browser-based arbitrary-page diffing with visual
+  selector support. **S**
   <https://github.com/dgtlmoon/changedetection.io>
 - **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
   CPU temp vs load, USB throughput, service health. **M**
@@ -33,7 +39,19 @@ rest now build on it:
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Upstream release watcher (pi-cicd native)** — picked 2026-08-26
+  (concretised from the changedetection.io idea). Build `release-watch`
+  in pi-cicd: stdlib Python, watches the upstream releases of the
+  deployed software (ntfy, AdGuardHome, ais-catcher) via the GitHub
+  releases API plus generic URL-page digests, state in
+  `~/.local/state/release-watch/state.json`, one digest notification per
+  run through `ntfy-notify` to a new `releases` topic, systemd timer
+  (additive, twice daily). **Acceptance criterion:** pytest green locally
+  and on CI; live run on the Pi baselines the three real upstreams
+  (first observation = baseline, no alert); seeded-change drill publishes
+  a real digest to the `releases` ntfy topic and it reads back via the
+  subscriber token. No new packages, no containers, no edits to running
+  services.
 
 ## Done
 
