@@ -39,7 +39,19 @@ rest now build on it:
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Service uptime scoreboard (pi-cicd native, "release-watch
+  treatment")** — picked 2026-08-27, concretised from the Uptime Kuma
+  idea per the 08-27 devlog (Uptime Kuma itself needs containers/Docker
+  which this box forbids). Build `service-probe` in pi-cicd: stdlib
+  prober, one HTTP check per long-running service (dashboards, portal,
+  funnel endpoints) + a real DNS query check for AdGuardHome,
+  down-confirmation after N consecutive failures (anti-flap), recovery
+  notices, alerts on the ntfy backbone (new `services` topic),
+  persistent state, and a status JSON a portal page can render.
+  **Acceptance criterion:** live run on the Pi with every configured
+  service probed green; a seeded drill (dead port) produces a DOWN
+  alert readable back via the subscriber token, then recovery; pytest
+  green locally + CI; portal shows the scoreboard.
 
 ## Done
 
