@@ -21,9 +21,11 @@ Externally researched 2026-08-21 (owner-directed session; sources linked;
 monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
 rest now build on it:
 
-- **Uptime Kuma service monitoring** — watch AdGuardHome, kiosk, portal
-  and the other long-running services; wire alerts to the ntfy backbone.
-  **S** <https://github.com/louislam/uptime-kuma>
+- **Uptime Kuma service monitoring** → concretised 2026-08-27 as
+  **service uptime scoreboard (pi-cicd native)** and shipped same day,
+  see Done (Uptime Kuma itself needs containers, which this box
+  forbids; the stdlib `service-probe` covers the HTTP/DNS probes, the
+  ntfy alert wiring and the portal scoreboard the idea asked for).
 - **changedetection.io with LLM rules** → concretised 2026-08-26 as
   **upstream release watcher (pi-cicd native)** — shipped same day, see
   Done. The changedetection.io app itself is not in Debian and
@@ -39,22 +41,32 @@ rest now build on it:
 
 ## In progress
 
-- **Service uptime scoreboard (pi-cicd native, "release-watch
-  treatment")** — picked 2026-08-27, concretised from the Uptime Kuma
-  idea per the 08-27 devlog (Uptime Kuma itself needs containers/Docker
-  which this box forbids). Build `service-probe` in pi-cicd: stdlib
-  prober, one HTTP check per long-running service (dashboards, portal,
-  funnel endpoints) + a real DNS query check for AdGuardHome,
-  down-confirmation after N consecutive failures (anti-flap), recovery
-  notices, alerts on the ntfy backbone (new `services` topic),
-  persistent state, and a status JSON a portal page can render.
-  **Acceptance criterion:** live run on the Pi with every configured
-  service probed green; a seeded drill (dead port) produces a DOWN
-  alert readable back via the subscriber token, then recovery; pytest
-  green locally + CI; portal shows the scoreboard.
+_(nothing — pick from Proposed)_
 
 ## Done
 
+- **Service uptime scoreboard (service-probe, pi-cicd native)** — done
+  2026-08-27 (concretised from the Uptime Kuma idea: Uptime Kuma needs
+  containers, forbidden on this box; the 08-27 devlog asked for the
+  release-watch treatment instead). Built `service-probe` in pi-cicd:
+  stdlib prober every 5 min — HTTP checks for the seven local services
+  (incl. cs2-tracker's JSON `healthy` gate) + three public funnel
+  endpoints + ntfy self-check, and a hand-built-UDP DNS query for
+  AdGuardHome (12 probes total). DOWN confirmed only after 2
+  consecutive failures (anti-flap), recovery notices with downtime
+  duration, alerts to the new ntfy `services` topic (ACLs provisioned:
+  publisher write-only, subscriber read-only), atomic state +
+  `status.json` at `~/.local/state/service-probe/`. Live evidence:
+  first sweep 12/12 up; seeded dead-port drill produced the DOWN alert
+  AND the recovery notice, both **read back via the subscriber token**;
+  portal (project-hub) shows the new Uptime Scoreboard panel via
+  `/api/probes` (deployed by pull-CD at commit `1c2b9f3`). En route,
+  fixed two pre-existing hermeticity bugs that had pi-cicd CI red
+  since 08-26 (live `:8092` and live-`:53` tests now hermetic/skip on
+  runners). 139/139 pytest locally; **CI green (run 33036791781)**.
+  Repos: <https://github.com/pkia/pi-cicd> commits `3f37190`,
+  `41fb1e2`, `9671a87`; <https://github.com/pkia/project-hub> commit
+  `1c2b9f3` (CI run 33036338724).
 - **Upstream release watcher (pi-cicd native)** — done 2026-08-26
   (concretised from the changedetection.io idea: that app isn't in
   Debian and conflicts with the no-container rule, and its LLM-rule
@@ -188,8 +200,15 @@ Append-only, one line per run — including failures and no-ops.
   Concretised the changedetection.io item into an **upstream release
   watcher** and shipped it as `release-watch` in pi-cicd: baselined
   ntfy/AdGuardHome/AIS-catcher, live seeded-change drill 8/8, `releases`
-  ntfy topic live, 101/101 tests + CI green (see Done). Remaining
-  Proposed: Uptime Kuma, Prom stack, pi-cicd architecture doc.
+  `releases` ntfy topic live, 101/101 tests + CI green (see Done).
+  Remaining Proposed: Uptime Kuma, Prom stack, pi-cicd architecture doc.
+- 2026-08-27 — implementer run: synced the 08-27 devlog radar list (it
+  concretised Uptime Kuma into a stdlib prober — adopted as the pick).
+  Shipped **service uptime scoreboard** as `service-probe` in pi-cicd:
+  12 live probes green, dead-port drill round-tripped through the ntfy
+  `services` topic, portal scoreboard panel live via pull-CD, 139/139
+  tests + CI green after fixing two pre-existing red-CI test bugs (see
+  Done). Remaining Proposed: Prom stack, pi-cicd architecture doc.
 
 ## Notes
 

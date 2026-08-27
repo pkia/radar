@@ -4,6 +4,12 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- Config files created via `sudo bash -c "cat > /etc/x.conf"` end up
+  root-owned 600 — but the systemd unit runs the tool as `ev`, so the
+  tool silently sees "no probes configured". After provisioning:
+  `sudo chown ev:ev /etc/x.conf`. And ntfy's `<topic>/json?poll=1`
+  returns one JSON object per line (JSONL stream), not an array —
+  `json.load()` chokes; parse line by line. *(2026-08-27)*
 - ntfy 2.11 CLI shape: `ntfy access <user> <topic> <perm>` — no `add`
   verb, no `--config` on `user list` (defaults to server.yml), and
   permissions are `read-only`/`write-only`/`read-write`. Also: ntfy's
