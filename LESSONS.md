@@ -10,6 +10,14 @@ lessons file gets ignored).
   `sudo chown ev:ev /etc/x.conf`. And ntfy's `<topic>/json?poll=1`
   returns one JSON object per line (JSONL stream), not an array —
   `json.load()` chokes; parse line by line. *(2026-08-27)*
+- Root-run tools that mkdir a state dir make it root-owned, locking
+  `ev` out of it (bit the ntfy mute kill switch: root-run e2e drill
+  created `~ev/.local/state/ntfy` root-owned; ev's `--mute` then
+  died). Rule: shared state dirs under ~ev must be created by ev
+  (install.sh pre-creates; root drills chown back). Related: a kill
+  switch must FAIL OPEN (unreadable state = alerts flow) and a standing
+  mute needs its own watchdog finding, or it silences the box forever.
+  *(2026-08-29)*
 - ntfy 2.11 CLI shape: `ntfy access <user> <topic> <perm>` — no `add`
   verb, no `--config` on `user list` (defaults to server.yml), and
   permissions are `read-only`/`write-only`/`read-write`. Also: ntfy's

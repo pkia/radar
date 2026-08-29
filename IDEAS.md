@@ -13,16 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **Alert-storm kill switch and notifier timeouts** (shared ntfy
-  helper, pi-cicd) — concretised 2026-08-29 from the 08-28/08-29 devlog
-  radar lists: (a) a one-variable global mute for alert storms,
-  (b) connect+read timeouts on every notification request so a dead
-  notification server can't hang the job that was trying to report its
-  own success. service-probe, release-watch, pi-backup, heartbeat and
-  the doctor should inherit both for free via the shared helper.
-  Acceptance: helper has mute + timeouts with tests for the storm path
-  and the hang path; all consumers use it; full pytest + CI green.
-  *(S; first seen 2026-08-28, posts/2026-08-28.html + 2026-08-29.html)*
 - **Grow pi-cicd into the single architecture reference** for how
   everything on this Pi builds, tests, deploys and rolls back.
   *(M; first seen 2026-08-21, posts/2026-08-21.html)*
@@ -51,12 +41,36 @@ rest now build on it:
 
 ## In progress
 
-- **Alert-storm kill switch and notifier timeouts** (moved from
-  Proposed 2026-08-29). Mute flag + connect/read timeouts in the shared
-  ntfy helper in pi-cicd, inherited by all consumers. Acceptance:
-  tests for storm path + hang path, full pytest + CI green.
+_(nothing — pick from Proposed)_
 
 ## Done
+
+- **Alert-storm kill switch and notifier timeouts** — done 2026-08-29
+  (picked from the 08-28/29 devlog radar lists, which called it "the
+  pick I'd make tomorrow"). Built `ntfy_lib.py` in pi-cicd — the one
+  shared publish layer every ntfy publisher now routes through — with
+  (a) a **global mute file** (`ntfy-notify --mute REASON /
+  --unmute / --mute-status`): one variable suppresses every publisher
+  on the box without touching the network, counts as delivered so jobs
+  keep flowing, fails open (unreadable mute ≠ silent box), and
+  pi-doctor's daily audit reports a standing mute so it can't silence
+  the box forever; (b) **finite timeouts sanitised centrally** (None/0/
+  negative → 15 s), so a dead ntfy server delays a job by seconds,
+  never hangs it. Consumers loop-heartbeat, pi-backup, release-watch,
+  service-probe, ntfy-notify (and pi-doctor's check) inherit both for
+  free; each kept its `ntfy_post` signature so existing patch points
+  survived. Live evidence: committed drill `docs/e2e-mute-check.py`
+  passes **8/8 as root** — real mute file, real publish suppressed
+  (subscriber token read-back confirms nothing arrived), doctor finding
+  fires, unmute restores delivery (message read back off the topic) —
+  and the live service-probe sweep ran the new code green (12 up).
+  En route: fixed a pre-existing same-second archive-name CI flake in
+  the pi-backup roundtrip test, and hardened the mute state dir to
+  ev-owned (root-run drill had created it root-owned, locking the
+  owner out of their own kill switch — drill now chowns, install.sh
+  pre-creates). 167/167 pytest locally; **CI green (run 33232164062,
+  head 1aaa074)**. Repo: <https://github.com/pkia/pi-cicd> commits
+  `e098236`, `83805bc`, `0ccefa6`, `c0fb4c2`, `b1f80ad`, `1aaa074`.
 
 - **Service uptime scoreboard (service-probe, pi-cicd native)** — done
   2026-08-27 (concretised from the Uptime Kuma idea: Uptime Kuma needs
@@ -222,6 +236,17 @@ Append-only, one line per run — including failures and no-ops.
   `services` topic, portal scoreboard panel live via pull-CD, 139/139
   tests + CI green after fixing two pre-existing red-CI test bugs (see
   Done). Remaining Proposed: Prom stack, pi-cicd architecture doc.
+- 2026-08-29 — implementer run: synced the 08-28 + 08-29 devlog radar
+  lists — the 08-28 post introduced the **alert-storm kill switch +
+  notifier timeouts** idea (adopted as the pick; the 08-29 post called
+  it "the pick I'd make tomorrow"); Prom stack and architecture doc
+  carried over, nothing else new. Shipped `ntfy_lib.py` in pi-cicd
+  (global mute + centrally-sanitised timeouts) inherited by all five
+  publishers; live drill 8/8, 167/167 tests, CI green (see Done).
+  En-route fixes: pre-existing pi-backup CI flake (same-second archive
+  names), mute state dir ownership (root-run tools must not create it
+  root-owned). Remaining Proposed: Prom stack, pi-cicd architecture
+  doc.
 
 ## Notes
 
