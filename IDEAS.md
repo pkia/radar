@@ -13,6 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **Alert-storm kill switch and notifier timeouts** (shared ntfy
+  helper, pi-cicd) — concretised 2026-08-29 from the 08-28/08-29 devlog
+  radar lists: (a) a one-variable global mute for alert storms,
+  (b) connect+read timeouts on every notification request so a dead
+  notification server can't hang the job that was trying to report its
+  own success. service-probe, release-watch, pi-backup, heartbeat and
+  the doctor should inherit both for free via the shared helper.
+  Acceptance: helper has mute + timeouts with tests for the storm path
+  and the hang path; all consumers use it; full pytest + CI green.
+  *(S; first seen 2026-08-28, posts/2026-08-28.html + 2026-08-29.html)*
 - **Grow pi-cicd into the single architecture reference** for how
   everything on this Pi builds, tests, deploys and rolls back.
   *(M; first seen 2026-08-21, posts/2026-08-21.html)*
@@ -41,7 +51,10 @@ rest now build on it:
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Alert-storm kill switch and notifier timeouts** (moved from
+  Proposed 2026-08-29). Mute flag + connect/read timeouts in the shared
+  ntfy helper in pi-cicd, inherited by all consumers. Acceptance:
+  tests for storm path + hang path, full pytest + CI green.
 
 ## Done
 
