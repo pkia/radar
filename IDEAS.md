@@ -54,18 +54,39 @@ rest now build on it:
 
 ## In progress
 
-- **Chaos drills on a timer** *(moved from Proposed 2026-08-30 — the
-  08-30 devlog's explicit "pick I'd make next")*. Building `chaos-drill`
-  in pi-cicd. Resume pointer if this run dies: repo `/home/ev/pi-cicd`,
-  target file `chaos-drill` + `tests/test_chaos_drill.py` +
-  `systemd/chaos-drill.{service,timer}` + `templates/chaos-drill.conf.example`
-  + install.sh/README/docs wiring; drill set v1: (1) dead-port
-  service-probe shadow-config drill (real DOWN→recovery alerts through
-  the real config), (2) ntfy anonymous-publish denied, (3) probe-timer
-  liveness. Next steps: write tests → implement → local pytest green →
-  live drill on the Pi → CI green → portal `/api/chaos`.
+_(nothing — pick from Proposed)_
 
 ## Done
+
+- **Chaos drills on a timer** — done 2026-08-30 (new in the 08-30
+  devlog's radar list, its explicit "pick I'd make next"). Built
+  `chaos-drill` in pi-cicd: a stdlib runner with a manifest of three
+  drills, one per night on date-hashed rotation (systemd timer 04:45,
+  after the 03:30 backup, clear of the 04:00 implementer):
+  (1) **service-probe-dead-port** — seeds a dead-port probe through a
+  *shadow copy* of the live probe config (alerts re-targeted to the
+  drill's `chaos` topic, its own state dir, live scoreboard and
+  `services` topic untouched) and drives the REAL service-probe
+  pipeline until the probe flips DOWN in its own state file, the DOWN
+  digest publishes, then heals and expects the recovery flip + digest;
+  (2) **ntfy-auth** — the backbone must be fail-closed: anonymous
+  publish DENIED (401/403), publisher token accepted, marker receipt
+  read back off the topic via the subscriber token (root-owned token
+  read via `sudo -n cat`, skip-not-weaken if unavailable);
+  (3) **probe-timer-alive** — timer active AND last sweep recent
+  (timezone-proof: `ExecMainExitTimestampMonotonic` vs /proc/uptime).
+  PASS/FAIL receipt to the new ntfy `chaos` topic through ntfy_lib
+  (mute + timeouts inherited), receipts in
+  `~/.local/state/chaos-drill/status.json`. Live evidence: all three
+  drills **PASS on the Pi**, and the full chain was read back off the
+  topic via the subscriber token — the real "service-probe: 1 service
+  DOWN / chaos-dead-port back UP" digests AND both drill receipts.
+  Portal (project-hub) shows the Chaos Drills panel via `/api/chaos`
+  (deployed by pull-CD at commit `4a64e9e`). 203/203 pytest in
+  pi-cicd (36 new), 9/9 in project-hub; **CI green (runs 33290179800,
+  33290180409)**. Repos:
+  <https://github.com/pkia/pi-cicd> commits `3114406`, `af19f59`;
+  <https://github.com/pkia/project-hub> commit `4a64e9e`.
 
 - **Alert-storm kill switch and notifier timeouts** — done 2026-08-29
   (picked from the 08-28/29 devlog radar lists, which called it "the
@@ -269,6 +290,15 @@ Append-only, one line per run — including failures and no-ops.
   names), mute state dir ownership (root-run tools must not create it
   root-owned). Remaining Proposed: Prom stack, pi-cicd architecture
   doc.
+- 2026-08-30 — implementer run: synced the 08-30 devlog radar list (one
+  new idea — chaos drills; Prom stack and architecture doc carried
+  over). Picked **chaos drills on a timer** and shipped `chaos-drill`
+  in pi-cicd: 3-drill manifest, nightly date-hashed rotation, shadow
+  dead-port drill through the real service-probe pipeline, ntfy
+  fail-closed drill with read-back, probe-timer liveness; all three
+  PASS live with the chain read back off the `chaos` topic; portal
+  Chaos Drills panel live via pull-CD; 203/203 + 9/9 tests, CI green
+  (see Done). Remaining Proposed: Prom stack, architecture doc.
 
 ## Notes
 

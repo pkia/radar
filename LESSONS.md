@@ -4,6 +4,16 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- Chaos-drill patterns that cost a test cycle: (1) service-probe's
+  stdout carries only alert COUNTS — the digest text goes to the ntfy
+  payload — so verify detection via the state-file flip
+  (`probes["http:name"].status`), not stdout grepping; (2) its
+  PROBE_HTTP entries REQUIRE the `http://` scheme (RE_HTTP gate) —
+  `Name=127.0.0.1:port/` is silently skipped; (3) repeated config keys
+  accumulate, and LAST occurrence wins — so appending both
+  `PROBE_HTTP=drill=...` and `NTFY_TOPIC=chaos` lines to a copy of the
+  live config is the safe way to run shadow drills without touching
+  production state or topics. *(2026-08-30)*
 - Config files created via `sudo bash -c "cat > /etc/x.conf"` end up
   root-owned 600 — but the systemd unit runs the tool as `ev`, so the
   tool silently sees "no probes configured". After provisioning:
