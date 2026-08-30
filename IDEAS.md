@@ -15,7 +15,20 @@ found by web research and keep their source URL.
 
 - **Grow pi-cicd into the single architecture reference** for how
   everything on this Pi builds, tests, deploys and rolls back.
-  *(M; first seen 2026-08-21, posts/2026-08-21.html)*
+  *(M; first seen 2026-08-21, posts/2026-08-21.html; carried over in the
+  2026-08-30 post with a concrete shape: one docs page per layer plus one
+  index mapping every running unit to its config, timer and topic)*
+
+- **Chaos drills on a timer** *(S; new in posts/2026-08-30.html — "the
+  pick I'd make next")* — the weekly restore drill proved the backups by
+  using them; extend that discipline to the rest of the box. A stdlib
+  runner with a manifest of small deliberate failures, one per night on
+  rotation, each with setup/verify/teardown, PASS/FAIL receipt to its own
+  ntfy topic (inheriting the mute) and a column in the portal scoreboard.
+  Acceptance: a committed `chaos-drill` tool in pi-cicd whose drills run
+  for real on the Pi, at least one drill exercising the actual
+  DOWN-then-recovery detection path of service-probe end-to-end, receipt
+  read back off the topic, pytest + CI green, portal shows the results.
 
 Externally researched 2026-08-21 (owner-directed session; sources linked;
 monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
@@ -41,7 +54,16 @@ rest now build on it:
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Chaos drills on a timer** *(moved from Proposed 2026-08-30 — the
+  08-30 devlog's explicit "pick I'd make next")*. Building `chaos-drill`
+  in pi-cicd. Resume pointer if this run dies: repo `/home/ev/pi-cicd`,
+  target file `chaos-drill` + `tests/test_chaos_drill.py` +
+  `systemd/chaos-drill.{service,timer}` + `templates/chaos-drill.conf.example`
+  + install.sh/README/docs wiring; drill set v1: (1) dead-port
+  service-probe shadow-config drill (real DOWN→recovery alerts through
+  the real config), (2) ntfy anonymous-publish denied, (3) probe-timer
+  liveness. Next steps: write tests → implement → local pytest green →
+  live drill on the Pi → CI green → portal `/api/chaos`.
 
 ## Done
 
