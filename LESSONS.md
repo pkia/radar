@@ -4,6 +4,12 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- Docs that claim to map the running system rot within days — bind them
+  to a test. units.md/layers.md carry `tests/test_units_doc.py` (expected
+  units present with full rows, every unit in systemd/ indexed, every
+  layer section present) so the index can't silently drift from the repo.
+  Also: a markdown-table parser must not skip the header row — the
+  separator `|---|` line is what follows it, not precedes it. *(2026-08-31)*
 - Chaos-drill patterns that cost a test cycle: (1) service-probe's
   stdout carries only alert COUNTS — the digest text goes to the ntfy
   payload — so verify detection via the state-file flip

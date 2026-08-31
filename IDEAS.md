@@ -13,22 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **Grow pi-cicd into the single architecture reference** for how
-  everything on this Pi builds, tests, deploys and rolls back.
-  *(M; first seen 2026-08-21, posts/2026-08-21.html; carried over in the
-  2026-08-30 post with a concrete shape: one docs page per layer plus one
-  index mapping every running unit to its config, timer and topic)*
-
-- **Chaos drills on a timer** *(S; new in posts/2026-08-30.html — "the
-  pick I'd make next")* — the weekly restore drill proved the backups by
-  using them; extend that discipline to the rest of the box. A stdlib
-  runner with a manifest of small deliberate failures, one per night on
-  rotation, each with setup/verify/teardown, PASS/FAIL receipt to its own
-  ntfy topic (inheriting the mute) and a column in the portal scoreboard.
-  Acceptance: a committed `chaos-drill` tool in pi-cicd whose drills run
-  for real on the Pi, at least one drill exercising the actual
-  DOWN-then-recovery detection path of service-probe end-to-end, receipt
-  read back off the topic, pytest + CI green, portal shows the results.
+- **Make the self-healer show its work** *(S; new in posts/2026-08-31.html —
+  "the pick I'd make next")* — pipeline-check now fixes things silently;
+  give it the chaos-drill treatment: a `status.json` recording every
+  self-heal (what, when, before → after), a Self-healing panel in the
+  portal (project-hub) like the Chaos Drills one, and a "healed N things
+  since yesterday" line in pi-doctor's morning audit. Acceptance:
+  pipeline-check appends heals with before→after detail to
+  `~/.local/state/pipeline-check/status.json`, project-hub renders a
+  Self-healing panel via `/api/heals`, pi-doctor reports the daily heal
+  count in its audit, pytest + CI green in both repos.
 
 Externally researched 2026-08-21 (owner-directed session; sources linked;
 monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
@@ -48,8 +42,12 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Prometheus + Grafana + node_exporter** — real graphs for the devlog:
-  CPU temp vs load, USB throughput, service health. **M**
+- **Prometheus + Grafana + node_exporter from Debian packages** —
+  concretised 2026-08-31: install all three from apt with plain systemd
+  units (the no-container way this box does things), point Prometheus at
+  node_exporter and the long-running services, pin ONE dashboard with the
+  graphs these posts actually quote — CPU temperature against load, probe
+  health over time. Alerting routes through ntfy_lib. **M**
   <https://artofinfra.com/monitor-raspberry-pi-and-linux-metrics-with-grafana-prometheus-on-docker/>
 
 ## In progress
@@ -57,6 +55,25 @@ rest now build on it:
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Grow pi-cicd into the single architecture reference** — done
+  2026-08-31 (first seen 08-21; the 08-31 post named the concrete next
+  step: "the index comes next"). Completed the reference in pi-cicd:
+  `docs/units.md` — the **unit index**, one row per running unit mapping
+  it to schedule, config file, state and ntfy topic (12 units:
+  project-guard, per-service deploy, pipeline-check, pi-doctor,
+  loop-heartbeat, ntfy-notify, ntfy server, pi-backup, pi-backup-drill,
+  release-watch, service-probe, chaos-drill; portal panels and the mute
+  noted) — and `docs/layers.md`, one page per operational layer (deploy,
+  guard, compliance, doctor, heartbeat, notifications+mute, backup,
+  release-watch, service-probe, chaos drills), cross-linked from
+  architecture.md and README. The index is bound to reality by
+  `tests/test_units_doc.py`: expected units present with full rows,
+  every unit file in `systemd/` indexed, every layer section present.
+  208/208 pytest locally (3 new); **CI green (run 33357644280)**. Repo:
+  <https://github.com/pkia/pi-cicd> commit `cedfd67`. The index was
+  verified against the live box (systemctl timers/units, /etc configs,
+  ~/.local/state, README + Done ledger) before writing.
 
 - **Chaos drills on a timer** — done 2026-08-30 (new in the 08-30
   devlog's radar list, its explicit "pick I'd make next"). Built
@@ -299,6 +316,19 @@ Append-only, one line per run — including failures and no-ops.
   PASS live with the chain read back off the `chaos` topic; portal
   Chaos Drills panel live via pull-CD; 203/203 + 9/9 tests, CI green
   (see Done). Remaining Proposed: Prom stack, architecture doc.
+- 2026-08-31 — implementer run: synced the 08-31 devlog radar list (one
+  new idea — **make the self-healer show its work**, the post's explicit
+  "pick I'd make next", added to Proposed with acceptance criteria; Prom
+  stack carried over and concretised as Debian packages). Picked the
+  **pi-cicd architecture reference** (carried over; 08-31 named the
+  index as the next step — smaller and zero-risk vs. touching the live
+  self-healer): shipped `docs/units.md` (unit index — 12 units →
+  schedule/config/state/topic), `docs/layers.md` (one page per layer),
+  links from architecture.md + README, and `tests/test_units_doc.py`
+  binding the index to `systemd/`. Stale chaos-drill entry cleaned out
+  of Proposed (already Done). 208/208 pytest; **CI green (run
+  33357644280)**. Remaining Proposed: self-healer visibility, Prom
+  stack.
 
 ## Notes
 
