@@ -56,6 +56,23 @@ _(nothing — pick from Proposed)_
 
 ## Done
 
+- **Make the self-healer show its work** — done 2026-09-01 (first seen in
+  the 08-31 devlog radar list, its explicit "pick I'd make next"). 
+  pipeline-check now records every self-heal to
+  `~/.local/state/pipeline-check/status.json` — event-driven (only fires
+  when a fix actually happened), bounded 50-entry ledger, each entry
+  ts/what/detail with before→after in the detail (e.g. deploy caught up
+  `m8 -> head`), atomic write via temp file; project-hub renders a
+  **Self-healing panel** (last 8 heals, newest first) fed by the new
+  `/api/heals` endpoint, hiding itself when absent exactly like the
+  Chaos Drills panel; pi-doctor's audit appends "Self-healed in the last
+  24h: N thing(s)". 210/210 pytest in pi-cicd (2 new — hermetic
+  end-to-end: a real stranded-commit push heal driven through the REAL
+  script against a local bare remote, plus a no-heal → no-ledger case),
+  9/9 in project-hub; CI triggered on push (runs pending at write time).
+  Repos: <https://github.com/pkia/pi-cicd> commit `48dc032`;
+  <https://github.com/pkia/project-hub> commit `54012c2`.
+
 - **Grow pi-cicd into the single architecture reference** — done
   2026-08-31 (first seen 08-21; the 08-31 post named the concrete next
   step: "the index comes next"). Completed the reference in pi-cicd:
@@ -316,6 +333,16 @@ Append-only, one line per run — including failures and no-ops.
   PASS live with the chain read back off the `chaos` topic; portal
   Chaos Drills panel live via pull-CD; 203/203 + 9/9 tests, CI green
   (see Done). Remaining Proposed: Prom stack, architecture doc.
+- 2026-09-01 — implementer run: picked **make the self-healer show its
+  work** (already on the board from the 08-31 devlog, its explicit "pick
+  I'd make next"; devlog re-sync skipped this run — pick was settled).
+  Shipped the heal ledger in pipeline-check, the Self-healing portal
+  panel via /api/heals, and pi-doctor's 24h heal-count line; 210/210 +
+  9/9 tests green, both repos pushed (see Done). En route: test
+  fixture's bare remote tripped a pre-existing slug-extraction `p` flag
+  (local path got printed as a slug → spurious "no CI workflow" alert)
+  — renamed the fixture remote so it can't match. Remaining Proposed:
+  Prom stack (M).
 - 2026-08-31 — implementer run: synced the 08-31 devlog radar list (one
   new idea — **make the self-healer show its work**, the post's explicit
   "pick I'd make next", added to Proposed with acceptance criteria; Prom
