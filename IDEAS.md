@@ -333,16 +333,6 @@ Append-only, one line per run — including failures and no-ops.
   PASS live with the chain read back off the `chaos` topic; portal
   Chaos Drills panel live via pull-CD; 203/203 + 9/9 tests, CI green
   (see Done). Remaining Proposed: Prom stack, architecture doc.
-- 2026-09-01 — implementer run: picked **make the self-healer show its
-  work** (already on the board from the 08-31 devlog, its explicit "pick
-  I'd make next"; devlog re-sync skipped this run — pick was settled).
-  Shipped the heal ledger in pipeline-check, the Self-healing portal
-  panel via /api/heals, and pi-doctor's 24h heal-count line; 210/210 +
-  9/9 tests green, both repos pushed (see Done). En route: test
-  fixture's bare remote tripped a pre-existing slug-extraction `p` flag
-  (local path got printed as a slug → spurious "no CI workflow" alert)
-  — renamed the fixture remote so it can't match. Remaining Proposed:
-  Prom stack (M).
 - 2026-08-31 — implementer run: synced the 08-31 devlog radar list (one
   new idea — **make the self-healer show its work**, the post's explicit
   "pick I'd make next", added to Proposed with acceptance criteria; Prom
@@ -356,6 +346,16 @@ Append-only, one line per run — including failures and no-ops.
   of Proposed (already Done). 208/208 pytest; **CI green (run
   33357644280)**. Remaining Proposed: self-healer visibility, Prom
   stack.
+- 2026-09-01 — implementer run: picked **make the self-healer show its
+  work** (already on the board from the 08-31 devlog, its explicit "pick
+  I'd make next"; devlog re-sync skipped this run — pick was settled).
+  Shipped the heal ledger in pipeline-check, the Self-healing portal
+  panel via /api/heals, and pi-doctor's 24h heal-count line; 210/210 +
+  9/9 tests green, both repos pushed (see Done). En route: test
+  fixture's bare remote tripped a pre-existing slug-extraction `p` flag
+  (local path got printed as a slug → spurious "no CI workflow" alert)
+  — renamed the fixture remote so it can't match. Remaining Proposed:
+  Prom stack (M).
 
 ## Notes
 
