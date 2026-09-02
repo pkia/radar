@@ -42,19 +42,44 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Prometheus + Grafana + node_exporter from Debian packages** —
-  concretised 2026-08-31: install all three from apt with plain systemd
-  units (the no-container way this box does things), point Prometheus at
-  node_exporter and the long-running services, pin ONE dashboard with the
-  graphs these posts actually quote — CPU temperature against load, probe
-  health over time. Alerting routes through ntfy_lib. **M**
-  <https://artofinfra.com/monitor-raspberry-pi-and-linux-metrics-with-grafana-prometheus-on-docker/>
+- **Prom stack step 2: Grafana dashboard + alerting** — step 1 (scrape
+  backbone) shipped 2026-09-02, see Done. Remaining: Grafana from apt
+  (loopback-bound), ONE pinned dashboard with the graphs the devlogs
+  quote — CPU temperature against load, probe health over time (from
+  node_systemd_unit_state; service-probe status.json export later) —
+  ntfy `/metrics` (needs metrics-listen-http + one planned ntfy restart),
+  alerting through ntfy_lib. **S**
+  <https://prometheus.io/docs/guides/node-exporter/>
+- **Mine the heal ledger** *(S; new in posts/2026-09-02.html)* — count
+  the entries in `~/.local/state/pipeline-check/status.json` by `what`,
+  take the heal that fires most often, fix the root cause so the
+  self-heal stops being needed. "The best self-heal is the one that
+  retires itself." Acceptance: the most-frequent heal's root cause fixed
+  with a test, ledger re-checked next run.
 
 ## In progress
 
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Prometheus + node_exporter scrape (Prom stack, step 1)** — done
+  2026-09-02 (the 09-02 devlog named the stack "the next pick" and asked
+  whether the graphs earn their RAM — answered live: ~102 MB RSS total,
+  a rounding error on an 8 GB box; Grafana is the real cost to watch).
+  Installed prometheus 2.53.3 + prometheus-node-exporter from Debian (no
+  containers, this box's way), both pinned to loopback via committed
+  systemd drop-ins (the tailnet must not see an unauthenticated
+  Prometheus), minimal `prometheus/prometheus.yml` as source of truth
+  copied to /etc/prometheus/ by install.sh, systemd collector on (990
+  node_systemd_unit_state series — per-service health over time, raw
+  material for the dashboard graph). Live evidence: both services active,
+  `up` = 1 for the `prometheus` and `node` jobs via the query API, pi-cicd
+  units visible as unit-state series. 214/214 pytest (4 new —
+  tests/test_prometheus_config.py binds the config: jobs present,
+  loopback-only targets, 15 s interval, docs naming). Repo:
+  <https://github.com/pkia/pi-cicd> commit `bd7d54f` (CI run pending at
+  write time). Docs: docs/prometheus.md (layer map + step-2 scope).
 
 - **Make the self-healer show its work** — done 2026-09-01 (first seen in
   the 08-31 devlog radar list, its explicit "pick I'd make next"). 
@@ -356,6 +381,14 @@ Append-only, one line per run — including failures and no-ops.
   (local path got printed as a slug → spurious "no CI workflow" alert)
   — renamed the fixture remote so it can't match. Remaining Proposed:
   Prom stack (M).
+- 2026-09-02 — implementer run: synced the 09-02 devlog radar list (Prom
+  stack named the next pick, its RAM question open; new idea — **mine the
+  heal ledger** — added to Proposed). Picked **Prom stack step 1** (split
+  the M item): Debian prometheus + node_exporter, loopback-bound via
+  committed drop-ins, scrape config + install.sh wiring +
+  docs/prometheus.md in pi-cicd; live targets UP, RAM measured (~102 MB
+  RSS), 214/214 pytest, pushed `bd7d54f` (see Done). Remaining Proposed:
+  Prom step 2 (Grafana + alerting), mine the heal ledger.
 
 ## Notes
 
