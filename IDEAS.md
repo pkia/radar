@@ -13,16 +13,13 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **Make the self-healer show its work** *(S; new in posts/2026-08-31.html —
-  "the pick I'd make next")* — pipeline-check now fixes things silently;
-  give it the chaos-drill treatment: a `status.json` recording every
-  self-heal (what, when, before → after), a Self-healing panel in the
-  portal (project-hub) like the Chaos Drills one, and a "healed N things
-  since yesterday" line in pi-doctor's morning audit. Acceptance:
-  pipeline-check appends heals with before→after detail to
-  `~/.local/state/pipeline-check/status.json`, project-hub renders a
-  Self-healing panel via `/api/heals`, pi-doctor reports the daily heal
-  count in its audit, pytest + CI green in both repos.
+- **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
+  cs2-train's fresh-install validation is one pod away from done: turn
+  validate_chain.sh into the automated boot test that runs the moment a
+  server is up — fresh install, bundle pull, plugin load, one scored
+  scenario, receipts — so the final link is a single command. Costs
+  nothing until cloud budget says go; repo lives on the train VM, not
+  this box.
 
 Externally researched 2026-08-21 (owner-directed session; sources linked;
 monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
@@ -56,12 +53,33 @@ rest now build on it:
   self-heal stops being needed. "The best self-heal is the one that
   retires itself." Acceptance: the most-frequent heal's root cause fixed
   with a test, ledger re-checked next run.
+  *09-03 blocker found + fixed: the ledger had never existed —
+  pipeline-check/pi-doctor were not on PATH, had no unit/timer, and
+  project-guard never invokes them; install.sh linked only 8/10 tools
+  (fix e4c1293 + tests/test_install_sh.py). Owner step: re-run
+  install.sh on the box; then mining becomes possible.*
 
 ## In progress
 
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Mine-the-heal-ledger blocker: self-healer was never deployable** —
+  done 2026-09-03 (pick was mine the heal ledger, Proposed S; repo
+  evidence stopped it cold and the real root cause got fixed instead).
+  Live-box check: `which pipeline-check` → missing, no pipeline-check or
+  pi-doctor unit in systemd/, no timer, and project-guard (the only
+  installed driver, symlinked to repo HEAD) invokes neither — so the
+  09-01 heal-ledger ship was repo-only and
+  `~/.local/state/pipeline-check/status.json` has never been created.
+  install.sh linked 8 of the 10 repo tools and omitted pipeline-check and
+  pi-doctor since their ships. Fix: both added to install.sh's ln -sf +
+  chmod blocks; new tests/test_install_sh.py binds the installer to every
+  repo tool (and rejects stray links). 216/216 pytest locally (2 new);
+  Repo: <https://github.com/pkia/pi-cicd> commit `e4c1293` (CI pending at
+  write time). Owner step: re-run install.sh so the ledger can start
+  filling; then the mining idea is actionable as written.
 
 - **Prometheus + node_exporter scrape (Prom stack, step 1)** — done
   2026-09-02 (the 09-02 devlog named the stack "the next pick" and asked
@@ -389,6 +407,17 @@ Append-only, one line per run — including failures and no-ops.
   docs/prometheus.md in pi-cicd; live targets UP, RAM measured (~102 MB
   RSS), 214/214 pytest, pushed `bd7d54f` (see Done). Remaining Proposed:
   Prom step 2 (Grafana + alerting), mine the heal ledger.
+- 2026-09-03 — implementer run: synced the 09-03 devlog radar list (Prom
+  step 2 + mine the heal ledger carried over; new — **Train: stage the
+  proof run** — added to Proposed). Picked **mine the heal ledger**; the
+  ledger turned out unmineable — repo evidence: pipeline-check not on
+  PATH, no unit/timer anywhere, project-guard (autosave driver) never
+  calls it; the 09-01 ledger ship was repo-only (install.sh linked 8/10
+  tools). Fixed the deployability gap instead: install.sh links
+  pipeline-check + pi-doctor (ln -sf + chmod), regression test
+  tests/test_install_sh.py; 216/216 pytest, pushed `e4c1293`. Board:
+  Done entry, blocker note on the mining idea, stale 08-31 self-healer
+  dup cleaned out of Proposed.
 
 ## Notes
 
