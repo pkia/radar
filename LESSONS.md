@@ -84,3 +84,5 @@ lessons file gets ignored).
   contradicts; only evidence prevents that here. *(2026-08-21)*
 - The single RTL-SDR dongle belongs to ais-catcher — new RF ideas need a
   second dongle or SDR sharing before any of them can run. *(2026-08-21)*
+
+- 2026-09-04 — systemd-only repo evidence is incomplete: hermes cron is a first-class scheduler on this box (docs/units.md in pi-cicd documents which units run where). Check `hermes cron list` AND the unit index before declaring a tool "never deployed" — the 09-03 run burned a session on a systemd-only misdiagnosis.

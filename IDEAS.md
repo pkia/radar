@@ -20,6 +20,9 @@ found by web research and keep their source URL.
   scenario, receipts — so the final link is a single command. Costs
   nothing until cloud budget says go; repo lives on the train VM, not
   this box.
+  *(09-04 devlog refinement: the server-side chain is proven with bots;
+  the open link is the human test — `!train start` with a real player in
+  the seat.)*
 
 Externally researched 2026-08-21 (owner-directed session; sources linked;
 monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
@@ -53,17 +56,44 @@ rest now build on it:
   self-heal stops being needed. "The best self-heal is the one that
   retires itself." Acceptance: the most-frequent heal's root cause fixed
   with a test, ledger re-checked next run.
-  *09-03 blocker found + fixed: the ledger had never existed —
-  pipeline-check/pi-doctor were not on PATH, had no unit/timer, and
-  project-guard never invokes them; install.sh linked only 8/10 tools
-  (fix e4c1293 + tests/test_install_sh.py). Owner step: re-run
-  install.sh on the box; then mining becomes possible.*
+  *09-04: the 09-03 blocker verdict was re-verified and corrected — both
+  healers are Hermes-cron scheduled (docs/units.md in pi-cicd documents
+  this) and the jobs run green: the wrapper execs the repo tool by
+  absolute path, so PATH never mattered. The ledger is empty because
+  zero heals have fired on a healthy box, not because the healers were
+  missing. install.sh re-ran 09-04, links now live for interactive use
+  (see Done). Actionable once heals accrue — re-check the ledger in ~a
+  week.*
 
 ## In progress
 
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Mine-the-heal-ledger blocker re-verified — the 09-03 "never
+  deployable" verdict was wrong; the healers were live all along** — done
+  2026-09-04 (resumed the 09-03 thread; repo + live evidence, no code gap
+  found). The 09-03 finding checked systemd only and missed the
+  architecture its own units.md documents: pipeline-check and pi-doctor
+  are **Hermes cron jobs**, not systemd units. Verified live via
+  `hermes cron list`: "Pipeline compliance check" runs 01:00 & 13:00 via
+  `pipeline-check-wrapper.sh`, which `exec`s `/home/ev/pi-cicd/
+  pipeline-check` **by absolute path** (PATH never mattered) — last run
+  2026-09-04 01:01 **ok**; "pi-doctor daily audit" runs 06:30 daily —
+  last run 09-03 06:31 **ok**. The heal ledger
+  (`~/.local/state/pipeline-check/status.json`) is empty because **no
+  heal has fired** since the 09-01 ship (~6 pipeline-check runs + 2
+  audits, zero fixes on a healthy box — pi-doctor's own audit agrees: no
+  issues), not because the healers were missing. Ships: units.md rows
+  corrected to reality (pipeline-check cron `0 1,13 * * *` + wrapper,
+  pi-doctor cron `30 6 * * *`), test_install_sh.py docstring corrected so
+  it no longer fossilises the wrong "ledger could never be written"
+  causal claim; install.sh re-run live so the 09-03 e4c1293 links
+  finally exist for interactive use (pipeline-check + pi-doctor now on
+  PATH). 216/216 pytest locally. Repo: <https://github.com/pkia/pi-cicd>
+  commit `f925967` (CI pending at write time). The mining item stays
+  Proposed — it becomes actionable once heals accrue.
 
 - **Mine-the-heal-ledger blocker: self-healer was never deployable** —
   done 2026-09-03 (pick was mine the heal ledger, Proposed S; repo
@@ -78,8 +108,9 @@ _(nothing — pick from Proposed)_
   chmod blocks; new tests/test_install_sh.py binds the installer to every
   repo tool (and rejects stray links). 216/216 pytest locally (2 new);
   Repo: <https://github.com/pkia/pi-cicd> commit `e4c1293` (CI pending at
-  write time). Owner step: re-run install.sh so the ledger can start
-  filling; then the mining idea is actionable as written.
+  write time). *09-04: this verdict was partially wrong — see the
+  correction entry above; the systemd-only check missed the Hermes-cron
+  scheduling units.md documents.*
 
 - **Prometheus + node_exporter scrape (Prom stack, step 1)** — done
   2026-09-02 (the 09-02 devlog named the stack "the next pick" and asked
@@ -260,7 +291,7 @@ _(nothing — pick from Proposed)_
   the `loop-heartbeat` topic (delivered if either channel accepts);
   new `ntfy-notify` helper publishes job outcomes; install.sh links it.
   50 tests pass locally and on CI (runs 32688026871, 32688874150,
-  32689099970); committed live check
+  32689099974); committed live check
   `docs/e2e-ntfy-check.py` passes 7/7 (deny-all, write-only publisher,
   read-only subscriber, publish + read-back); production
   loop-heartbeat run green over both channels. Owner's one manual
@@ -373,9 +404,9 @@ Append-only, one line per run — including failures and no-ops.
   in pi-cicd: 3-drill manifest, nightly date-hashed rotation, shadow
   dead-port drill through the real service-probe pipeline, ntfy
   fail-closed drill with read-back, probe-timer liveness; all three
-  PASS live with the chain read back off the `chaos` topic; portal
-  Chaos Drills panel live via pull-CD; 203/203 + 9/9 tests, CI green
-  (see Done). Remaining Proposed: Prom stack, architecture doc.
+  drills **PASS live** with the chain read back off the `chaos` topic;
+  portal Chaos Drills panel live via pull-CD; 203/203 + 9/9 tests, CI
+  green (see Done). Remaining Proposed: Prom stack, architecture doc.
 - 2026-08-31 — implementer run: synced the 08-31 devlog radar list (one
   new idea — **make the self-healer show its work**, the post's explicit
   "pick I'd make next", added to Proposed with acceptance criteria; Prom
@@ -418,6 +449,20 @@ Append-only, one line per run — including failures and no-ops.
   tests/test_install_sh.py; 216/216 pytest, pushed `e4c1293`. Board:
   Done entry, blocker note on the mining idea, stale 08-31 self-healer
   dup cleaned out of Proposed.
+- 2026-09-04 — implementer run: synced the 09-04 devlog radar list (item
+  1 — "run install.sh, then mine for real" — repeats the 09-03 premise
+  this run disproved; item 2 refines Train's last link to the human test;
+  nothing genuinely new added). Picked **mine-the-heal-ledger blocker
+  re-verification**: `hermes cron list` proves pipeline-check ("Pipeline
+  compliance check", wrapper `exec`s the repo tool by absolute path,
+  01:00 & 13:00) and pi-doctor ("pi-doctor daily audit", 06:30) were
+  deployed and green all along — the 09-03 "never deployable" verdict
+  looked at systemd only and missed the Hermes-cron scheduling units.md
+  documents. Ledger empty = zero heals fired on a healthy box, not a
+  deployment gap. Shipped: units.md reality fix + test_install_sh.py
+  docstring correction in pi-cicd (`f925967`, 216/216 pytest), install.sh
+  re-run live (pipeline-check/pi-doctor now on PATH for interactive use).
+  Mining remains Proposed — re-check the ledger once heals accrue.
 
 ## Notes
 
@@ -428,3 +473,8 @@ Append-only, one line per run — including failures and no-ops.
 - "Keep this devlog honest and boring: tests green, deploys dull,
   rollback never needed" — standing quality bar for everything above, not
   a build task. *(2026-08-21)*
+- **09-04 lesson (from the re-verification above):** repo evidence that
+  checks systemd only is incomplete — hermes cron is a first-class
+  scheduler on this box and units.md documents which units run where.
+  Before declaring a tool "never deployed", check `hermes cron list` AND
+  read the unit's own index row. The 09-03 run burned a session on this.
