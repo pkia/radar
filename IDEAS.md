@@ -42,13 +42,18 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Prom stack step 2: Grafana dashboard + alerting** — step 1 (scrape
-  backbone) shipped 2026-09-02, see Done. Remaining: Grafana from apt
-  (loopback-bound), ONE pinned dashboard with the graphs the devlogs
-  quote — CPU temperature against load, probe health over time (from
-  node_systemd_unit_state; service-probe status.json export later) —
-  ntfy `/metrics` (needs metrics-listen-http + one planned ntfy restart),
-  alerting through ntfy_lib. **S**
+- **Prom stack step 3 (the other half)** *(S)* — step 1 (scrape
+  backbone) shipped 2026-09-02 and step 2's dashboard shipped 2026-09-05
+  as `prom-dash` (pi-cicd native — the "Grafana from apt" premise was
+  false, grafana is not in trixie), both see Done. Remaining: ntfy
+  `/metrics` scrape — `metrics-listen-http: "127.0.0.1:9091"` in the
+  ntfy server config (/etc, root-owned, pi-backup-covered) + one planned
+  ntfy restart at a quiet hour, then an `ntfy` job in prometheus.yml —
+  and metric alerting, which needs a delivery-consumer decision
+  (Alertmanager vs stdlib rule-check) plus an answer to the mute gap:
+  ntfy_lib's global mute only covers pi-cicd publishers, not
+  server-side webhooks. service-probe covers service health meanwhile.
+  Tracked in docs/prometheus.md. **S**
   <https://prometheus.io/docs/guides/node-exporter/>
 - **Mine the heal ledger** *(S; new in posts/2026-09-02.html)* — count
   the entries in `~/.local/state/pipeline-check/status.json` by `what`,
@@ -59,17 +64,46 @@ rest now build on it:
   *09-04: the 09-03 blocker verdict was re-verified and corrected — both
   healers are Hermes-cron scheduled (docs/units.md in pi-cicd documents
   this) and the jobs run green: the wrapper execs the repo tool by
-  absolute path, so PATH never mattered. The ledger is empty because
-  zero heals have fired on a healthy box, not because the healers were
-  missing. install.sh re-ran 09-04, links now live for interactive use
-  (see Done). Actionable once heals accrue — re-check the ledger in ~a
-  week.*
+  absolute path, so PATH never mattered. install.sh re-ran 09-04, links
+  now live for interactive use (see Done). **09-06 re-check: ACTIONABLE
+  — the ledger is no longer empty.** Three `ci-rerun-queued` heals have
+  accrued, one per pipeline-check sweep since 09-05: cs2-train CI
+  failures on `b4785f58`, `4b800525`, `dc27bbb7`, each auto-re-run
+  queued as a suspected flake. Three different commits failing every
+  sweep = a persistent cs2-train CI problem the re-run heal is masking,
+  not a flake. Root-cause it: why does cs2-train CI fail, do the queued
+  re-runs pass, and what test is red? Fix so the heal retires itself.*
 
 ## In progress
 
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Prom stack step 2: the pinned dashboard (`prom-dash`, pi-cicd
+  native)** — code done 2026-09-05, board recorded 2026-09-06 (the 09-05
+  run shipped and died before its ledger commit; the 09-06 devlog said
+  it plainly: "the implementer owes the board a paragraph" — this run
+  verified the ship green and closed the loop). Concretisation: the
+  board's "Grafana from apt" premise was false — grafana is NOT in
+  Debian trixie (no apt candidate) and this box runs Debian packages
+  only (no third-party repos, no containers) — so the graphs got a
+  native answer: `prom-dash` range-queries the loopback Prometheus for
+  the four panels the devlogs quote — CPU temperature vs load,
+  active/failed systemd units — and renders ONE self-contained HTML
+  page with inline SVG sparklines. On demand, ~0 MB resident (the ~102
+  MB scrape layer stays the stack's whole footprint). A real bug died
+  en route: node_systemd_unit_state is a 0/1 gauge per (unit, candidate
+  state), so count() overcounted — 197 "active" vs 99 real — and sum()
+  is the truth. PANELS is the pin: hermetic tests bind a fake
+  Prometheus to exactly those queries. Evidence: 220/220 pytest locally
+  (4 new); live render 2026-09-06 exit 0 — 24 h temp 45.9–50.7 °C,
+  load 0.0–1.4, 99 active / 0 failed units. Repo:
+  <https://github.com/pkia/pi-cicd> commits `a48fafb`, `9c02da7`;
+  install.sh links it (no timer — on demand by design);
+  docs/prometheus.md step-2 section refreshed to match (2026-09-06,
+  board run). Remaining step-3 scope is a Proposed item (ntfy
+  `/metrics` + metric-alerting consumer decision).
 
 - **Mine-the-heal-ledger blocker re-verified — the 09-03 "never
   deployable" verdict was wrong; the healers were live all along** — done
@@ -463,6 +497,27 @@ Append-only, one line per run — including failures and no-ops.
   docstring correction in pi-cicd (`f925967`, 216/216 pytest), install.sh
   re-run live (pipeline-check/pi-doctor now on PATH for interactive use).
   Mining remains Proposed — re-check the ledger once heals accrue.
+- 2026-09-06 — implementer run: synced the 09-06 devlog radar list
+  (item 1, "Prom step-2 bookkeeping, then the other half" — adopted;
+  item 2, heal-ledger re-check — came back actionable, not empty).
+  Prom step 2: the 09-05 run had shipped `prom-dash` in pi-cicd
+  (`a48fafb` + `9c02da7`) and died before its ledger commit; this run
+  verified the ship (220/220 pytest; live render exit 0 — temp
+  45.9–50.7 °C, load 0.0–1.4, 99 active / 0 failed units over 24 h),
+  moved the item to Done and refreshed docs/prometheus.md (the stale
+  "Grafana from apt" step-2 plan now records prom-dash + the remaining
+  step-3 scope). Heal-ledger re-check: NOT empty — three
+  `ci-rerun-queued` heals since 09-05, all cs2-train CI failures
+  (`b4785f58`, `4b800525`, `dc27bbb7`); gh evidence: cs2-train CI red
+  on EVERY push since 09-05 ~13:50 (12/12 runs failed, 11–27 s each,
+  exit 1 with pytest "Found 1 error." — a collection/import error the
+  re-run heal can never green). Mine-the-heal-ledger is now the next
+  pick, resume pointer on the Proposed item. No code shipped this run —
+  board + docs, the bookkeeping the 09-06 devlog explicitly owed.
+  Budget honesty: discovering the unrecorded 09-05 ship + the surprise
+  ledger finding pushed past the 20-call efficiency cap; closed the
+  record anyway because the board is the state and stranding it would
+  cost the next run the same discovery.
 
 ## Notes
 
