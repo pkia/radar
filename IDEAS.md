@@ -73,6 +73,28 @@ rest now build on it:
   sweep = a persistent cs2-train CI problem the re-run heal is masking,
   not a flake. Root-cause it: why does cs2-train CI fail, do the queued
   re-runs pass, and what test is red? Fix so the heal retires itself.*
+  **09-07 root cause SHIPPED: the storm was the CI ruff gate** — `ruff
+  check . --select E9,F63,F7,F82` failed on EVERY commit since 09-05
+  with F821 `Undefined name 'skill_model'` at api/control.py:306 (the
+  §16 self-evaluation block in session_end imported engine.intelligence
+  but used skill_model unimported; the broad `except Exception: pass`
+  swallowed the NameError so pytest stayed green locally — only the
+  pre-pytest ruff gate caught it, and it died before pytest ran, hence
+  12/12 red and the rerun heal spinning). Fixed in cs2-train `9e78d03`
+  (one-line local import; ruff + byte-compile + 250/250 pytest green
+  locally with the exact CI gates). **Remaining for full green: two
+  pre-existing hermeticity failures in tests/test_hetzner.py, CI-only,
+  now visible because pytest finally runs** — 248/250 on CI run for
+  `9e78d03`: (1) test_backend_routes_to_runpod_without_token does
+  `open(os.path.expanduser("~/.hermes/.env"))` raw — FileNotFoundError
+  on the runner (no ~/.hermes); passes on dev box only because the real
+  token file exists; (2) test_hetzner_cli_contract_no_token subprocess
+  (HOME=/tmp) emits EMPTY stdout on CI python 3.13.15 but JSON locally
+  (3.13.5, same requirements) — mechanism not yet found (suspect a
+  crash in engine/hetzner_cloud.py's early import/env handling under
+  the runner's HOME); both need the CLI/test hermeticised (no real
+  ~/.hermes reads, isolated HOME via tmp_path fixture). Next run:
+  fix those two so cs2-train CI goes green and the heal retires.**
 
 ## In progress
 
@@ -515,11 +537,24 @@ Append-only, one line per run — including failures and no-ops.
   pick, resume pointer on the Proposed item. No code shipped this run —
   board + docs, the bookkeeping the 09-06 devlog explicitly owed.
   Budget honesty: discovering the unrecorded 09-05 ship + the surprise
-  ledger finding pushed past the 20-call efficiency cap; closed the
-  record anyway because the board is the state and stranding it would
-  cost the next run the same discovery.
+ ledger finding pushed past the 20-call efficiency cap; closed the
+ record anyway because the board is the state and stranding it would
+ cost the next run the same discovery.
+ - 2026-09-07 — implementer run: picked **mine the heal ledger** (Proposed,
+ actionable per 09-06). Root-caused the cs2-train rerun storm: CI's ruff
+ gate (E9/F63/F7/F82) failed F821 on every commit since 09-05 —
+ `skill_model` used unimported in session_end's §16 self-evaluation
+ (api/control.py:306), hidden from pytest by the broad except. One-line
+ fix pushed to pkia/cs2-train `9e78d03`; ruff + byte-compile + 250/250
+ pytest green locally. CI now runs pytest for the first time since
+ 09-05: 248/250 — two pre-existing CI-only hermeticity failures in
+ tests/test_hetzner.py (raw ~/.hermes/.env read; CLI empty-stdout on
+ runner python 3.13.15) recorded on the Proposed item as the next step.
+ Unrelated dirty work (customer_demo wiring) stashed/restored untouched
+ around the fix. Heal not yet retired — cs2-train CI still red on the
+ 2 hetzner tests; board carries the resume pointer.
 
-## Notes
+ ## Notes
 
 - **AIS/RF track paused by owner 2026-08-23** — do not re-add AIS ideas
   (including from older devlog posts' "On the radar" lists) unless the
