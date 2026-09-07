@@ -537,24 +537,24 @@ Append-only, one line per run — including failures and no-ops.
   pick, resume pointer on the Proposed item. No code shipped this run —
   board + docs, the bookkeeping the 09-06 devlog explicitly owed.
   Budget honesty: discovering the unrecorded 09-05 ship + the surprise
- ledger finding pushed past the 20-call efficiency cap; closed the
- record anyway because the board is the state and stranding it would
- cost the next run the same discovery.
- - 2026-09-07 — implementer run: picked **mine the heal ledger** (Proposed,
- actionable per 09-06). Root-caused the cs2-train rerun storm: CI's ruff
- gate (E9/F63/F7/F82) failed F821 on every commit since 09-05 —
- `skill_model` used unimported in session_end's §16 self-evaluation
- (api/control.py:306), hidden from pytest by the broad except. One-line
- fix pushed to pkia/cs2-train `9e78d03`; ruff + byte-compile + 250/250
- pytest green locally. CI now runs pytest for the first time since
- 09-05: 248/250 — two pre-existing CI-only hermeticity failures in
- tests/test_hetzner.py (raw ~/.hermes/.env read; CLI empty-stdout on
- runner python 3.13.15) recorded on the Proposed item as the next step.
- Unrelated dirty work (customer_demo wiring) stashed/restored untouched
- around the fix. Heal not yet retired — cs2-train CI still red on the
- 2 hetzner tests; board carries the resume pointer.
+  ledger finding pushed past the 20-call efficiency cap; closed the
+  record anyway because the board is the state and stranding it would
+  cost the next run the same discovery.
+- 2026-09-07 — implementer run: picked **mine the heal ledger** (Proposed,
+  actionable per 09-06). Root-caused the cs2-train rerun storm: CI's ruff
+  gate (E9/F63/F7/F82) failed F821 on every commit since 09-05 —
+  `skill_model` used unimported in session_end's §16 self-evaluation
+  (api/control.py:306), hidden from pytest by the broad except. One-line
+  fix pushed to pkia/cs2-train `9e78d03`; ruff + byte-compile + 250/250
+  pytest green locally. CI now runs pytest for the first time since
+  09-05: 248/250 — two pre-existing CI-only hermeticity failures in
+  tests/test_hetzner.py (raw ~/.hermes/.env read; CLI empty-stdout on
+  runner python 3.13.15) recorded on the Proposed item as the next step.
+  Unrelated dirty work (customer_demo wiring) stashed/restored untouched
+  around the fix. Heal not yet retired — cs2-train CI still red on the
+  2 hetzner tests; board carries the resume pointer.
 
- ## Notes
+## Notes
 
 - **AIS/RF track paused by owner 2026-08-23** — do not re-add AIS ideas
   (including from older devlog posts' "On the radar" lists) unless the
