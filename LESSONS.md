@@ -86,3 +86,5 @@ lessons file gets ignored).
   second dongle or SDR sharing before any of them can run. *(2026-08-21)*
 
 - 2026-09-04 — systemd-only repo evidence is incomplete: hermes cron is a first-class scheduler on this box (docs/units.md in pi-cicd documents which units run where). Check `hermes cron list` AND the unit index before declaring a tool "never deployed" — the 09-03 run burned a session on a systemd-only misdiagnosis.
+
+- 2026-09-08 — Empty subprocess stdout on a CI runner usually means the target file is not there, not that it crashed: python's "can't open file" goes to stderr while stdout stays empty. Read stderr into the failure message and check the path exists before theorising about import-time crashes (the 09-07 "engine crash under HOME" theory was wrong — ~/.hermes/cloud/hetzner_cloud.py simply does not exist on GitHub runners). Corollary: tests must never read machine-private state (~/.hermes) — drive it from tmp_path, skipif the artifact is dev-box-only, and assert the stdout JSON contract, not the exit code (the no-token CLI legitimately exits 1 with error JSON on stdout).

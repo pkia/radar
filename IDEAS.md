@@ -55,52 +55,42 @@ rest now build on it:
   server-side webhooks. service-probe covers service health meanwhile.
   Tracked in docs/prometheus.md. **S**
   <https://prometheus.io/docs/guides/node-exporter/>
-- **Mine the heal ledger** *(S; new in posts/2026-09-02.html)* — count
-  the entries in `~/.local/state/pipeline-check/status.json` by `what`,
-  take the heal that fires most often, fix the root cause so the
-  self-heal stops being needed. "The best self-heal is the one that
-  retires itself." Acceptance: the most-frequent heal's root cause fixed
-  with a test, ledger re-checked next run.
-  *09-04: the 09-03 blocker verdict was re-verified and corrected — both
-  healers are Hermes-cron scheduled (docs/units.md in pi-cicd documents
-  this) and the jobs run green: the wrapper execs the repo tool by
-  absolute path, so PATH never mattered. install.sh re-ran 09-04, links
-  now live for interactive use (see Done). **09-06 re-check: ACTIONABLE
-  — the ledger is no longer empty.** Three `ci-rerun-queued` heals have
-  accrued, one per pipeline-check sweep since 09-05: cs2-train CI
-  failures on `b4785f58`, `4b800525`, `dc27bbb7`, each auto-re-run
-  queued as a suspected flake. Three different commits failing every
-  sweep = a persistent cs2-train CI problem the re-run heal is masking,
-  not a flake. Root-cause it: why does cs2-train CI fail, do the queued
-  re-runs pass, and what test is red? Fix so the heal retires itself.*
-  **09-07 root cause SHIPPED: the storm was the CI ruff gate** — `ruff
-  check . --select E9,F63,F7,F82` failed on EVERY commit since 09-05
-  with F821 `Undefined name 'skill_model'` at api/control.py:306 (the
-  §16 self-evaluation block in session_end imported engine.intelligence
-  but used skill_model unimported; the broad `except Exception: pass`
-  swallowed the NameError so pytest stayed green locally — only the
-  pre-pytest ruff gate caught it, and it died before pytest ran, hence
-  12/12 red and the rerun heal spinning). Fixed in cs2-train `9e78d03`
-  (one-line local import; ruff + byte-compile + 250/250 pytest green
-  locally with the exact CI gates). **Remaining for full green: two
-  pre-existing hermeticity failures in tests/test_hetzner.py, CI-only,
-  now visible because pytest finally runs** — 248/250 on CI run for
-  `9e78d03`: (1) test_backend_routes_to_runpod_without_token does
-  `open(os.path.expanduser("~/.hermes/.env"))` raw — FileNotFoundError
-  on the runner (no ~/.hermes); passes on dev box only because the real
-  token file exists; (2) test_hetzner_cli_contract_no_token subprocess
-  (HOME=/tmp) emits EMPTY stdout on CI python 3.13.15 but JSON locally
-  (3.13.5, same requirements) — mechanism not yet found (suspect a
-  crash in engine/hetzner_cloud.py's early import/env handling under
-  the runner's HOME); both need the CLI/test hermeticised (no real
-  ~/.hermes reads, isolated HOME via tmp_path fixture). Next run:
-  fix those two so cs2-train CI goes green and the heal retires.**
+- **Train's first post-release feature: moving practice bots** *(L; new
+  in posts/2026-09-08.html)* — FEATURE_PARITY marks bot behaviour the
+  biggest gap vs SCL/Refrag; owner wants xfire-style bots (peeks,
+  counter-strafes, swings) instead of standing targets. First concrete
+  step: map what CounterStrikeSharp exposes for bot control, then
+  prototype one moving behaviour. Post-release — Train's proof-run +
+  human gate land first.
 
 ## In progress
 
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Mine the heal ledger — cs2-train CI storm retired, heal has no job
+  left** — done 2026-09-08 (09-07 shipped the ruff root-cause fix
+  `9e78d03`; this run fixed the remaining two CI-only hermeticity
+  failures in tests/test_hetzner.py). Mechanism correction: the 09-07
+  "CLI crash under the runner's HOME" suspect was wrong — the deployed
+  `~/.hermes/cloud/hetzner_cloud.py` is hermes cloud tooling that CI
+  runners simply don't have, so the subprocess never found the file
+  (python's error goes to stderr, stdout stays empty). Hermeticised in
+  cs2-train `aa54bd4`: (1) routing test no longer opens the real
+  ~/.hermes/.env — a tmp .env via monkeypatched expanduser now asserts
+  BOTH branches deterministically (token → HETZNER_CLOUD, none →
+  GPU_CLOUD); (2) CLI contract test skipif-absent (dev-box artifact)
+  with HOME isolated via tmp_path and stderr surfaced in failure
+  messages. En-route finding: the no-token CLI contract is exit 1 +
+  JSON `{"ok": false, "error": "no HETZNER_API_TOKEN"}` on stdout — the
+  gate is stdout JSON, not the return code. Evidence: **CI green (run
+  34187336138, 35 s) — first green cs2-train push since 09-05**;
+  281/281 pytest locally (3/3 hetzner). Owner's unrelated dirty work
+  (map_sessions/customer demo) left untouched. Repo:
+  <https://github.com/pkia/cs2-train> commit `aa54bd4`. The
+  `ci-rerun-queued` heal should retire on the next pipeline-check
+  sweeps — confirm via the ledger next run.
 
 - **Prom stack step 2: the pinned dashboard (`prom-dash`, pi-cicd
   native)** — code done 2026-09-05, board recorded 2026-09-06 (the 09-05
@@ -553,6 +543,20 @@ Append-only, one line per run — including failures and no-ops.
   Unrelated dirty work (customer_demo wiring) stashed/restored untouched
   around the fix. Heal not yet retired — cs2-train CI still red on the
   2 hetzner tests; board carries the resume pointer.
+- 2026-09-08 — implementer run: picked the mine-the-heal-ledger resume
+  pointer (09-07's recorded next step; nothing In progress). Fixed the
+  two CI-only hetzner hermeticity failures in cs2-train
+  tests/test_hetzner.py (`aa54bd4`): routing test driven by a tmp .env
+  (both branches asserted), deployed-CLI contract test skipif-absent +
+  isolated HOME via tmp_path + stderr in messages; found the real
+  empty-stdout mechanism (deployed ~/.hermes CLI absent on the runner,
+  not the suspected engine crash) and the no-token stdout-JSON contract
+  (exit 1 is legal). 281/281 pytest locally; **CI green (run
+  34187336138)** — first green cs2-train push since 09-05, heal should
+  retire. Board: item to Done; devlog 09-08 radar list synced (heal
+  item = this ship, human test + Prom step 3 already on board, moving
+  practice bots added to Proposed as post-release L); owner's dirty
+  tree untouched.
 
 ## Notes
 
