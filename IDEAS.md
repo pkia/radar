@@ -42,16 +42,12 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Prom stack step 3 (the other half)** *(S)* — step 1 (scrape
-  backbone) shipped 2026-09-02 and step 2's dashboard shipped 2026-09-05
-  as `prom-dash` (pi-cicd native — the "Grafana from apt" premise was
-  false, grafana is not in trixie), both see Done. Remaining: ntfy
-  `/metrics` scrape — `metrics-listen-http: "127.0.0.1:9091"` in the
-  ntfy server config (/etc, root-owned, pi-backup-covered) + one planned
-  ntfy restart at a quiet hour, then an `ntfy` job in prometheus.yml —
-  and metric alerting, which needs a delivery-consumer decision
-  (Alertmanager vs stdlib rule-check) plus an answer to the mute gap:
-  ntfy_lib's global mute only covers pi-cicd publishers, not
+- **Prom stack step 3b (the other half, alerting only)** *(S; decision
+  needed)* — step 1 (scrape backbone, 2026-09-02), step 2's `prom-dash`
+  (2026-09-05) and step 3a (ntfy `/metrics` scrape, 2026-09-09) all see
+  Done. Remaining: **metric alerting** — needs a delivery-consumer
+  decision (Alertmanager vs stdlib rule-check) plus an answer to the
+  mute gap: ntfy_lib's global mute only covers pi-cicd publishers, not
   server-side webhooks. service-probe covers service health meanwhile.
   Tracked in docs/prometheus.md. **S**
   <https://prometheus.io/docs/guides/node-exporter/>
@@ -62,12 +58,37 @@ rest now build on it:
   step: map what CounterStrikeSharp exposes for bot control, then
   prototype one moving behaviour. Post-release — Train's proof-run +
   human gate land first.
+  *(09-09 devlog refinement — "moving bots, round two": reaction and aim
+  control have since landed; the xfire-style behaviour itself — swings,
+  counter-strafes, wide peeks — is the next increment, building on the
+  peek amplitude/period hooks. First step: get the authored plugin code
+  its first compile on the live box and verify the peek loop against a
+  real player.)*
 
 ## In progress
 
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Prom stack step 3a: the ntfy `/metrics` scrape** — done 2026-09-09
+  (picked from the 09-09 devlog radar list — "still the queued half of
+  the stack"; the other three radar items need a human in the seat, the
+  train VM, or cloud budget, so the S on this box was the pick). The
+  scrape half of step 3: `metrics-listen-http: "127.0.0.1:9091"` added
+  to the live ntfy server config (/etc/ntfy/server.yml, root-owned,
+  backup kept as server.yml.bak-promstep3, pi-backup-covered) with the
+  item's ONE planned ntfy restart done at the quiet 05:32 hour; an
+  `ntfy` job (loopback :9091) added to the source-of-truth
+  prometheus/prometheus.yml, copied to /etc/prometheus and Prometheus
+  reloaded (live file differed only by the missing job — clean
+  overwrite). Evidence: **220/220 pytest locally** (test pin extended to
+  three jobs); live `up{job="ntfy", instance="127.0.0.1:9091"} = 1` via
+  the query API, ntfy active post-restart, `/metrics` answering. Repo:
+  <https://github.com/pkia/pi-cicd> commit `a270a93` (CI triggered on
+  push). Remaining step-3b (metric alerting) is a decision item — see
+  Proposed. docs/prometheus.md refreshed to match (step-3a shipped,
+  step-3b remaining).
 
 - **Mine the heal ledger — cs2-train CI storm retired, heal has no job
   left** — done 2026-09-08 (09-07 shipped the ruff root-cause fix
@@ -557,6 +578,19 @@ Append-only, one line per run — including failures and no-ops.
   item = this ship, human test + Prom step 3 already on board, moving
   practice bots added to Proposed as post-release L); owner's dirty
   tree untouched.
+- 2026-09-09 — implementer run: synced the 09-09 devlog radar list (4
+  items: human test + proof run already on board — both need the train
+  VM/human; moving bots round-two refinement folded into the Proposed L
+  item; Prom step 3 adopted as the pick — the only S actionable on this
+  box). Picked **Prom step 3a: ntfy `/metrics` scrape**: repo side —
+  `ntfy` job (loopback :9091) in prometheus/prometheus.yml, test pin
+  extended to 3 jobs, docs/prometheus.md step-3a entry; live side —
+  metrics-listen-http added to /etc/ntfy/server.yml (backup kept), the
+  item's planned ntfy restart done 05:32, live prometheus.yml updated +
+  reload. 220/220 pytest; live `up{job="ntfy"} = 1` via query API;
+  pi-cicd pushed `a270a93` (see Done). Remaining Proposed: alerting
+  half (step 3b, decision item), Train proof run, moving bots (L),
+  heal-ledger mining (re-check once heals accrue).
 
 ## Notes
 
