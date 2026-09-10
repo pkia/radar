@@ -42,15 +42,6 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Prom stack step 3b (the other half, alerting only)** *(S; decision
-  needed)* — step 1 (scrape backbone, 2026-09-02), step 2's `prom-dash`
-  (2026-09-05) and step 3a (ntfy `/metrics` scrape, 2026-09-09) all see
-  Done. Remaining: **metric alerting** — needs a delivery-consumer
-  decision (Alertmanager vs stdlib rule-check) plus an answer to the
-  mute gap: ntfy_lib's global mute only covers pi-cicd publishers, not
-  server-side webhooks. service-probe covers service health meanwhile.
-  Tracked in docs/prometheus.md. **S**
-  <https://prometheus.io/docs/guides/node-exporter/>
 - **Train's first post-release feature: moving practice bots** *(L; new
   in posts/2026-09-08.html)* — FEATURE_PARITY marks bot behaviour the
   biggest gap vs SCL/Refrag; owner wants xfire-style bots (peeks,
@@ -70,6 +61,36 @@ rest now build on it:
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Prom stack step 3b: `metric-alert` (stdlib rule-check alerting)** —
+  done 2026-09-10. The item's two open questions, both decided: the
+  consumer is a **stdlib rule-check**, not Alertmanager (a second daemon
+  with its own config language for five rules, when Prometheus is already
+  scraped and the query API is free); and the **mute gap is closed**,
+  because alerts publish through `ntfy_lib` exactly like every other
+  pi-cicd publisher — `ntfy-notify --mute` silences metric alerts too,
+  which an Alertmanager webhook receiver (outside ntfy_lib) never could.
+  Topic is the already-provisioned `services` topic: no new ACL grant and
+  no ntfy restart; docs/prometheus.md notes the one-line split to a
+  dedicated `alerts` topic if volume ever justifies it. Behaviour:
+  `RULE=Name op threshold = promql` lines are instant-queried against the
+  loopback Prometheus; a breach must hold CONFIRM_FAILS sweeps (default
+  2) before it alerts; alerting is edge-triggered (one message on breach,
+  one on recovery, silence while standing). Shipped rules: disk used %,
+  SoC temp, memory used %, failed systemd units, any scrape target down.
+  systemd service + 5 min timer offset 4 min from service-probe so the
+  two sweeps never stack — probe answers "is it up", metric-alert "is it
+  healthy". Evidence: **249/249 pytest** (27 new hermetic — fake
+  Prometheus JSON through an injected `_urlopen`, stubbed query, captured
+  publish), CI green **(run 34437718662)**, and a live sweep against the
+  real Prometheus: DiskRootPct 14.88 / CpuTempC 50.7 / MemUsedPct 46.06 /
+  FailedUnits **1** (firing, 1st of 2 confirm sweeps) / ScrapeTargetDown
+  1; timer active with the next run 4 min out. En-route live find: the
+  first root-created `/etc/metric-alert.conf` was mode 600 root, so the
+  timer's `ev` user saw an empty rule set with no complaint — the config
+  is now ev-owned 600 and load_config says so loudly when it is missing
+  or unreadable (see LESSONS). Repo: <https://github.com/pkia/pi-cicd>
+  commit `e1b72da`.
 
 - **Prom stack step 3a: the ntfy `/metrics` scrape** — done 2026-09-09
   (picked from the 09-09 devlog radar list — "still the queued half of
@@ -403,6 +424,20 @@ _(nothing — pick from Proposed)_
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-10 — implementer run: synced the radar lists (the 09-10 devlog
+  added nothing beyond items already on the board; the three Proposed
+  entries before this run all need a human in the seat, the train VM, or
+  cloud budget — this run picked the one that lives on this box). Shipped
+  **Prom stack step 3b `metric-alert`** in pi-cicd: stdlib rule-check
+  alerting off the loopback Prometheus, edge-triggered with 2-sweep
+  confirmation, publishing through ntfy_lib (which is the answer to the
+  item's mute gap), topic `services` so no new ACL or ntfy restart; 27
+  hermetic tests, 249/249 green, live sweep on the real Prometheus, timer
+  active. En route: root-owned 600 config silently emptied the rule set —
+  fixed + made loud + test pinned. See Done. Remaining Proposed: the two
+  train items (train VM / cloud budget) and the L-sized moving-bots
+  increment.
 
 - 2026-08-21 — 3 scheduled implementer attempts failed on API errors
   (2× 90 s timeouts, then HTTP 429 usage-limit; the 07:00 devlog job
