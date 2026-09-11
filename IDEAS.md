@@ -24,6 +24,31 @@ found by web research and keep their source URL.
   the open link is the human test — `!train start` with a real player in
   the seat.)*
 
+- **Train: the two controls that answer HTTP 422** *(S; code lives on
+  this box; repo private)* — new in posts/2026-09-11.html: two call sites
+  pass a raw object as a fetch body. Next step: stringify them the way
+  the other eleven do, and add the regression test that would have caught
+  it — a test asserting the request body parses as JSON, not just that
+  the handler returns 200. Four lines of fix, one test that means
+  something.
+- **Train: fix the attribution before anything else** *(M; needs a cloud
+  box; repo private)* — new in posts/2026-09-11.html, and named the new
+  P0: the plugin must send the Steam identity it already has in the game
+  session, scope the session-linking call to that identity instead of the
+  placeholder, and prove it by starting one drill as a real account and
+  watching history fill in. Every other customer-facing feature is
+  decorative until this lands. Blocked on cloud budget.
+- **Train: retry the live spatial pass** *(S; repo private)* — new in
+  posts/2026-09-11.html: the real-geometry drift check is shipped and
+  unit-tested; its live run was blocked by the box's bot-spawn quirk.
+  Next: run it against the live server now that map prep handles bot
+  quotas and team limits, and record the observed layer. Needs the train
+  VM.
+
+- **project-guard: adopt with a filter** *(S; pi-cicd)* — new in
+  posts/2026-09-11.html; **shipped 2026-09-11, see Done** (deny-list read
+  at adopt time + one-line skip report).
+
 Externally researched 2026-08-21 (owner-directed session; sources linked;
 monitoring/infra theme). ntfy left this list 2026-08-24 (see Done) — the
 rest now build on it:
@@ -61,6 +86,30 @@ rest now build on it:
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **project-guard: adopt with a filter** — done 2026-09-11 (new in the
+  09-11 devlog radar list, tagged S in pi-cicd: "an explicit deny-list
+  file, read at adopt time, plus a one-line report when a directory is
+  skipped"). Shipped in `project-guard`: adoption is now filtered by
+  `~/.config/project-guard/deny-list` (override `$GUARD_DENY_LIST`) — one
+  glob pattern per line, `#` comments, matched against both the
+  directory's basename and its full path, read at adopt time so editing
+  it needs no restart. A denied directory is left byte-identical (no
+  `git init`, no `.gitignore`, no commit) and reported in one log line,
+  deduplicated through `~/.local/state/project-guard-denied.state` so a
+  standing exclusion costs one line rather than one every 10 minutes —
+  the guard's log stays event-only. Deliberate scope boundary, stated in
+  the code and docs: the filter is **adoption-only**; directories that
+  are already git repos keep going through push + autosave, and the
+  built-in `EXCLUDE` names still apply. Evidence: **254/254 pytest** (5
+  new, hermetic — the REAL script against a throwaway `GUARD_HOME` with
+  no gh config and no network: skip + one-line report, report-once
+  across three sweeps, no-list-is-no-change, path patterns / nested
+  `apps/`, and an existing deny-listed repo still backed up), CI run
+  **34563342137**, README row + `docs/layers.md` refreshed, and the live
+  config file created on the Pi (comment-only, so behaviour is unchanged
+  until the owner adds a pattern). Repo:
+  <https://github.com/pkia/pi-cicd> commit `b9fe069`.
 
 - **Prom stack step 3b: `metric-alert` (stdlib rule-check alerting)** —
   done 2026-09-10. The item's two open questions, both decided: the
@@ -424,6 +473,20 @@ _(nothing — pick from Proposed)_
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-11 — implementer run: synced the 09-11 devlog radar list — it
+  introduced three new train items (attribution P0, the two HTTP-422
+  controls, the live spatial pass) plus the pi-cicd one; the two train
+  blockers were added to Proposed, and the pick was the item that lives
+  on this box: **project-guard: adopt with a filter**. Shipped the adopt
+  deny-list (glob file read at adopt time, one-line deduplicated skip
+  report, adoption-only so autosave is untouched), 5 hermetic tests
+  driving the real script against a throwaway HOME, 254/254 pytest, CI
+  run 34563342137, README + docs/layers.md refreshed, live config file
+  created comment-only on the Pi. Remaining Proposed now needs a cloud
+  box, the train VM, or the human seat — the only other on-box S was the
+  changedetection.io leftover (browser-based arbitrary-page diffing).
+  See Done. Repo: <https://github.com/pkia/pi-cicd> commit `b9fe069`.
 
 - 2026-09-10 — implementer run: synced the radar lists (the 09-10 devlog
   added nothing beyond items already on the board; the three Proposed
