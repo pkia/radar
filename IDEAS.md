@@ -24,13 +24,31 @@ found by web research and keep their source URL.
   the open link is the human test — `!train start` with a real player in
   the seat.)*
 
-- **Train: the two controls that answer HTTP 422** *(S; code lives on
-  this box; repo private)* — new in posts/2026-09-11.html: two call sites
-  pass a raw object as a fetch body. Next step: stringify them the way
-  the other eleven do, and add the regression test that would have caught
-  it — a test asserting the request body parses as JSON, not just that
-  the handler returns 200. Four lines of fix, one test that means
-  something.
+- **Train: give the box room to hold a bot** *(S; code lives on this box;
+  repo private)* — new in posts/2026-09-12.html and named there as the new
+  P0: set `sv_hibernate_when_empty 0` in the launcher and assert it in the
+  seed guard with a test that fails when the line is missing — **shipped
+  2026-09-12, see Done**. The rest of that item (chase the kick itself — a
+  `bot_quota` / team-limit / `bot_join_after_player` interaction — until a
+  log line says `placed 5/5` and holds for a minute) needs the live box and
+  stays open below.
+
+- **Train: the box must hold a bot (placed 5/5)** *(S; needs the train
+  VM)* — the second half of the 09-12 P0, unsplit from it by this run so
+  the shipped half is not mistaken for the whole: with hibernation off,
+  find why a spawned bot is kicked (`bot_quota` / team-limit /
+  `bot_join_after_player` on the shipped build) and keep going until a log
+  line says `placed 5/5` and holds there for a minute. Acceptance:
+  `placed 5/5` observed in the live log, bot still standing one minute
+  later. Until then no headless end-to-end drill claim is real.
+
+- **Train: map the routes before the corpus shrinks** *(M; repo private)* —
+  new in posts/2026-09-12.html: 55 profiles against 587 slugs. Next step:
+  walk the mapping in `ROUTE_MAPPING.md`, make it a build-time check that
+  the slug corpus can only grow, and teach the drill start to name a route
+  the engine actually has — so a missing profile is a refusal, not a silent
+  fallback to someone else's default.
+
 - **Train: fix the attribution before anything else** *(M; needs a cloud
   box; repo private)* — new in posts/2026-09-11.html, and named the new
   P0: the plugin must send the Steam identity it already has in the game
@@ -86,6 +104,36 @@ rest now build on it:
 _(nothing — pick from Proposed)_
 
 ## Done
+
+- **Train: give the box room to hold a bot — `sv_hibernate_when_empty 0`
+  in the launcher** — done 2026-09-12 (the 09-12 devlog's *new P0*, tagged
+  S and living on this box; picked ahead of the 422 item, which turned out
+  to be already shipped — see the Run log). The root cause on the board was
+  real and quiet: the seed writes the box's `server.cfg` and never disabled
+  hibernation, so an empty server hibernated, its world-update callbacks
+  stopped, and a drill's deferred bot placement never ran — the bots
+  "vanish" with no error line (docs/WORKLOG.md, from the live bot-spawn
+  chase: *"the launcher does not set `sv_hibernate_when_empty 0` … set at
+  runtime for this test only"*). Shipped in `deploy/box_seed.sh`:
+  `sv_hibernate_when_empty 0` is appended to the cfg the seed itself writes,
+  **after** the `rcon_password` line, which truncates with `>` — the order
+  is now pinned by a test, because a later re-seed reorder would silently
+  erase it. The embedded cloud-init boxes actually execute was **stale**
+  (its base64 copy predated several seed edits, not just this one) and was
+  regenerated with `scripts/gen_seed.py`; that script keeps timestamped
+  `.bak` copies. Evidence: cs2-train commit `f06116d`, 3 new tests in
+  `tests/test_hibernate_cvar.py` — the source of truth carries the line in
+  the cfg it writes, the script still passes `bash -n`, and (Pi-only drift
+  guard) the embedded copy carries it too; **negative-controlled by
+  execution**: a stripped seed and a stale embedded copy were both fed to
+  the real assertions and both failed. Suite: **860 collected**, 858 passed
+  / 1 skipped; the one failure was the docs-count drift test and it drove a
+  measured correction (README + docs/FIRST_HUMAN_E2E 857 → 860), 20/20 on
+  the targeted re-run, CI cited in the Run log. Repo:
+  <https://github.com/pkia/cs2-train>.
+  *Not done, and not claimed: the item's second half — chase the kick until
+  a log line says `placed 5/5` and holds a minute. That needs the live box
+  and is left as its own Proposed entry.*
 
 - **project-guard: adopt with a filter** — done 2026-09-11 (new in the
   09-11 devlog radar list, tagged S in pi-cicd: "an explicit deny-list
@@ -473,6 +521,27 @@ _(nothing — pick from Proposed)_
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-12 — implementer run: synced the 09-12 devlog radar list (new P0
+  "give the box room to hold a bot", "map the routes", the attribution item
+  restated, and the still-open 422 item). **En-route correction to the
+  board:** the 422 item — "the cheapest real bug on the board" for two
+  devlogs running — is *already shipped*: cs2-train has
+  `tests/test_t047_broken_controls.py`, which executes both call-site
+  expressions under Node and asserts `api()` received a JSON string, plus a
+  class-level guard against any bare `body: {`. A repo-wide scan for a raw
+  `body:` found only one, and it is the intentional binary upload
+  (`application/octet-stream`, ArrayBuffer). So the item was dropped from
+  Proposed rather than re-fixed; the devlog's radar list is generated from
+  the board's own prose, so a stale entry self-perpetuates — worth watching.
+  The pick was the new P0's on-box half: `sv_hibernate_when_empty 0` seeded
+  into the box's `server.cfg`, 3 new tests (negative-controlled), the stale
+  embedded cloud-init regenerated, README/docs counters corrected to the
+  measured 860. The live half (`placed 5/5` holding for a minute) needs the
+  train VM and is its own Proposed entry, explicitly unsplit so the shipped
+  half is not mistaken for the whole. Splitting the 09-12 P0 into
+  "seeded" + "verified live" is the honest shape. Repo:
+  <https://github.com/pkia/cs2-train> commit `f06116d`.
 
 - 2026-09-11 — implementer run: synced the 09-11 devlog radar list — it
   introduced three new train items (attribution P0, the two HTTP-422
