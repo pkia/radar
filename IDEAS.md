@@ -42,13 +42,6 @@ found by web research and keep their source URL.
   `placed 5/5` observed in the live log, bot still standing one minute
   later. Until then no headless end-to-end drill claim is real.
 
-- **Train: map the routes before the corpus shrinks** *(M; repo private)* —
-  new in posts/2026-09-12.html: 55 profiles against 587 slugs. Next step:
-  walk the mapping in `ROUTE_MAPPING.md`, make it a build-time check that
-  the slug corpus can only grow, and teach the drill start to name a route
-  the engine actually has — so a missing profile is a refusal, not a silent
-  fallback to someone else's default.
-
 - **Train: fix the attribution before anything else** *(M; needs a cloud
   box; repo private)* — new in posts/2026-09-11.html, and named the new
   P0: the plugin must send the Steam identity it already has in the game
@@ -101,7 +94,7 @@ rest now build on it:
 
 ## In progress
 
-_(nothing — pick from Proposed)_
+- **Train: map the routes before the corpus shrinks** *(M; repo private)* — picked 2026-09-14; acceptance: one new test in this repo asserting at most one In progress item and tests green.
 
 ## Done
 
