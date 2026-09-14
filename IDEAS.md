@@ -515,6 +515,8 @@ rest now build on it:
 
 Append-only, one line per run — including failures and no-ops.
 
+- 2026-09-14 — implementer run: moved 'Train: map the routes before the corpus shrinks' to In progress; added board-invariants test asserting at most one In progress item; tests: 2 passed. Commit: 28a0164. Repo: https://github.com/pkia/radar
+
 - 2026-09-12 — implementer run: synced the 09-12 devlog radar list (new P0
   "give the box room to hold a bot", "map the routes", the attribution item
   restated, and the still-open 422 item). **En-route correction to the
