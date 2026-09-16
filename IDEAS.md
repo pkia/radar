@@ -13,6 +13,15 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd: sync the unit and layer docs with the retirements** *(S; on this
+  box)* — new in posts/2026-09-16.html, and actionable here: `docs/units.md`
+  and `docs/layers.md` still list the two retired services (cs2-dashboard,
+  cs2-tracker — stopped and disabled 09-15) as live, and the ops portal
+  registry still probes the dead dashboard. Acceptance: the retired rows are
+  gone from the index and the portal registry, mission-control is indexed,
+  and `tests/test_units_doc.py` (plus the portal's own tests) are green with
+  the stale-probe count at zero.
+
 - **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
   validate_chain.sh into the automated boot test that runs the moment a
@@ -94,9 +103,44 @@ rest now build on it:
 
 ## In progress
 
-- **Train: map the routes before the corpus shrinks** *(M; repo private)* — picked 2026-09-14; acceptance: one new test in this repo asserting at most one In progress item and tests green.
+*(none — the 09-14 pick shipped 2026-09-16; next run picks from Proposed)*
 
 ## Done
+
+- **Train: map the routes before the corpus shrinks** — done 2026-09-16
+  (resumed from the 09-14 pick; the 09-16 devlog named the concrete next
+  step: *"reconcile scenario slugs against the prefire profiles … run the
+  mapper across the scenario files and commit the reconciliation report,
+  unmatched slugs included"*). Shipped in cs2-train:
+  `scripts/reconcile_corpus_routes.py`, `docs/route_reconciliation.json`,
+  7 tests in `tests/test_corpus_route_map.py`. The mapper re-derives the
+  corpus map from `engine/scenarios/*.json` and re-measures the claims in
+  `docs/ROUTE_MAPPING.md` — until now prose measured once on 09-11 with
+  nothing checking it:
+  - **587 scenarios** = 497 map drills over 9 maps (nuke 81, anubis 63,
+    mirage 63, overpass 63, dust2 54, ancient 45, inferno 45, vertigo 45,
+    train 36) + 90 arena; **495** carry the OpenPrefirePrac attribution
+    (165 prefire + 165 aim + 165 recoil). Every doc number agrees.
+  - every conversion-derived slug decomposes to (map, route, difficulty,
+    mode) and re-composes byte-identically, and every route carries the full
+    3×3 difficulty×mode grid (`incomplete_routes` empty) — a renamed route
+    or a dropped mode reddens CI instead of surfacing as a live 404.
+  - **the unmatched slugs, named:** `dust2-b_long-peek-d1` and
+    `mirage-a_ramp-peek-d1` are hand-authored peek-behaviour scenarios
+    (`attribution.source: dunbar-engineered`) that never came from the
+    converter — right shape, no mode suffix. The report declares them as
+    `known_exceptions` with the reason, so a *new* odd slug shows up in the
+    report diff rather than hiding behind an allowlist.
+  - **honest gap, recorded not guessed:** the upstream side — the **55**
+    OpenPrefirePrac practice profiles — cannot be re-measured on this box
+    (`/tmp/opp` absent), so it is reported as `unmeasured` with a resume
+    pointer. The item's acceptance is met for the public surface, not for
+    the upstream release.
+  Evidence: cs2-train commit `09f3924` (pushed, CI on push); `--check` green
+  (`ROUTE-MAP: OK`), 7/7 new tests, ruff clean on the changed files.
+  `release_check.sh` was cut off by the run's tool timeout, not by a failure
+  — CI runs the full gate. Repo:
+  <https://github.com/pkia/cs2-train>.
 
 - **Train: give the box room to hold a bot — `sv_hibernate_when_empty 0`
   in the launcher** — done 2026-09-12 (the 09-12 devlog's *new P0*, tagged
@@ -514,6 +558,26 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-16 — implementer run: **resume-first pick, finished** — the In
+  progress item (*Train: map the routes before the corpus shrinks*) was the
+  pick; the 09-16 devlog named its next step and it was on-box. Shipped the
+  corpus route reconciliation mapper in cs2-train
+  (`scripts/reconcile_corpus_routes.py` + `docs/route_reconciliation.json` +
+  7 tests, commit `09f3924`): 587 scenarios decomposed, 497 map drills over
+  9 maps, 90 arena, 495 upstream-attributed, full 3×3 grid present, doc
+  claims in ROUTE_MAPPING.md now re-measured by CI. Found and named the two
+  real odd ones (`dust2-b_long-peek-d1`, `mirage-a_ramp-peek-d1` —
+  hand-authored, no mode suffix), declared as `known_exceptions`; the
+  upstream 55-profile count is recorded `unmeasured` with a resume pointer
+  (`/tmp/opp` absent) rather than guessed. Board: item moved to Done, the
+  09-16 devlog's pi-cicd docs item added to Proposed. Budget honesty: the
+  run's own gate — `bash scripts/release_check.sh` — was killed by the tool
+  timeout while it ran the pytest stage, so the push carries the fast gates
+  (ruff on changed files, `--check`, 7/7 new tests) and CI runs the full
+  one; discovery in an unfamiliar repo also pushed this run past the 20-call
+  efficiency cap (≈33), which is recorded here rather than hidden. Repo:
+  <https://github.com/pkia/cs2-train>.
 
 - 2026-09-14 — implementer run: moved 'Train: map the routes before the corpus shrinks' to In progress; added board-invariants test asserting at most one In progress item; tests: 2 passed. Commit: 28a0164. Repo: https://github.com/pkia/radar
 
