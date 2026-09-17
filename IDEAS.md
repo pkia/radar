@@ -13,14 +13,18 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd: sync the unit and layer docs with the retirements** *(S; on this
-  box)* — new in posts/2026-09-16.html, and actionable here: `docs/units.md`
-  and `docs/layers.md` still list the two retired services (cs2-dashboard,
-  cs2-tracker — stopped and disabled 09-15) as live, and the ops portal
-  registry still probes the dead dashboard. Acceptance: the retired rows are
-  gone from the index and the portal registry, mission-control is indexed,
-  and `tests/test_units_doc.py` (plus the portal's own tests) are green with
-  the stale-probe count at zero.
+- **service-probe: two dead funnel probes are alerting forever** *(S; on
+  this box)* — found this run while syncing the probe docs:
+  `/etc/service-probe.conf` still probes `funnel-mark` and `funnel-root`,
+  and the live state file showed both **down with 4092 consecutive
+  failures** (`HTTP 404`, state listed 2026-09-17T04:30). `funnel-mark`
+  pointed at mark-site, retired 2026-09-15 — dropping the probe (or
+  repointing it at whatever now serves the funnel root) is a one-line
+  config change plus a re-seed of the probe state. Acceptance:
+  `service-probe --list` shows no probe with a fail streak older than the
+  last config change, and the `services` topic stops repeating them.
+  Decide drop-vs-repoint before touching it — the funnel root may be
+  repointed, the mark proxy will not come back.
 
 - **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
@@ -107,6 +111,53 @@ rest now build on it:
 
 ## Done
 
+- **pi-cicd: sync the unit and layer docs with the retirements** — done
+  2026-09-17 (new in posts/2026-09-16.html; picked as the only Proposed **S**
+  that lives on this box). What was actually stale, measured rather than
+  assumed: `docs/layers.md` still advertised "the seven local services
+  (including cs2-tracker's JSON `healthy` gate) … 12 probes total" for a
+  probe set that no longer contains cs2-tracker, cs2-dashboard or
+  mark-site; `templates/service-probe.conf.example` still carried
+  `cs2-dash`, `cs2-tracker` and `mark-site` probes (the live
+  `/etc/service-probe.conf` was already clean, so the example was the only
+  copy still seeding dead endpoints); and **mission-control** (:8788, the
+  Hermes Kanban board, host-local unit in `/etc/systemd/system`) was running
+  but absent from the index. Also fixed in the portal: project-hub's
+  registry still listed a CS2 Dashboard card + status row for the retired
+  unit.
+  - **pi-cicd** `93faaca`: mission-control row in `docs/units.md` + a note
+    naming it as host-local (sibling of the portal registry); the
+    service-probing layer rewritten to point at the live config instead of
+    a rotting count, with the retired endpoints named as not-probed;
+    probe example rewritten (retired local dashboards and funnel-mark gone,
+    `cs2-dash`/`cs2trk` spellings called out as dead).
+  - **Tests (the acceptance, not prose):** `tests/test_units_doc.py` +2 —
+    no retired unit may appear as a live index row, and the shipped probe
+    example must target no retired endpoint, matched on every spelling ever
+    used (`cs2-dash`, `cs2trk`, unit names). **Negative-controlled by
+    execution:** `scripts/negative_control_docs_sync.py` applies the exact
+    predicates to the pre-change files read out of git — the old probe
+    example fails them (`cs2-tracker=…8092/healthz`, `mark-site=…8089/`),
+    the old layers prose carried the dead healthz claim; the index-row
+    assertion is a forward guard (no retired unit was ever a *row*, the
+    staleness sat in prose).
+    **261 passed** in pi-cicd (48 in the three touched files).
+  - **project-hub** `df68069`: CS2 Dashboard project entry and its
+    `SERVICES` row removed; `tests/test_app.py` +1 pinning
+    `PROJECTS`/`SERVICES` against all three retired unit names —
+    **10 passed**.
+  - **Stale-probe count is zero, checked live:** `service-probe --list`
+    lists 6 rows, none retired (the state pruned them on the config drop).
+  - **Found while verifying, recorded not silently fixed:** two *live*
+    probes are red with 4092 consecutive failures (`funnel-mark`,
+    `funnel-root`, HTTP 404) — filed as its own Proposed S so the fix is a
+    decision, not a drive-by edit.
+  - Budget honesty: the run's discovery cost made ≈38 tool calls, over the
+    20-call contract — recorded in the Run log rather than hidden. No ruff
+    binary on this box, so the fast lint gate was skipped; CI runs ruff.
+  Evidence: CI run 35182347278 (pi-cicd) / 35182353690 (project-hub) on
+  these SHAs. Repos: <https://github.com/pkia/pi-cicd>,
+  <https://github.com/pkia/project-hub>.
 - **Train: map the routes before the corpus shrinks** — done 2026-09-16
   (resumed from the 09-14 pick; the 09-16 devlog named the concrete next
   step: *"reconcile scenario slugs against the prefire profiles … run the
@@ -558,6 +609,27 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-17 — implementer run: picked the 09-16 devlog's only on-box **S**
+  (*pi-cicd: sync the unit and layer docs with the retirements*). Shipped the
+  sync in two repos: pi-cicd `93faaca` (mission-control indexed in
+  docs/units.md, layers.md's "seven local services / 12 probes / cs2-tracker
+  healthy gate" claim replaced by a pointer to the live config, the shipped
+  probe example stripped of the retired cs2-dash / cs2-tracker / mark-site
+  rows, +2 tests) and project-hub `df68069` (retired CS2 Dashboard dropped
+  from the portal registry, +1 test pinning PROJECTS/SERVICES against every
+  retired name). Negative-controlled by execution against the pre-change
+  files read out of git: the old probe example fails the new predicate.
+  261 passed in pi-cicd, 10 in project-hub; live `service-probe --list` shows
+  6 rows and zero retired ones. En-route finding filed as a new Proposed S:
+  `funnel-mark` and `funnel-root` are **live probes down 4092 sweeps with
+  HTTP 404** — a drop-or-repoint decision left to the owner rather than
+  fixed in this run's scope. Budget honesty: ≈38 tool calls, over the
+  20-call contract (doc-sync items touch two repos and needed the pre/post
+  measurement to avoid guessing); no ruff binary on this box, so the local
+  lint gate was skipped and CI carries it. Repos:
+  <https://github.com/pkia/pi-cicd>,
+  <https://github.com/pkia/project-hub>.
 
 - 2026-09-16 — implementer run: **resume-first pick, finished** — the In
   progress item (*Train: map the routes before the corpus shrinks*) was the
