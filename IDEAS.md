@@ -13,18 +13,21 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **service-probe: two dead funnel probes are alerting forever** *(S; on
-  this box)* — found this run while syncing the probe docs:
-  `/etc/service-probe.conf` still probes `funnel-mark` and `funnel-root`,
-  and the live state file showed both **down with 4092 consecutive
-  failures** (`HTTP 404`, state listed 2026-09-17T04:30). `funnel-mark`
-  pointed at mark-site, retired 2026-09-15 — dropping the probe (or
-  repointing it at whatever now serves the funnel root) is a one-line
-  config change plus a re-seed of the probe state. Acceptance:
-  `service-probe --list` shows no probe with a fail streak older than the
-  last config change, and the `services` topic stops repeating them.
-  Decide drop-vs-repoint before touching it — the funnel root may be
-  repointed, the mark proxy will not come back.
+- **pi-cicd: one retired list, three readers** *(S; new in
+  posts/2026-09-17.html)* — pi-doctor, service-probe and the unit index
+  each learned about this month's retirements separately, which is three
+  places to forget. Next step: a single `retired-units` config file that
+  all three read, with a test that fails when a unit appears in the live
+  set and the retired list at once. Acceptance: retiring one unit means
+  editing one file, and a unit named in both lists reddens CI.
+
+- **Train: measure the upstream half** *(S; new in posts/2026-09-17.html;
+  repo private)* — the corpus mapper cannot re-measure the 55 upstream
+  OpenPrefirePrac practice profiles on this box, so it reports them
+  `unmeasured`; a profile vanishing upstream stays invisible. Next step:
+  cache the upstream profile listing (or pin the release by hash) and let
+  the report diff flag a vanished profile. Needs the upstream tree or a
+  network fetch of the release listing.
 
 - **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
@@ -110,6 +113,37 @@ rest now build on it:
 *(none — the 09-14 pick shipped 2026-09-16; next run picks from Proposed)*
 
 ## Done
+
+- **service-probe: drop the two dead funnel probes — and make the tool
+  name the next leftover itself** — done 2026-09-18 (the only on-box **S**
+  at the top of Proposed; its *decide drop-vs-repoint* instruction is what
+  this run settled). Measured first, then chosen: `tailscale funnel
+  status` shows :8443 now proxies **only** `/xmedia`, so `/` and `/mark/`
+  are 404 **by design** (mark-site, retired 2026-09-15, took `/mark/`
+  with it) — nothing is meant to serve them, so the answer was *drop*, not
+  repoint. Both rows were at **4379 consecutive failed sweeps** with
+  `HTTP 404`.
+  - **Live** (`/etc/service-probe.conf`, ev:ev 600, comment block dated):
+    `funnel-mark` and `funnel-root` removed from `PROBE_HTTP`; next sweep
+    pruned their state rows. Verified in the environment:
+    `journalctl -u service-probe` → `✓ 4 up, 0 down`, `service-probe
+    --list` shows **4 rows, none stale** (adguard, kiosk-home, ntfy,
+    portal), and `status.json` — what the portal renders — carries no
+    funnel row.
+  - **Why it took a devlog to find them:** DOWN alerts are
+    edge-triggered, so a hopelessly dead endpoint fires once and then goes
+    silent forever, looking exactly like a healthy quiet one. The tool now
+    closes that blind spot: a probe past `DEFAULT_STALE_FAILS` (1000)
+    consecutive failures is named in every sweep (`! N probe(s) long-dead
+    … drop from PROBE_HTTP/PROBE_DNS`) and marked in `--list`
+    (`stale — probe looks retired`). It publishes nothing — a config fact
+    is not a new outage.
+  - **Evidence:** pi-cicd commit `0c29fc2`; `tests/test_service_probe.py`
+    +2 (the real script, seeded 4379-fail rows: a long-dead probe is
+    flagged in `--list`, and named in the sweep with `published == []`) —
+    **28 passed** in the file, full suite green. Negative-controlled by
+    execution: both new tests fail against the pre-change script read out
+    of git (`/tmp/nc`). Repo: <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd: sync the unit and layer docs with the retirements** — done
   2026-09-17 (new in posts/2026-09-16.html; picked as the only Proposed **S**
@@ -609,6 +643,21 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-18 — implementer run: synced the 09-17 devlog radar list (its
+  two new items added to Proposed: *one retired list, three readers*,
+  *measure the upstream half*) and picked the older top item, **service-probe:
+  two dead funnel probes**. Decided drop-not-repoint on measured evidence
+  (`tailscale funnel status`: :8443 serves only `/xmedia`, so `/` and
+  `/mark/` 404 by design) and dropped both rows from the live
+  `/etc/service-probe.conf`; next sweep pruned them — journal `✓ 4 up, 0
+  down`, `--list` 4 rows and no stale streak, `status.json` clean. Because
+  edge-triggered DOWN alerts made a 4379-sweep-dead probe invisible after
+  its first alert, service-probe now names any probe past 1000 consecutive
+  failures in the sweep and in `--list` (publishes nothing); pi-cicd
+  `0c29fc2`, +2 tests (28 passed in the file, full suite green),
+  negative-controlled against the pre-change script from git. Repo:
+  <https://github.com/pkia/pi-cicd>.
 
 - 2026-09-17 — implementer run: picked the 09-16 devlog's only on-box **S**
   (*pi-cicd: sync the unit and layer docs with the retirements*). Shipped the
