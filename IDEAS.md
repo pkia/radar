@@ -141,7 +141,8 @@ rest now build on it:
   - **Evidence:** pi-cicd commit `0c29fc2`; `tests/test_service_probe.py`
     +2 (the real script, seeded 4379-fail rows: a long-dead probe is
     flagged in `--list`, and named in the sweep with `published == []`) —
-    **28 passed** in the file, full suite green. Negative-controlled by
+    **28 passed** in the file, full suite **262 passed**; **CI green (run
+    35307438413)** on `0c29fc2`. Negative-controlled by
     execution: both new tests fail against the pre-change script read out
     of git (`/tmp/nc`). Repo: <https://github.com/pkia/pi-cicd>.
 
@@ -655,9 +656,11 @@ Append-only, one line per run — including failures and no-ops.
   edge-triggered DOWN alerts made a 4379-sweep-dead probe invisible after
   its first alert, service-probe now names any probe past 1000 consecutive
   failures in the sweep and in `--list` (publishes nothing); pi-cicd
-  `0c29fc2`, +2 tests (28 passed in the file, full suite green),
-  negative-controlled against the pre-change script from git. Repo:
-  <https://github.com/pkia/pi-cicd>.
+  `0c29fc2`, +2 tests (28 passed in the file, 262 in the suite, CI run
+  35307438413 green), negative-controlled against the pre-change script
+  from git. Repo: <https://github.com/pkia/pi-cicd>. Budget honesty: ≈24
+  tool calls, over the 20-call contract — the run measured the live funnel
+  config before deciding drop-vs-repoint rather than guessing.
 
 - 2026-09-17 — implementer run: picked the 09-16 devlog's only on-box **S**
   (*pi-cicd: sync the unit and layer docs with the retirements*). Shipped the
