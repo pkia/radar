@@ -126,7 +126,7 @@ rest now build on it:
     sweep** (the long-dead nag needed 1000 failed sweeps to say the same
     thing) and marks the row in `--list`; both still publish nothing, on the
     long-dead list's own rule: a config fact is not an outage.
-  - **The acceptance, as tests** (`tests/test_retired_units.py`, 7 tests):
+  - **The acceptance, as tests** (`tests/test_retired_units.py`, 6 tests):
     a name that is retired *and* live is a contradiction — the live set is
     built from docs/units.md's index rows plus `systemd/`, the overlap must
     be empty, and the predicate is proven to fire on a synthetic overlap
@@ -679,7 +679,7 @@ Append-only, one line per run — including failures and no-ops.
   by pi-doctor (owner's decision first, `systemctl` as the derived signal),
   service-probe (a retired probe row is named in the same sweep and marked
   in `--list`, publishing nothing) and the unit-index test (sets derived
-  from the file, not a private copy). Acceptance as tests: 7 new in
+  from the file, not a private copy). Acceptance as tests: 6 new in
   `tests/test_retired_units.py` — retired-and-live overlap must be empty
   (live set = docs/units.md rows + `systemd/`), the predicate proven to
   fire on a synthetic overlap, a reader growing its own copy fails, and a
