@@ -13,14 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd: one retired list, three readers** *(S; new in
-  posts/2026-09-17.html)* — pi-doctor, service-probe and the unit index
-  each learned about this month's retirements separately, which is three
-  places to forget. Next step: a single `retired-units` config file that
-  all three read, with a test that fails when a unit appears in the live
-  set and the retired list at once. Acceptance: retiring one unit means
-  editing one file, and a unit named in both lists reddens CI.
-
 - **Train: measure the upstream half** *(S; new in posts/2026-09-17.html;
   repo private)* — the corpus mapper cannot re-measure the 55 upstream
   OpenPrefirePrac practice profiles on this box, so it reports them
@@ -114,6 +106,40 @@ rest now build on it:
 
 ## Done
 
+- **pi-cicd: one retired list, three readers** — done 2026-09-19 (the
+  09-17/09-19 devlog's only on-box **S**, and the oldest item at the top of
+  Proposed). pi-doctor, service-probe and the unit-index test each learned
+  about the 2026-09-15 retirements on their own: three places to forget.
+  The names now live in one config file, `retired-units`, read through a
+  new `retired_units.py` by all three readers.
+  - **Format** is `<unit> [other spelling …]` — `cs2-tracker cs2trk`,
+    `cs2-dashboard cs2-dash`, `mark-site` — so the probe-row short names
+    travel with the unit instead of in a second list. `$RETIRED_UNITS_FILE`
+    overrides the path (used by the tests); a missing or unreadable file
+    reads as *nothing retired* — failing open matters more than failing
+    loud here, because an empty list must never make the doctor treat every
+    unit as retired.
+  - **pi-doctor** asks the list first and keeps `systemctl is-enabled` as
+    the *derived* signal (`disabled`/`masked` still counts) — the owner's
+    decision stops depending on a command's output. **service-probe** names
+    a probe whose row name or URL carries a retired token **in the same
+    sweep** (the long-dead nag needed 1000 failed sweeps to say the same
+    thing) and marks the row in `--list`; both still publish nothing, on the
+    long-dead list's own rule: a config fact is not an outage.
+  - **The acceptance, as tests** (`tests/test_retired_units.py`, 7 tests):
+    a name that is retired *and* live is a contradiction — the live set is
+    built from docs/units.md's index rows plus `systemd/`, the overlap must
+    be empty, and the predicate is proven to fire on a synthetic overlap
+    (`{"portal","cs2trk"}` → `["cs2trk"]`). A reader that grows its own
+    copy of the names fails (`RETIRED_UNITS = {` must not reappear), the
+    config must carry every spelling ever used, and a real service-probe run
+    with `PROBE_HTTP=cs2-dash=…` must print `retired unit` and publish
+    nothing. `tests/test_units_doc.py` now derives its sets from the file
+    instead of holding a private copy — the retirement knowledge is one edit
+    wide.
+  - Evidence: pi-cicd `4070167` (pushed), **268 passed in 93.61s (0:01:33)**; CI: 35421792479 success.
+    Repo: <https://github.com/pkia/pi-cicd>. `docs/units.md`'s retired-units
+    bullet points at the shared file.
 - **service-probe: drop the two dead funnel probes — and make the tool
   name the next leftover itself** — done 2026-09-18 (the only on-box **S**
   at the top of Proposed; its *decide drop-vs-repoint* instruction is what
@@ -644,6 +670,26 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-19 — implementer run: synced the 09-19 devlog radar list (its
+  three items are the retired-list pick, both Train items already on the
+  board — train VM / network, so not actionable on this box). Picked the
+  top Proposed **S**, *pi-cicd: one retired list, three readers*, and
+  shipped it: new `retired-units` config + `retired_units.py` loader, read
+  by pi-doctor (owner's decision first, `systemctl` as the derived signal),
+  service-probe (a retired probe row is named in the same sweep and marked
+  in `--list`, publishing nothing) and the unit-index test (sets derived
+  from the file, not a private copy). Acceptance as tests: 7 new in
+  `tests/test_retired_units.py` — retired-and-live overlap must be empty
+  (live set = docs/units.md rows + `systemd/`), the predicate proven to
+  fire on a synthetic overlap, a reader growing its own copy fails, and a
+  real service-probe sweep with `PROBE_HTTP=cs2-dash=…` says `retired unit`
+  without publishing. pi-cicd `4070167`, **268 passed in 93.61s (0:01:33)**, CI 35421792479 success. Repo:
+  <https://github.com/pkia/pi-cicd>. Budget honesty: the run's edit script
+  shipped a module-level call against a class-method API and the first test
+  run caught it (19 failures, one fix, no second failure mode) — the first
+  commit was therefore only made after the full suite was green; tool calls
+  ≈22, slightly over the 20-call contract.
 
 - 2026-09-18 — implementer run: synced the 09-17 devlog radar list (its
   two new items added to Proposed: *one retired list, three readers*,
