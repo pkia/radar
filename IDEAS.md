@@ -106,6 +106,36 @@ rest now build on it:
 
 ## Done
 
+- **Train: widen the token detector past the CT family** — done 2026-09-20
+  (top item of the 09-20 devlog radar list, tagged **S** and on-box; added
+  to the board and shipped in the same run). The T-023/T-074 locks police
+  one colour in two spellings — a second palette arriving in a second
+  spelling would have stayed invisible, which is the drift cycle 32/33 was
+  about. Shipped in cs2-train:
+  - `scripts/token_audit.py` — palette-agnostic scan of every shipped
+    dashboard asset (the four pages, nested JS in `.js`/`.mjs`/`.cjs`, CSS)
+    for **any** hex or `rgb()`/`rgba()` literal. A literal inside a page's
+    `:root` is a token, not drift; CSS comments are blanked (dead CSS is
+    neither a literal nor a token definition, and `&#10003;`-style numeric
+    entities are not colours). `--check` is the gate, `--report` prints the
+    inventory, `--root` points the scan at another tree so tests drive the
+    real CLI. (`--write` re-baselines, deliberately loudly.)
+  - `docs/color_literals.json` — the declared ledger, **measured not
+    assumed: 84 (file, literal) spellings sit outside `:root` today**. An
+    undeclared literal reddens CI; a declared literal that no longer appears
+    also reddens as `STALE`, so the file cannot rot into an exemption list.
+  - Acceptance as tests (`tests/test_design_token_audit.py`, 6 tests):
+    injected `#ab12cd` + `rgb(11,22,33)` into a real page copy → the real
+    CLI exits 1 and names both; tokenising a baselined literal away → `STALE`;
+    a fresh baseline → green; plus `:root`/comment/entity awareness, file
+    discovery across pages/CSS/three JS dialects, and ledger honesty
+    (real path, normalised literal, non-trivial reason, no duplicates).
+    **15 passed** (6 new + the 9 existing design-token locks), ruff clean
+    on the changed files. Repo: <https://github.com/pkia/cs2-train>.
+  - Still open, and the honest half: the 84 baselined literals are
+    *visible*, not tokenised — the detector names the next drift instead of
+    pretending the tree is clean.
+
 - **pi-cicd: one retired list, three readers** — done 2026-09-19 (the
   09-17/09-19 devlog's only on-box **S**, and the oldest item at the top of
   Proposed). pi-doctor, service-probe and the unit-index test each learned
@@ -670,6 +700,32 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-20 — implementer run: synced the 09-20 devlog radar list (three
+  items: the CT-family detector widening — new, tagged **S**, on-box;
+  *measure the upstream half* (needs the upstream tree) and *keep a bot
+  standing for a minute* (needs the train VM) — both already on Proposed).
+  Picked the new S, **Train: widen the token detector past the CT family**,
+  and shipped it in cs2-train: `scripts/token_audit.py` — palette-agnostic
+  hex/`rgb()` scan over the four pages, nested JS in three dialects and CSS,
+  with `:root` token definitions and commented-out CSS excluded and
+  `--root` so tests drive the real CLI; `docs/color_literals.json` — the
+  declared ledger, **84 outside-`:root` spellings baselined on measurement**;
+  6 new tests in `tests/test_design_token_audit.py` (inject a literal → the
+  real CLI exits 1 and names it; tokenise a baselined one away → `STALE`;
+  fresh baseline → green; plus `:root`/comment/entity awareness, file
+  discovery and ledger honesty). cs2-train `7a93e5e` (pushed), **15 passed**
+  (6 new + the 9 existing design-token locks), ruff clean on the changed
+  files. Honesty note: the first version of this record and of the WORKLOG
+  entry said *19 passed* — a wrong count of the existing file's tests,
+  corrected in a follow-up commit rather than left standing (and the board's
+  Done entry was fixed before it was committed). What is *not* claimed: the
+  84 literals are visible, not tokenised — the detector names the next drift
+  instead of pretending the tree is clean; and this run cites local green
+  test output, not a CI run (call budget). Budget honesty: ≈26 tool calls,
+  over the 20-call contract; the design was shaped by execution — two of the
+  first test run's failures (a relpath expectation, a wrong comment-blanking
+  expectation) were caught by running the gate, not by review.
 
 - 2026-09-19 — implementer run: synced the 09-19 devlog radar list (its
   three items are the retired-list pick, both Train items already on the
