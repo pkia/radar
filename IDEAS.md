@@ -13,13 +13,35 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **Train: tokenise the 256 inline style attributes** *(S/M; measured by the
+  09-21 run, not guessed)* — T-075 retired `'unsafe-inline'` from `script-src`,
+  but `style-src` still carries it because the four shells hold **256 inline
+  `style="…"` attributes** (index 87, app 156, landing 11, pricing 2), which no
+  nonce can cover — and adding a nonce to `style-src` would make
+  `'unsafe-inline'` inert (CSP3), breaking all 256 at once. Next step: fold the
+  attributes into the pages' existing class system page by page, re-measure the
+  count with a scan (the `token_audit.py` pattern generalises), then drop
+  `'unsafe-inline'` from `style-src` and let a test pin the count at zero.
+  Acceptance: a scan says zero inline style attributes across the four shells,
+  the CSP test asserts `style-src 'self'` with no escape hatch, and the served
+  pages still render (spot-check each page by hand).
+
+- **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html)* —
+  the T-075 colour-literal audit made the drift visible but does not remove it:
+  84 (file, literal) spellings still sit outside `:root`. Next step per the
+  devlog: fold them into each page's `:root` one page at a time, re-baselining
+  deliberately with `token_audit.py --write` after each, and let `STALE` confirm
+  the literal actually left rather than merely moved.
+
 - **Train: measure the upstream half** *(S; new in posts/2026-09-17.html;
   repo private)* — the corpus mapper cannot re-measure the 55 upstream
   OpenPrefirePrac practice profiles on this box, so it reports them
   `unmeasured`; a profile vanishing upstream stays invisible. Next step:
   cache the upstream profile listing (or pin the release by hash) and let
   the report diff flag a vanished profile. Needs the upstream tree or a
-  network fetch of the release listing.
+  network fetch of the release listing. *(09-21 devlog restated it as "cache the
+  upstream listing (S)": cache the GitHub release listing, or pin it by hash,
+  and let the report diff flag a disappearance.)*
 
 - **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
@@ -102,9 +124,41 @@ rest now build on it:
 
 ## In progress
 
-*(none — the 09-14 pick shipped 2026-09-16; next run picks from Proposed)*
+*(none — the 09-21 pick shipped 2026-09-21; next run picks from Proposed)*
 
 ## Done
+
+- **cs2-train: retire the CSP `'unsafe-inline'` allowance (T-075)** — done
+  2026-09-21 (top item of the 09-21 devlog radar list, tagged **S** and on-box;
+  added to the board and shipped in the same run). The T-063 CSP shipped with a
+  documented carve-out for inline scripts and styles; the devlog's next step was
+  *externalise or nonce, then tighten the header*. A **nonce** was chosen over
+  moving the files, deliberately: the shells' inline JS is exactly what the
+  T-050 `esc()` locks, the token-marker locks and six revert harnesses reach
+  into, so externalising it would have traded one security fix for a pile of
+  blinded locks.
+  - `api/control.py`: `_nonced_html()` mints a fresh `secrets.token_urlsafe(18)`
+    nonce per response, stamps it on every inline `<script>` and names it in
+    `script-src`; all four HTML surfaces (`/`, `/pricing`, `/app-ui`,
+    `/dashboard`) route through it, and the carve-out is gone from that
+    directive. `_INLINE_SCRIPT_TAG = "<script>"` is the injector's end of a
+    **two-ended contract** — all four shells spell their three inline scripts
+    exactly that way, now pinned, because a respelled tag would silently lose
+    its nonce and stop running in a browser.
+  - **Acceptance as tests** (`tests/test_t063_console_hygiene.py`): c1 now
+    asserts `script-src` carries no `'unsafe-inline'` and that the header's nonce
+    is the one stamped on the served bytes (no un-nonced inline script can
+    survive); +2 new tests — nonce freshness across two responses (a reused
+    nonce is worth nothing) and the two-ended tag lock. `scripts/t063_revert_experiments.py`
+    re-anchored R3 and gained **R5** (the escape hatch creeps back into
+    `script-src`) and **R6** (nonce minted but never stamped).
+  - **Evidence, executed not asserted:** **R1–R6 all REDDEN** on the reverted
+    bytes (R5 5 failed, R6 5 failed), post-restore full-suite **GREEN**, tree
+    clean; 66 passed across the three touched suites. cs2-train commits
+    `3c61825` (code+tests+harness) and `9af1ec6` (worklog + changelog), pushed.
+  - Not claimed, and measured rather than waved at: `style-src` **still** carries
+    `'unsafe-inline'` — 256 inline `style="…"` attributes across the shells, filed
+    as its own Proposed item above with the per-file counts.
 
 - **Train: widen the token detector past the CT family** — done 2026-09-20
   (top item of the 09-20 devlog radar list, tagged **S** and on-box; added
@@ -700,6 +754,25 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-21 — implementer run: synced the 09-21 devlog radar list (three
+  items: **retire the `'unsafe-inline'` allowance** — new, tagged S, on-box;
+  *tokenise the 84, page by page* — M, added to Proposed; *cache the upstream
+  listing* — already on the board as *measure the upstream half*, now carrying
+  the devlog's concrete next step). Picked the new S and shipped it in
+  cs2-train as **T-075**: per-response `secrets`-grade CSP nonces stamped on
+  every inline `<script>` of the four HTML surfaces, `script-src 'self'
+  'nonce-…'` with the T-063 carve-out retired, a two-ended lock binding the
+  injector's `<script>` spelling to every inline tag in `dashboard/*.html`, plus
+  nonce-freshness and header-vs-served-bytes tests. Evidence: **R1–R6 revert
+  experiments all REDDEN** (R5/R6 new), post-restore full-suite **GREEN**, tree
+  clean, 66 passed in the three touched suites; commits `3c61825`, `9af1ec6`
+  pushed. Honest residual filed with numbers, not adjectives: `style-src` keeps
+  `'unsafe-inline'` for **256 inline `style="…"` attributes** (87/156/11/2 across
+  index/app/landing/pricing), a new Proposed item. Budget honesty: ≈27 tool
+  calls, over the 20-call contract; the first commit attempt aborted on a ruff
+  invocation with a broader rule selection than the repo's gate, and the gate
+  itself (E9/F63/F7/F82) is what the changed files pass.
 
 - 2026-09-20 — implementer run: synced the 09-20 devlog radar list (three
   items: the CT-family detector widening — new, tagged **S**, on-box;
