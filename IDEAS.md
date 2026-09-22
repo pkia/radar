@@ -33,16 +33,6 @@ found by web research and keep their source URL.
   deliberately with `token_audit.py --write` after each, and let `STALE` confirm
   the literal actually left rather than merely moved.
 
-- **Train: measure the upstream half** *(S; new in posts/2026-09-17.html;
-  repo private)* — the corpus mapper cannot re-measure the 55 upstream
-  OpenPrefirePrac practice profiles on this box, so it reports them
-  `unmeasured`; a profile vanishing upstream stays invisible. Next step:
-  cache the upstream profile listing (or pin the release by hash) and let
-  the report diff flag a vanished profile. Needs the upstream tree or a
-  network fetch of the release listing. *(09-21 devlog restated it as "cache the
-  upstream listing (S)": cache the GitHub release listing, or pin it by hash,
-  and let the report diff flag a disappearance.)*
-
 - **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
   validate_chain.sh into the automated boot test that runs the moment a
@@ -127,6 +117,50 @@ rest now build on it:
 *(none — the 09-21 pick shipped 2026-09-21; next run picks from Proposed)*
 
 ## Done
+
+- **Train: pin the upstream profile listing** — done 2026-09-22 (the 09-22
+  devlog's item 3, tagged **S** and on-box; also the oldest *network* gap in the
+  corpus map. Added to the board and shipped in the same run). The corpus
+  reconciler re-measures our own 497 map drills on every push but reported the
+  upstream side — the 55 OpenPrefirePrac practice profiles — as `unmeasured`,
+  because the MIT route tree (`/tmp/opp`) is absent on this box: a profile
+  edited or deleted *upstream* kept the corpus count, the doc claim and the CI
+  gate all green. Shipped in cs2-train:
+  - `scripts/upstream_profiles.py` — measures the upstream listing
+    (`maps/<map>/*.txt` over the GitHub tree API) and pins it: the upstream
+    commit sha, every profile name, its blob sha, and a sha256 over the whole
+    listing. **Measured, not assumed: 55 profiles over 9 maps at commit
+    `44fb66e`** (nuke 9, anubis 7, mirage 7, overpass 7, dust2 6, ancient 5,
+    inferno 5, vertigo 5, train 4) — the pin reproduces the doc's number.
+  - `docs/upstream_profiles.json` — the pin itself, and the doc's 55-profile
+    claim is now **re-derived from it** instead of trusted; a pin that is not
+    40-hex (a branch ref moves), whose count disagrees with its own listing, or
+    whose sha does not recompute fails its own validation.
+  - **Offline by design**: `--check` (the default) touches only the pin, the
+    doc and the tree, so the CI gate can never flake on GitHub's API. The
+    network path is opt-in (`--fetch`), and `--listing FILE` replays a recorded
+    tree JSON with no socket at all — the tests drive the real CLI that way.
+  - **Acceptance as tests** (`tests/test_upstream_profiles.py`, 10 tests): a
+    vanished profile fails (`upstream profile vanished: <map>/<name>`, exit 1);
+    an edited profile fails on its changed blob sha (disappearance is not the
+    only drift); a *new* upstream profile is reported but not fatal (upstream
+    growing is news, not drift); an empty tree is refused rather than read as an
+    empty upstream; a tampered pin fails its own shape (count, branch ref); a
+    missing pin fails instead of passing; the tree parser keeps only
+    `maps/*/*.txt` blobs; and the pinned count is asserted equal to the doc's
+    claim, so pin and prose cannot drift apart.
+  - **Evidence, executed not asserted:** `./venv/bin/pytest
+    tests/test_upstream_profiles.py tests/test_corpus_route_map.py -q` →
+    **17 passed**; `ruff check . --select E9,F63,F7,F82` (the CI gate read out of
+    `.github/workflows/ci.yml`) → **All checks passed**; the live fetch wrote the
+    pin and `--check` reports `UPSTREAM-PIN: OK (55 profiles pinned, doc claim
+    agrees)`. cs2-train commit `627a609`, pushed. Repo:
+    <https://github.com/pkia/cs2-train>.
+  - **Honest residual, not claimed as closed:** `reconcile_corpus_routes.py`
+    still lists this claim under `unmeasured` with its offline reason — this run
+    gave the claim a *measurement path* rather than rewiring that script's
+    report (its JSON and test are pinned; rewiring them is its own change). The
+    pin's own gate is the thing that now fails on a vanished profile.
 
 - **cs2-train: retire the CSP `'unsafe-inline'` allowance (T-075)** — done
   2026-09-21 (top item of the 09-21 devlog radar list, tagged **S** and on-box;
@@ -754,6 +788,32 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-22 — implementer run: synced the 09-22 devlog radar list (three
+  items, all already on the board: *tokenise the 256 inline style attributes*
+  — S/M, top of Proposed; *tokenise the 84 colour literals* — M; *pin the
+  upstream profile listing* — the board's older *measure the upstream half*,
+  now carrying the devlog's concrete step). Picked the **S** and shipped it in
+  cs2-train: `scripts/upstream_profiles.py` measures the upstream
+  OpenPrefirePrac listing over the GitHub tree API and pins it —
+  `docs/upstream_profiles.json`, **55 profiles over 9 maps at commit `44fb66e`**,
+  per-profile blob shas plus a sha256 over the listing — with the doc's
+  55-profile claim now re-derived from the pin rather than trusted. Gate is
+  offline by design (`--check`); `--fetch` is the opt-in network re-measure and
+  `--listing FILE` replays a recorded tree, which is how the tests drive the
+  real CLI. Acceptance as tests: 10 new in `tests/test_upstream_profiles.py` —
+  a vanished profile fails, an edited one fails on its changed blob sha, a new
+  one is news not drift, an empty tree is refused, a tampered pin (bad count,
+  branch ref) fails its own validation, a missing pin fails rather than passes,
+  and pin count == doc claim. Evidence: **17 passed** (10 new + the 7 existing
+  corpus-map tests), `ruff check . --select E9,F63,F7,F82` (the CI gate read out
+  of `.github/workflows/ci.yml`, not a guessed one) → All checks passed, live
+  fetch + `UPSTREAM-PIN: OK (55 profiles pinned, doc claim agrees)`.
+  cs2-train `627a609`, pushed. Not claimed: `reconcile_corpus_routes.py` still
+  reports the claim `unmeasured` — that script's report and test are pinned, so
+  rewiring it is filed as the next increment rather than smuggled in.
+  Budget honesty: ≈21 tool calls, at the 20-call contract's edge (the extra one
+  read the CI lint gate rather than assuming it — the 09-21 lesson, applied).
 
 - 2026-09-21 — implementer run: synced the 09-21 devlog radar list (three
   items: **retire the `'unsafe-inline'` allowance** — new, tagged S, on-box;
