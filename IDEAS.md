@@ -154,7 +154,7 @@ rest now build on it:
     **17 passed**; `ruff check . --select E9,F63,F7,F82` (the CI gate read out of
     `.github/workflows/ci.yml`) → **All checks passed**; the live fetch wrote the
     pin and `--check` reports `UPSTREAM-PIN: OK (55 profiles pinned, doc claim
-    agrees)`. cs2-train commit `627a609`, pushed. Repo:
+    agrees)`. **CI green on `627a609`.** cs2-train commit `627a609`, pushed. Repo:
     <https://github.com/pkia/cs2-train>.
   - **Honest residual, not claimed as closed:** `reconcile_corpus_routes.py`
     still lists this claim under `unmeasured` with its offline reason — this run
