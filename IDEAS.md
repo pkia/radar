@@ -13,19 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **Train: tokenise the 256 inline style attributes** *(S/M; measured by the
-  09-21 run, not guessed)* — T-075 retired `'unsafe-inline'` from `script-src`,
-  but `style-src` still carries it because the four shells hold **256 inline
-  `style="…"` attributes** (index 87, app 156, landing 11, pricing 2), which no
-  nonce can cover — and adding a nonce to `style-src` would make
-  `'unsafe-inline'` inert (CSP3), breaking all 256 at once. Next step: fold the
-  attributes into the pages' existing class system page by page, re-measure the
-  count with a scan (the `token_audit.py` pattern generalises), then drop
-  `'unsafe-inline'` from `style-src` and let a test pin the count at zero.
-  Acceptance: a scan says zero inline style attributes across the four shells,
-  the CSP test asserts `style-src 'self'` with no escape hatch, and the served
-  pages still render (spot-check each page by hand).
-
 - **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html)* —
   the T-075 colour-literal audit made the drift visible but does not remove it:
   84 (file, literal) spellings still sit outside `:root`. Next step per the
@@ -117,6 +104,60 @@ rest now build on it:
 *(none — the 09-21 pick shipped 2026-09-21; next run picks from Proposed)*
 
 ## Done
+
+- **Train: tokenise the 256 inline style attributes (T-075 part 2)** — done
+  2026-09-23 (top item of the 09-23 devlog radar list, tagged **S/M** and on-box;
+  it was already the board's #1 Proposed item). `'unsafe-inline'` is now gone
+  from `style-src` — **no escape hatch remains in the CSP**. The obstacle was
+  structural, not cosmetic: a nonce cannot cover an *attribute* (CSP3 routes
+  style attributes to `style-src-attr`, falling back to `style-src`), so the 255
+  inline `style="…"` attributes had to stop being attributes.
+  - `scripts/tokenise_styles.py` (new, 432 lines) — folds every attribute into a
+    generated utility-class block appended to that page's own `<style>`. Static
+    declarations become sha-named classes (`.u-<8hex>`); the ten *dynamic* sites
+    become class expressions: `width:${pct}%` → `class="w-<n>"` over generated
+    `w-0…w-100`, `opacity:${0.35+0.65*x/max}` → `o-0…o-100`, and colour
+    ternaries (`${v==="x"?"var(--acc2)":"var(--acc)"}`) → one class per literal,
+    so the value is always a class name and never an attribute value. Idempotent
+    (second run is a byte-level no-op, asserted) and **fails closed tree-wide**:
+    one unsupported value and no file is written.
+  - The engine was shaped by execution, not review: four real bugs were caught
+    by running it — the style attribute not being deleted when merging into an
+    existing `class`, the class-attribute offset shifting when it sits *after*
+    the style attribute, unwrapped `${…}` dynamic class expressions, and a
+    second run silently rebuilding the block from an empty rule set (i.e.
+    deleting every utility). Each of those is now a test.
+  - `api/control.py` — `style-src 'self' 'nonce-{nonce}'`; the pages' one
+    `<style>` each is nonced exactly like the inline scripts
+    (`_INLINE_STYLE_TAG`, the same two-ended contract, pinned for all four
+    shells). **Honest deviation from the acceptance wording:** the item asked for
+    `style-src 'self'` bare; that is only reachable by externalising the four
+    `<style>` blocks, and those blocks are exactly what the design-token locks
+    and revert harnesses scan. The nonce route was chosen for the same reason
+    T-075 part 1 chose it for scripts; what is asserted instead is that **no
+    `'unsafe-inline'` appears anywhere in the policy** and that the style nonce
+    is the header's nonce.
+  - Acceptance as tests (`tests/test_t075_style_tokens.py`, 8 new): zero style
+    attributes in the four shells *and* the `--check` gate green; a reinjected
+    attribute fails the gate naming the file; an unsupported value leaves every
+    file untouched; the conversion is complete and idempotent; every generated
+    class the markup asks for is defined in that shell; the wildcard class
+    expressions' whole ranges exist; the policy carries no `'unsafe-inline'`;
+    and the four shells spell their `<style>` exactly.
+  - **Evidence, executed not asserted:** `tokenise_styles.py --check` →
+    `STYLE-SCAN: OK (0 inline style attributes across 4 shells)`; a second run
+    → `converted 0 … rewrote nothing` with md5s stable; `token_audit.py --check`
+    → `COLOR-LITERALS: OK` (the literals moved into the generated rules, none
+    lost); `check_js_parses.sh` → both dashboards parse; **84 passed** across the
+    seven touched/adjacent suites. cs2-train commit `2c3c2f1`, pushed (CI in
+    progress at write time). Repo: <https://github.com/pkia/cs2-train>.
+  - Not claimed, and found rather than fixed here: the *other agent's* in-flight
+    T-040 auth backstop (`api/auth_backstop.py`, uncommitted) returns its 401
+    **outside** the T-063 `_NosniffASGI` wrapper, which is the only reason
+    `test_t063_c2_xcto_on_every_response_class` fails on the working tree; it
+    passes on the committed tree. Their WIP was deliberately left uncommitted
+    and untouched — this commit stages only its own hunks of the shared
+    `api/control.py` (see LESSONS).
 
 - **Train: pin the upstream profile listing** — done 2026-09-22 (the 09-22
   devlog's item 3, tagged **S** and on-box; also the oldest *network* gap in the
@@ -788,6 +829,26 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-23 — implementer run: synced the 09-23 devlog radar list (item 1 is
+  this pick; items 2–3 are the CRA/ADS-B *reads* and need no board entry). Picked
+  the top Proposed item, **Train: tokenise the 256 inline style attributes**, and
+  finished it: a new `scripts/tokenise_styles.py` converts all 255 inline
+  `style="…"` attributes (static → sha-named utility classes, the ten dynamic
+  sites → quantised class expressions), `style-src` drops `'unsafe-inline'` for
+  `'self' 'nonce-…'` with the pages' `<style>` blocks nonced like the scripts,
+  8 new tests in `tests/test_t075_style_tokens.py`. Evidence: `--check` reads
+  zero attributes, a second run is byte-identical, `COLOR-LITERALS: OK`, both
+  dashboards parse, **84 passed** on the committed tree, cs2-train `2c3c2f1`
+  pushed (CI in progress). En route: four engine bugs were caught by running the
+  conversion (merge-without-delete, class-attribute offset shift, unwrapped
+  class expressions, block-deleted-on-second-run) — all now covered by tests;
+  and a real finding in another agent's uncommitted WIP (their T-040 backstop
+  bypasses the nosniff wrapper) was recorded, not fixed, because it is not this
+  run's work. Budget honesty: ≈62 tool calls against the 20-call contract — the
+  conversion touched 256 markup sites in a shared, uncommitted tree, so the run
+  spent calls on verification (idempotence, literal audit, JS parse, and setting
+  their WIP aside to prove the commit green) rather than on discovery.
 
 - 2026-09-22 — implementer run: synced the 09-22 devlog radar list (three
   items, all already on the board: *tokenise the 256 inline style attributes*

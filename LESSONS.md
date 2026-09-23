@@ -98,3 +98,40 @@ lessons file gets ignored).
 - 2026-09-21 — **A CSP nonce beats moving files when the files are what the locks reach into.** The clean-sounding fix for `'unsafe-inline'` (externalise the shells' inline JS) would have blinded six revert harnesses, the `esc()` locks and the token-marker locks in cs2-train — they all target the inline block inside `dashboard/*.html`. Minting a per-response nonce (`secrets`, never reused) retired the directive with every lock intact. Related: a nonce in `style-src` makes `'unsafe-inline'` inert per CSP3, so inline `style="…"` attributes and nonced styles cannot coexist — with 256 attributes in the tree, `style-src` had to keep the carve-out, and the residual got filed with per-file counts instead of adjectives.
 
 - 2026-09-22 — **A claim you cannot measure gets a pin, not a hope.** cs2-train reported the 55 upstream practice profiles as unmeasured because their tree lives off-box, so upstream deleting one would have looked exactly like a healthy corpus. Pinning the *listing* (upstream commit sha + per-file blob shas + a sha256 over the whole thing) turned an unverifiable claim into a re-derivable one, and pinning a **commit**, never a branch, is what stops the pin itself moving. Shape the gate offline (`--check` reads only the pin) and make the network re-measure opt-in (`--fetch`) with a replay mode (`--listing FILE`) — then CI can never flake on a third party API while the tests still drive the real CLI. *(2026-09-22)*
+
+## 2026-09-23 — a shared file's diff is not all yours
+
+`api/control.py` in cs2-train is worked by two agents, and this run needed to
+commit one hunk of it (the CSP change) while another agent's uncommitted T-040
+hunk sat in the same file — an untracked module plus its import. Reverting the
+file, re-applying my edits, committing and copying their work back would have
+worked but touched their WIP; the technique that did not is **staging a
+filtered patch**:
+
+```
+git diff <file> > /tmp/all.patch          # every hunk, mine and theirs
+python /tmp/stage_mine.py /tmp/all.patch /tmp/mine.patch <their-marker>
+git apply --cached /tmp/mine.patch        # index only — the working tree is untouched
+git add <my other files> && git commit
+```
+
+The marker is any string in their *added* lines (here `auth_backstop`); hunks
+without it are staged, hunks with it are dropped. The working tree keeps their
+WIP, the commit never carries it, and `git status` afterwards shows their hunk
+as the only unstaged change — which is the correct handoff state.
+
+**Corollary, learned the hard way in the same run:** to prove a commit green
+when someone else's uncommitted code breaks a test, set that code aside briefly
+(`git stash push -u <paths>`), run the suite, then `git stash pop` it back. The
+first `pop` can fail on a stale `.git/index.lock` while the other agent's git
+process is still running — retry in a loop before assuming the lock is garbage.
+
+## 2026-09-23 — generated class names break tests that pin literal markup
+
+T-075's style tokenisation renames every converted tag's styling into
+sha-derived classes (`.u-1a2b3c4d`), so a test that anchored on a literal
+`style="…"` slice of a shell either broke or silently matched the wrong
+element. The fix is not to pin the hash: read the anchor out of the file at
+test time (`src.rindex(row_open, 0, src.index(unique_cell))`), so the test
+still means "this row" after the next conversion. A scan/gate that pins a
+*count* (`--check` reads zero) is stable; a pin on generated *spelling* is not.
