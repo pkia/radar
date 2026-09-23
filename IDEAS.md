@@ -149,8 +149,8 @@ rest now build on it:
     → `converted 0 … rewrote nothing` with md5s stable; `token_audit.py --check`
     → `COLOR-LITERALS: OK` (the literals moved into the generated rules, none
     lost); `check_js_parses.sh` → both dashboards parse; **84 passed** across the
-    seven touched/adjacent suites. cs2-train commit `2c3c2f1`, pushed (CI in
-    progress at write time). Repo: <https://github.com/pkia/cs2-train>.
+    seven touched/adjacent suites. cs2-train commit `2c3c2f1`, pushed —
+    **CI green on that commit** (GitHub Actions `CI`, conclusion success). Repo: <https://github.com/pkia/cs2-train>.
   - Not claimed, and found rather than fixed here: the *other agent's* in-flight
     T-040 auth backstop (`api/auth_backstop.py`, uncommitted) returns its 401
     **outside** the T-063 `_NosniffASGI` wrapper, which is the only reason
@@ -839,8 +839,8 @@ Append-only, one line per run — including failures and no-ops.
   `'self' 'nonce-…'` with the pages' `<style>` blocks nonced like the scripts,
   8 new tests in `tests/test_t075_style_tokens.py`. Evidence: `--check` reads
   zero attributes, a second run is byte-identical, `COLOR-LITERALS: OK`, both
-  dashboards parse, **84 passed** on the committed tree, cs2-train `2c3c2f1`
-  pushed (CI in progress). En route: four engine bugs were caught by running the
+  dashboards parse, **84 passed** on the committed tree, cs2-train `2c3c2f1` pushed and
+  **CI green on it**. En route: four engine bugs were caught by running the
   conversion (merge-without-delete, class-attribute offset shift, unwrapped
   class expressions, block-deleted-on-second-run) — all now covered by tests;
   and a real finding in another agent's uncommitted WIP (their T-040 backstop
