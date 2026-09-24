@@ -13,7 +13,17 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html)* —
+- **pi-cicd / pi-doctor: write down the dark window at boot** *(S; new in
+  posts/2026-09-24.html)* — the 09-23 power-cut outage was only reconstructable
+  because the owner happened to know where to look; the doctor should record it
+  itself. After a cold boot, compare the monotonic boot time against the
+  timestamp systemd restores from `/var/lib/systemd/timesync/clock`; when the gap
+  is minutes or more, write `dark_since` / `dark_until` into the doctor's state
+  file and emit one ntfy line. Acceptance: a simulated clock gap produces the
+  state entry plus exactly one alert, a clean boot produces neither.
+
+- **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html;
+  restated as item 1 of posts/2026-09-24.html)* —
   the T-075 colour-literal audit made the drift visible but does not remove it:
   84 (file, literal) spellings still sit outside `:root`. Next step per the
   devlog: fold them into each page's `:root` one page at a time, re-baselining
@@ -104,6 +114,52 @@ rest now build on it:
 *(none — the 09-21 pick shipped 2026-09-21; next run picks from Proposed)*
 
 ## Done
+
+- **Train: wire the corpus reconciler to the upstream pin (T-077)** — done
+  2026-09-24 (item 2 of the 09-24 devlog radar list, tagged **S** and on-box; it
+  is also the honest residual the 09-22 pin ship had left against itself: the pin
+  was gated, but the *report* every other check reads still said the 55-profile
+  claim was `unmeasured` — so the claim stayed honest only because nobody checked
+  it). Shipped in cs2-train:
+  - `scripts/reconcile_corpus_routes.py` — new `pin_claim()`. The pin is read
+    **offline** through `upstream_profiles.py`'s own helpers (`load_pin`,
+    `validate_pin`, `count`), never a second copy of its rules, so writer and
+    reader cannot disagree about what a valid pin is. The doc's upstream count is
+    now a `DOC_CLAIMS` tenant (`upstream_profiles`), measured from the pin and
+    therefore covered by the existing `doc_drift` gate; a new `upstream_pin`
+    report block carries ref, pinned_on, profiles, maps, listing sha and any
+    problems, and `failures()` names them — a **missing, unreadable or
+    self-inconsistent pin** (wrong repo, a branch ref, a count that disagrees with
+    its own listing, a listing sha that does not recompute) is fatal instead of
+    shrugging. `UNMEASURABLE` is now **empty on purpose**, and asserted empty: an
+    empty dict states "no claim here is unchecked", it is not a hiding place.
+  - **Acceptance as tests** (`tests/test_corpus_route_map.py`, +3, negative-
+    controlled by construction): a temp pin one profile short of the doc's claim —
+    valid shape, count and listing sha recomputed with the real `write_pin` — is
+    fatal and named (`doc_drift["upstream_profiles"] == {"doc": 55,
+    "measured": 54}`); a branch-ref pin is fatal on its own shape; a missing pin
+    reports the claim *unconfirmed* (`measured: None`) rather than passing. The
+    existing doc-claims test now asserts `unmeasured == {}` and a problem-free pin
+    block.
+  - **Evidence, executed not asserted:** `reconcile_corpus_routes.py --check` →
+    `ROUTE-MAP: OK (587 scenarios, map decomposes, grid complete, doc claims agree
+    including 55 upstream profiles from the pin, 2 declared exception(s))`;
+    `upstream_profiles.py --check` → `UPSTREAM-PIN: OK (55 profiles pinned, doc
+    claim agrees)`; `pytest tests/test_corpus_route_map.py
+    tests/test_upstream_profiles.py -q` → **20 passed**; **full suite → 1208
+    passed, 1 skipped in 210.77s**; the recorded CI lint gate (`ruff check .
+    --select E9,F63,F7,F82`) → All checks passed. cs2-train commit `d1b1edc`,
+    pushed. Repo: <https://github.com/pkia/cs2-train>.
+  - **Not claimed:** the offline reconciler cannot diff the pinned listing against
+    a *fresh* upstream measurement — that stays `upstream_profiles.py --fetch`
+    (network, opt-in), where vanished/changed-profile drift is caught. What the
+    reconciler now catches is the pin rotting *inward* (its own consistency) and
+    the doc and pin drifting apart; the upstream moving is still the fetch's job.
+  - En route, measured rather than assumed: the venv's bare `ruff check .`
+    (broad default rule set) reports **1096 pre-existing errors repo-wide**, so it
+    is not this repo's gate — the gate is the `--select E9,F63,F7,F82`
+    invocation, which the changed files pass. Recorded because the local
+    invocation looks like a clean signal and is not.
 
 - **Train: tokenise the 256 inline style attributes (T-075 part 2)** — done
   2026-09-23 (top item of the 09-23 devlog radar list, tagged **S/M** and on-box;
@@ -1239,6 +1295,29 @@ Append-only, one line per run — including failures and no-ops.
   heal-ledger mining (re-check once heals accrue).
 
 - 2026-09-13 — implementer run: synced the board; no Proposed items actionable on this box (top items require train VM or cloud budget); board unchanged.
+
+- 2026-09-24 — implementer run: synced the 09-24 devlog radar list (three
+  items: *tokenise the 84 colour literals, one page at a time* — already the top
+  of Proposed, annotated as restated; **wire the corpus reconciler to the
+  upstream pin** — new, S, on-box; *write down the dark window at boot* — new, S,
+  pi-cicd). Picked the reconciler item: the 09-22 pin was gated while the
+  reconciler report — the thing every other check reads — still called the same
+  55-profile claim `unmeasured`. Shipped cs2-train **T-077** `d1b1edc`: new
+  `pin_claim()` reads the pin offline through the pin writer's own helpers,
+  adds an `upstream_pin` block, makes a missing/unreadable/self-inconsistent pin
+  fatal, and moves the doc's upstream count into the `doc_drift` gate;
+  `UNMEASURABLE` is empty on purpose and asserted empty. +3 negative-controlled
+  tests (a valid pin one profile short of the doc's claim is fatal and named; a
+  branch-ref pin is fatal; a missing pin says *unconfirmed*, not *fine*).
+  Evidence: `--check` → `ROUTE-MAP: OK (… including 55 upstream profiles from the
+  pin …)`, `upstream_profiles.py --check` → `UPSTREAM-PIN: OK`, 20 passed in the
+  two suites, **full suite 1208 passed, 1 skipped**, lint gate
+  (`--select E9,F63,F7,F82`) clean. Honest residual on the Done entry: the fresh
+  upstream diff stays `--fetch`'s job. En route finding recorded, not fixed: the
+  venv's bare `ruff check .` reports 1096 pre-existing errors repo-wide — it is
+  not this repo's gate. Budget honesty: ≈20 tool calls, at the contract's edge;
+  the pin's map keys turned out to be the upstream `de_*` names (the first test
+  draft assumed short names and failed) — caught by running the test, not review.
 
 ## Notes
 

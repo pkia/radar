@@ -135,3 +135,12 @@ element. The fix is not to pin the hash: read the anchor out of the file at
 test time (`src.rindex(row_open, 0, src.index(unique_cell))`), so the test
 still means "this row" after the next conversion. A scan/gate that pins a
 *count* (`--check` reads zero) is stable; a pin on generated *spelling* is not.
+
+- **2026-09-24 — a pin with one reader is still prose.** The upstream pin shipped
+  gated on 09-22 while the *report* every other check reads kept calling the same
+  55-profile claim `unmeasured`: one file measured it, another shrugged at it.
+  When a measurement lands, find every reader of that claim and route them through
+  the measurement in the same change — a gate that exists beside a shrug is a gate
+  nobody depends on. Corollary from T-077: import the writer's own helpers
+  (`validate_pin`, `count`, `listing_sha`) instead of re-implementing its rules, or
+  the reader quietly defines "valid pin" differently from the writer.
