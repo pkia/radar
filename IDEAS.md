@@ -149,7 +149,8 @@ rest now build on it:
     tests/test_upstream_profiles.py -q` → **20 passed**; **full suite → 1208
     passed, 1 skipped in 210.77s**; the recorded CI lint gate (`ruff check .
     --select E9,F63,F7,F82`) → All checks passed. cs2-train commit `d1b1edc`,
-    pushed. Repo: <https://github.com/pkia/cs2-train>.
+    pushed, and **CI green on it (run 35956326239, conclusion success)**.
+    Repo: <https://github.com/pkia/cs2-train>.
   - **Not claimed:** the offline reconciler cannot diff the pinned listing against
     a *fresh* upstream measurement — that stays `upstream_profiles.py --fetch`
     (network, opt-in), where vanished/changed-profile drift is caught. What the
