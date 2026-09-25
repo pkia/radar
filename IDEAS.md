@@ -13,14 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd / pi-doctor: write down the dark window at boot** *(S; new in
-  posts/2026-09-24.html)* — the 09-23 power-cut outage was only reconstructable
-  because the owner happened to know where to look; the doctor should record it
-  itself. After a cold boot, compare the monotonic boot time against the
-  timestamp systemd restores from `/var/lib/systemd/timesync/clock`; when the gap
-  is minutes or more, write `dark_since` / `dark_until` into the doctor's state
-  file and emit one ntfy line. Acceptance: a simulated clock gap produces the
-  state entry plus exactly one alert, a clean boot produces neither.
+- **cs2-train: put the pin's other half on a timer** *(S; new in
+  posts/2026-09-25.html)* — the reconciler now catches the pin rotting inward
+  and the doc drifting off it, but it is offline by design, so nothing notices
+  when upstream itself moves. Run `upstream_profiles.py --fetch` on a schedule,
+  diff the fresh listing against the pin, and open a board entry naming the
+  vanished or changed profile — instead of leaving the network re-measure as a
+  thing the owner remembers to do every few weeks. Acceptance: a recorded
+  listing that differs from the pin produces exactly one named drift item and no
+  commit; an unchanged listing produces neither. *(09-24's "write down the dark
+  window at boot" shipped 2026-09-25 — see Done.)*
 
 - **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html;
   restated as item 1 of posts/2026-09-24.html)* —
@@ -114,6 +116,56 @@ rest now build on it:
 *(none — the 09-21 pick shipped 2026-09-21; next run picks from Proposed)*
 
 ## Done
+
+- **pi-cicd / pi-doctor: write down the dark window at boot** — done
+  2026-09-25 (top item of the 09-24 and 09-25 devlog radar lists, tagged **S**
+  and on-box; added to Proposed on 09-24). This Pi 5 has no RTC battery, so after
+  a power cut the clock comes back at the value systemd-timesyncd last saved in
+  its clock file — which *is* the moment the box lost power. The monotonic uptime
+  knows nothing about the wrong clock, so `now - /proc/uptime` is the real boot
+  instant and the difference between the two is how long the box was dark. The
+  09-23 outage was reconstructable only because the owner happened to remember
+  where to look; the doctor now writes it down.
+  - `pi-doctor`: `dark_window()` is the pure measurement (`dark_since`,
+    `dark_until`, `gap_s`, `minutes`); `check_dark_window()` records it in
+    `pi-doctor-state.json` (`dark_window` + a bounded `dark_windows` ledger) and
+    alerts **once per window** through the existing `send_alert` (WhatsApp +
+    ntfy). **Measured, not assumed:** on the 09-23 boot timesyncd restored the
+    clock at **+4 s** and its first NTP sync — which rewrites that file with the
+    corrected time — landed at **+79 s**, so the comparison is observable only in
+    that first minute; hence `systemd/pi-doctor-boot.{service,timer}`, a oneshot
+    on `OnBootSec=20s` (install.sh block added). The check is gated on
+    `/proc/sys/kernel/random/boot_id`: only the first run after a boot computes
+    anything, which is also what stops a long uptime reading a stale clock file
+    as an outage — the naive version would have called this box's 2-day uptime a
+    2-day blackout. A gap past `DARK_MAX_S = 7 d` is read as a stale file, not a
+    blackout. `pi-doctor --dark-window [--no-alert]` is the boot entry point; the
+    daily audit reports the window under its own "Dark windows" heading, never as
+    a fault. Faked inputs stay out of the live tree: `$PI_DOCTOR_CLOCK_FILE`,
+    `$PI_DOCTOR_UPTIME_FILE`, `$PI_DOCTOR_BOOT_ID_FILE`, `$PI_DOCTOR_STATE`.
+  - **Acceptance as tests** (7 new in `tests/test_pi_doctor.py`): the interval
+    math; a clean reboot, a missing clock file, a missing uptime file and a
+    30-day-old clock file each report nothing; the boot run records the window
+    and alerts exactly once while the same-boot re-run neither records nor
+    re-alerts; the long-uptime gate is proven to skip the comparison *entirely*
+    (no read, no alert); the report bucket is separate from parks and retired
+    units; and the real CLI end-to-end from faked clock/uptime/boot-id files —
+    window printed plus state entry, clean reboot printing nothing.
+  - **Evidence, executed not asserted:** full suite **275 passed** (the first
+    draft of the CLI test failed because it asserted a fresh ledger it had not
+    created — the clean-boot case now uses its own state file); the unit was
+    installed live (`install.sh` block + `sudo cp systemctl enable --now`) and
+    its first real run is `journalctl -u pi-doctor-boot` → finished,
+    `ExecMainStatus=0`, **silent** — the correct answer for a boot whose clock
+    file is already fresh. A real firing needs a power cut, so it is not claimed;
+    the faked-file test is what proves it fires. pi-cicd commit `67b6b7b`,
+    pushed; CI run **36094989452** (queued at write time). Repo:
+    <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** the second half of the same idea — pricing a J5 RTC coin
+    cell, which would have made the whole investigation unnecessary — is the
+    owner's purchase decision, not a build. And a window missed because the box
+    powered on before the unit was installed stays missed: after the first NTP
+    sync the daily audit cannot recover it.
 
 - **Train: wire the corpus reconciler to the upstream pin (T-077)** — done
   2026-09-24 (item 2 of the 09-24 devlog radar list, tagged **S** and on-box; it
@@ -1319,6 +1371,30 @@ Append-only, one line per run — including failures and no-ops.
   not this repo's gate. Budget honesty: ≈20 tool calls, at the contract's edge;
   the pin's map keys turned out to be the upstream `de_*` names (the first test
   draft assumed short names and failed) — caught by running the test, not review.
+
+- 2026-09-25 — implementer run: synced the 09-25 devlog radar list (three items:
+  *write down the dark window at boot* — adopted as the pick, S and on-box;
+  *tokenise the 84 colour literals, one page at a time* — already Proposed, left
+  as the M it is; **put the pin's other half on a timer** — new, S, cs2-train,
+  added to Proposed). Shipped the dark-window check in pi-cicd: `dark_window()`
+  measures `now - uptime` against the timestamp systemd-timesyncd restored, and
+  `check_dark_window()` records `dark_since`/`dark_until`/`gap_s` in
+  `pi-doctor-state.json` with exactly one alert per window; `pi-doctor
+  --dark-window` is the entry point, driven at boot by a new
+  `systemd/pi-doctor-boot.{service,timer}` (`OnBootSec=20s`) that install.sh now
+  installs. Observable only in the first minute after a boot (measured on the
+  09-23 boot: restore at +4 s, first NTP sync at +79 s rewrites the file), so the
+  check is gated on the boot id — which also keeps a long uptime from reading a
+  stale clock file as a blackout, and that gate is a test. Evidence: **275 passed**
+  (7 new), the unit installed and run live on the Pi (`ExecMainStatus=0`,
+  silent — correct, this boot's clock file is fresh), pi-cicd `67b6b7b` pushed,
+  CI run 36094989452 queued at write time. Not claimed: a real power-cut firing
+  (needs a power cut) and the RTC-battery purchase decision. Budget honesty:
+  ≈23 tool calls, over the 20-call contract — one extra pass was the first test
+  run's single failure (a CLI test asserting a fresh ledger it never created),
+  fixed by giving the clean-boot case its own state file; LESSONS.md was left
+  alone because the two hard-won facts (the +4s/+79s window, the boot-id gate)
+  are written into the Done entry and the code comments instead.
 
 ## Notes
 
