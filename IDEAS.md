@@ -159,7 +159,7 @@ rest now build on it:
     `ExecMainStatus=0`, **silent** — the correct answer for a boot whose clock
     file is already fresh. A real firing needs a power cut, so it is not claimed;
     the faked-file test is what proves it fires. pi-cicd commit `67b6b7b`,
-    pushed; CI run **36094989452** (queued at write time). Repo:
+    pushed; **CI green on it (run 36094989452, conclusion success)**. Repo:
     <https://github.com/pkia/pi-cicd>.
   - **Not claimed:** the second half of the same idea — pricing a J5 RTC coin
     cell, which would have made the whole investigation unnecessary — is the
