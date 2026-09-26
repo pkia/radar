@@ -13,17 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **cs2-train: put the pin's other half on a timer** *(S; new in
-  posts/2026-09-25.html)* — the reconciler now catches the pin rotting inward
-  and the doc drifting off it, but it is offline by design, so nothing notices
-  when upstream itself moves. Run `upstream_profiles.py --fetch` on a schedule,
-  diff the fresh listing against the pin, and open a board entry naming the
-  vanished or changed profile — instead of leaving the network re-measure as a
-  thing the owner remembers to do every few weeks. Acceptance: a recorded
-  listing that differs from the pin produces exactly one named drift item and no
-  commit; an unchanged listing produces neither. *(09-24's "write down the dark
-  window at boot" shipped 2026-09-25 — see Done.)*
-
 - **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html;
   restated as item 1 of posts/2026-09-24.html)* —
   the T-075 colour-literal audit made the drift visible but does not remove it:
@@ -113,14 +102,52 @@ rest now build on it:
 
 ## In progress
 
-- **cs2-train: put the pin's other half on a timer** *(S; started 2026-09-26)* —
-  acceptance: a recorded listing that differs from the pin produces **exactly one**
-  named drift item and **no commit**; an unchanged listing produces neither.
-  Resume pointer: `cs2-train` `main`, `scripts/upstream_profiles.py` (new `--drift`),
-  `deploy/upstream-drift.{service,timer}`, `tests/test_upstream_profiles.py`.
+*(none — the 09-26 pick shipped today; next run picks from Proposed)*
 
 ## Done
 
+- **cs2-train: put the pin's other half on a timer (T-078)** — done 2026-09-26 (top of
+  Proposed, tagged **S** and on-box; the 09-25 devlog's new radar item). The 09-22 pin and
+  the 09-24 reconciler wiring made upstream drift *catchable* — but only for whoever
+  remembered to run `--fetch`. The pin was a gate; the devlog asked for a watch, and this
+  run built it in cs2-train:
+  - `scripts/upstream_profiles.py --drift` — diffs a fresh measurement (network `--fetch`,
+    or a recorded `--listing FILE`) against the pin and prints **exactly one** board-ready
+    item naming every vanished/changed profile, plus any newly added one as news. A listing
+    that still matches prints `UPSTREAM-DRIFT: none` and no item at all. One item however
+    many profiles moved — fifty bullets is not a finding.
+  - **It cannot commit, structurally:** the script spawns no process at all (no
+    `subprocess`, asserted against its own source) and the drift branch returns *before*
+    `--write`, so a scheduled run cannot re-pin even if that flag is handed to it. The pin
+    is read and compared, never rewritten — asserted byte-for-byte in the tests.
+  - `--drift-out FILE` appends the item once per *distinct* drift, so a standing drift costs
+    one line rather than one a week (`~/.local/state/cs2-train/upstream-drift.md`).
+  - `deploy/upstream-drift.{service,timer}` — weekly (Mon 06:40, persistent, randomised),
+    plain system `python3` because the script is stdlib-only.
+  - **Acceptance as tests** (`tests/test_upstream_profiles.py`, +5, driving the real CLI over
+    a recorded listing — no network): two profiles moved (one vanished, one edited) yields
+    exactly one item naming both while the pin bytes stay untouched; a matching listing
+    yields no item, exit 0 and no ledger file; the ledger holds one line across two identical
+    runs *and* ignores a passed `--write`; an added profile yields one item but exit 0 (news,
+    not drift); and the no-commit property is asserted structurally.
+  - **Evidence, executed not asserted:** `--check` → `UPSTREAM-PIN: OK (55 profiles pinned,
+    doc claim agrees)`; a real network `--fetch --drift` → `UPSTREAM-DRIFT: none — 55
+    profiles over 9 maps at 44fb66eab70f match the pin (nothing written)`, exit 0; `pytest
+    tests/test_upstream_profiles.py` → **15 passed**, with the corpus-map suite → **25
+    passed**; ruff gate (`--select E9,F63,F7,F82`, read out of CI, not guessed) → All checks
+    passed. cs2-train commits `f7d790f`, `3e28ba0`, `bc10c09` pushed. Repo:
+    <https://github.com/pkia/cs2-train>.
+  - **The unit went live, and its first run found a real bug — in the unit, not the script:**
+    `WorkingDirectory=%h/cs2-train` expanded to **/root/cs2-train**, because a *system* unit
+    resolves `%h` from the manager (root) rather than from `User=ev`; the service died at
+    CHDIR (status 200) and then at spawn (Errno 13). Fixed by dropping `WorkingDirectory` and
+    spelling absolute paths — the script derives the repo from its own `__file__`, so cwd was
+    never load-bearing. Re-run live: `ExecMainStatus=0` with the item line in the journal and
+    **no ledger file created** (correct: nothing moved). Timer active, next fire Mon 06:42 IST.
+  - **Not claimed:** a weekly firing (it is in the future) and a *drift* firing (upstream has
+    to actually move — the measured head is still `44fb66e`, the pinned commit). The item
+    lands in the ledger and the journal as a board-ready line; routing it into this board
+    automatically was deliberately left out, because the board has one writer by design.
 - **pi-cicd / pi-doctor: write down the dark window at boot** — done
   2026-09-25 (top item of the 09-24 and 09-25 devlog radar lists, tagged **S**
   and on-box; added to Proposed on 09-24). This Pi 5 has no RTC battery, so after
@@ -1399,6 +1426,20 @@ Append-only, one line per run — including failures and no-ops.
   fixed by giving the clean-boot case its own state file; LESSONS.md was left
   alone because the two hard-won facts (the +4s/+79s window, the boot-id gate)
   are written into the Done entry and the code comments instead.
+
+- 2026-09-26 — implementer run: no fresh devlog post to sync (newest is 09-25, already synced
+  by the 09-25 run), so nothing new was added to Proposed. Picked the top Proposed item,
+  **cs2-train: put the pin's other half on a timer**, and shipped T-078: `--drift` turns a
+  fresh upstream measurement into exactly one named board item and writes nothing (the script
+  is structurally unable to commit), `--drift-out` ledgers one line per distinct drift, and
+  `deploy/upstream-drift.{service,timer}` run it weekly. +5 tests (**15 passed** in the file,
+  25 with the corpus-map suite, ruff gate clean, live `--check` OK, and a real network
+  `--fetch --drift` reporting `none` at `44fb66e`). The unit was installed live and its first
+  run exposed the system-unit `%h` trap now recorded in LESSONS — fixed in `bc10c09` before
+  the timer was left armed. Budget honesty: ≈21 tool calls against the 20-call contract, and
+  the first local gate attempt (`--check` + live `--fetch --drift` + `release_check.sh`) was
+  killed by the tool's 420 s ceiling while the full suite ran, so the push cites the targeted
+  suites and the lint gate and CI carries the full suite.
 
 ## Notes
 

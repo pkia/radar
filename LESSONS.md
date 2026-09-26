@@ -4,6 +4,13 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-09-26 — **a system unit resolves `%h` from the manager, not from `User=`.** A unit
+  with `User=ev` and `WorkingDirectory=%h/cs2-train` expands `%h` to `/root`, so the service
+  died at CHDIR (`status=200/CHDIR`) and then at spawn (`Errno 13`) — the journal naming
+  `/root/cs2-train` is what gave it away. In a system unit spell absolute paths (`%h` is fine
+  in a user unit). Found by the unit's own first live run, not by review, which is the point:
+  install the timer and start it once, or nobody learns it is broken until the week it matters.
+
 - Docs that claim to map the running system rot within days — bind them
   to a test. units.md/layers.md carry `tests/test_units_doc.py` (expected
   units present with full rows, every unit in systemd/ indexed, every
