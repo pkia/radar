@@ -113,7 +113,11 @@ rest now build on it:
 
 ## In progress
 
-*(none — the 09-21 pick shipped 2026-09-21; next run picks from Proposed)*
+- **cs2-train: put the pin's other half on a timer** *(S; started 2026-09-26)* —
+  acceptance: a recorded listing that differs from the pin produces **exactly one**
+  named drift item and **no commit**; an unchanged listing produces neither.
+  Resume pointer: `cs2-train` `main`, `scripts/upstream_profiles.py` (new `--drift`),
+  `deploy/upstream-drift.{service,timer}`, `tests/test_upstream_profiles.py`.
 
 ## Done
 
