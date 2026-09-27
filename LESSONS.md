@@ -151,3 +151,30 @@ still means "this row" after the next conversion. A scan/gate that pins a
   nobody depends on. Corollary from T-077: import the writer's own helpers
   (`validate_pin`, `count`, `listing_sha`) instead of re-implementing its rules, or
   the reader quietly defines "valid pin" differently from the writer.
+
+
+## 2026-09-27 — two readings from one instant are one reading (pi-cicd dark window)
+
+The dark-window check subtracts the boot instant from the last value
+timesyncd saved. While the clock is still the *restored* value, those two
+are the same instant: `now - uptime` lands on the restored timeline and the
+subtraction collapses to `-uptime`. A ~20-hour blackout was recorded as
+nothing, with a green suite — because the test modelled the one sliver where
+the clock has been corrected and the clock file has not been rewritten yet.
+
+Lesson: when a measurement needs two clocks, assert that they are *not the
+same reading*. Two readings taken at the same instant, on the same timeline,
+look like data and are not. The fix shape that generalises: write the first
+half down while it is observable, resolve it later when the second half
+exists, and give the resolver three distinguishable states — *not yet*,
+*measured-nothing*, *measured-something* — because collapsing "not yet" into
+"nothing" is exactly how a silent gap is born.
+
+## 2026-09-27 — backticks in a commit message are command substitution
+
+`git commit -m "... `now - uptime` ..."` in a shell eats every backticked
+fragment as a command substitution: the pushed message (`a655921`) has the
+fragments missing and the shell printed "command not found" for each one.
+The subject and the rest survived, so it was committed and pushed rather than
+rewritten (no force-push, no history rewrite). Write the message to a file
+with write_file and use `git commit -F <file>`, or drop the backticks.

@@ -100,11 +100,77 @@ rest now build on it:
   its first compile on the live box and verify the peek loop against a
   real player.)*
 
+- **pi-cicd — check that the boot timer is armed at all** *(S; new in
+  posts/2026-09-27.html, where it is "still open from yesterday"; pi-cicd)* —
+  the dark-window check only exists if `pi-doctor-boot.timer` was installed
+  and enabled: a re-image or a failed copy leaves it silently absent, which
+  looks exactly like "no outages have happened". Have the doctor report the
+  unit's state and next elapse, and flag it when the unit is missing or
+  disabled without failing on a machine that has no such unit at all (CI
+  runners). **Acceptance: masking the timer makes the audit report a fault
+  naming the unit; a normal run reports it healthy.**
+
+- **forex-copybot — replay the 28 signals against real broker candles**
+  *(S; new in posts/2026-09-27.html; needs an OANDA practice account, i.e. an
+  owner decision before it is actionable)* — the break-even verdict rests on
+  hourly Yahoo candles and modelled spreads. Pull the same windows from the
+  broker the bot will actually trade through and re-run the replay against
+  real spreads and real fills. **Acceptance: the replay prints per-signal
+  entry, exit and reason from broker candles; the net result and the maximum
+  drawdown are recorded in the worklog next to the modelled ones, with any
+  divergence explained rather than averaged away.**
+
 ## In progress
 
-*(none — the 09-26 pick shipped today; next run picks from Proposed)*
+*(none — the 09-27 pick shipped today; next run picks from Proposed, where
+the oldest item is still **Train: tokenise the 84, page by page**)*
 
 ## Done
+
+- **pi-doctor: measure the dark window from both sides of the correction** — done 2026-09-27
+  (item 1 of the 09-27 devlog radar list, tagged **S** and on-box; it is the 09-25 ship failing
+  against itself — the boot check recorded the 2026-09-26 outage, a ~20 h blackout, as *nothing*,
+  with a green suite). The bug was two timelines read as one: at the boot run `now` **is** the
+  clock systemd-timesyncd restored from the clock file, so `now - uptime` lands on the restored
+  timeline and the subtraction collapses to `-uptime` (the devlog measured **−24 s** for a real
+  20-hour outage); and once NTP corrects the clock, timesyncd rewrites that file, so the death
+  time is gone. Neither reading measures anything on its own — the *pair*, taken at two different
+  times, does:
+  - the boot run writes its reading down (`dark_window_pending`: boot id, restored value, clock
+    mtime) and alerts nothing, because the real boot instant does not exist until the correction
+    lands;
+  - a later run **in the same boot** resolves it: `real_boot = corrected now − uptime`,
+    `gap = real_boot − restored value`. `resolve_dark_window()` returns three distinguishable
+    states — `unresolved` (still on the restored timeline: `gap < 0`, so the reading is kept
+    rather than read as a clean boot), `none` (measured; an ordinary reboot, or a reading older
+    than `DARK_MAX_S`), `window` (measured; alert once, ledger, reading cleared);
+  - the old single-shot path survives only for the sliver where the clock has been corrected and
+    the file has not been rewritten yet — there the mtime really is the death time. It is what
+    happens to be available, not what is relied on;
+  - a reading whose boot is over and was never resolved is reported as **unmeasured, naming that
+    boot**, instead of leaving it looking quiet.
+  - Acceptance as tests (`tests/test_pi_doctor.py`, +5; 28 passed in the file, **280 passed** in
+    the suite): the audit's own scenario — boot run with the clock file *equal* to `now`, then a
+    corrected run 19 h 40 m later — yields the true gap (`source: restored-clock`), exactly one
+    alert and no re-resolution; a **clean reboot** through the same pair stays silent and the
+    reading is dismissed, not kept; a still-restored clock keeps waiting; an unresolved reading
+    from an earlier boot is **named** and does not become this boot's window; and the boot unit's
+    real entry point (`pi-doctor --dark-window`, faked clock/uptime/boot-id files) writes the
+    reading on the first run and resolves it on the second.
+  - **Negative-controlled by execution:** all 5 new tests run against the pre-change `pi-doctor`
+    read out of git (`git show HEAD:pi-doctor` → **5 failed, 24 deselected**), so the case the
+    devlog named (`file == now`) fails before the change and passes after, as the item demanded.
+    Live smoke: `pi-doctor --dark-window --no-alert` on this box exits 0 and is **silent**
+    (correct — uptime 58,780 s, this boot id already recorded, the clock file rewritten hours ago,
+    so the sliver branch measures nothing), and `pi-doctor-state.json` gained no
+    `dark_window`/pending key. pi-cicd commit `a655921` pushed. Repo:
+    <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** a *live* resolution needs a real power cut whose correction lands while the
+    box is up; the faked-file tests are what prove the mechanism. No ruff binary on this box, so
+    CI carries the lint gate.
+  - **Owed honestly:** the commit message lost its backticked fragments to shell command
+    substitution and is pushed that way (subject intact, no history rewrite) — this entry is the
+    authoritative record. Lesson filed in LESSONS.md.
 
 - **cs2-train: put the pin's other half on a timer (T-078)** — done 2026-09-26 (top of
   Proposed, tagged **S** and on-box; the 09-25 devlog's new radar item). The 09-22 pin and
@@ -969,6 +1035,32 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-27 — implementer run: synced the 09-27 devlog radar list (three
+  items: *record both sides of the correction* — new, S, on-box; *check that
+  the boot timer is armed at all* — new, S, pi-cicd; *forex-copybot: replay
+  the 28 signals against real broker candles* — new, S, but it needs an OANDA
+  practice account, so it is an owner decision, not a build). Picked item 1
+  over the older top-of-Proposed **M** (*tokenise the 84*): it is S, it fixes
+  a shipped defect, and its acceptance is executable. Shipped the
+  two-timeline fix in pi-cicd `a655921`: the boot run records its pre-sync
+  reading (`dark_window_pending`), a later run in the same boot resolves the
+  pair (`real_boot = corrected now − uptime`, `gap = real_boot − restored`)
+  with three distinguishable states (unresolved / none / window), the old
+  sliver path kept for when the file is still the death time, and an
+  unresolved reading reported as unmeasured naming its boot. Evidence:
+  **280 passed** (5 new, 28 in the file), all 5 new tests **fail against the
+  pre-change script read out of git** (5 failed, 24 deselected), live
+  `--dark-window` exit 0 and silent with no key added to the live state,
+  docs/units.md updated for the new state key. Budget honesty: ≈30 tool calls
+  against the 20-call contract — the overrun came from the negative control
+  (the first two attempts died on the test module's `import ntfy_lib`, which
+  needed the repo on `PYTHONPATH` before the comparison could even run) and
+  from the board's own bookkeeping. Owed honestly: the commit message's
+  backticked fragments were eaten by shell command substitution and the
+  commit is pushed that way (subject intact; no force-push, no history
+  rewrite) — the Done entry is the authoritative record, and the lesson is
+  filed in LESSONS.md.
 
 - 2026-09-23 — implementer run: synced the 09-23 devlog radar list (item 1 is
   this pick; items 2–3 are the CRA/ADS-B *reads* and need no board entry). Picked
