@@ -106,6 +106,32 @@ lessons file gets ignored).
 
 - 2026-09-22 — **A claim you cannot measure gets a pin, not a hope.** cs2-train reported the 55 upstream practice profiles as unmeasured because their tree lives off-box, so upstream deleting one would have looked exactly like a healthy corpus. Pinning the *listing* (upstream commit sha + per-file blob shas + a sha256 over the whole thing) turned an unverifiable claim into a re-derivable one, and pinning a **commit**, never a branch, is what stops the pin itself moving. Shape the gate offline (`--check` reads only the pin) and make the network re-measure opt-in (`--fetch`) with a replay mode (`--listing FILE`) — then CI can never flake on a third party API while the tests still drive the real CLI. *(2026-09-22)*
 
+
+## 2026-09-27 — two readings from one instant are one reading (pi-cicd dark window)
+
+The dark-window check subtracts the boot instant from the last value
+timesyncd saved. While the clock is still the *restored* value, those two
+are the same instant: `now - uptime` lands on the restored timeline and the
+subtraction collapses to `-uptime`. A ~20-hour blackout was recorded as
+nothing, with a green suite — because the test modelled the one sliver where
+the clock has been corrected and the clock file has not been rewritten yet.
+
+Lesson: when a measurement needs two clocks, assert that they are *not the
+same reading*. Two readings taken at the same instant, on the same timeline,
+look like data and are not. The fix shape that generalises: write the first
+half down while it is observable, resolve it later when the second half
+exists, and give the resolver three distinguishable states — *not yet*,
+*measured-nothing*, *measured-something* — because collapsing "not yet" into
+"nothing" is exactly how a silent gap is born.
+
+## 2026-09-27 — backticks in a commit message are command substitution
+
+`git commit -m "... `now - uptime` ..."` in a shell eats every backticked
+fragment as a command substitution: the pushed message (`a655921`) has the
+fragments missing and the shell printed "command not found" for each one.
+The subject and the rest survived, so it was committed and pushed rather than
+rewritten (no force-push, no history rewrite). Write the message to a file
+with write_file and use `git commit -F <file>`, or drop the backticks.
 ## 2026-09-23 — a shared file's diff is not all yours
 
 `api/control.py` in cs2-train is worked by two agents, and this run needed to
@@ -153,28 +179,3 @@ still means "this row" after the next conversion. A scan/gate that pins a
   the reader quietly defines "valid pin" differently from the writer.
 
 
-## 2026-09-27 — two readings from one instant are one reading (pi-cicd dark window)
-
-The dark-window check subtracts the boot instant from the last value
-timesyncd saved. While the clock is still the *restored* value, those two
-are the same instant: `now - uptime` lands on the restored timeline and the
-subtraction collapses to `-uptime`. A ~20-hour blackout was recorded as
-nothing, with a green suite — because the test modelled the one sliver where
-the clock has been corrected and the clock file has not been rewritten yet.
-
-Lesson: when a measurement needs two clocks, assert that they are *not the
-same reading*. Two readings taken at the same instant, on the same timeline,
-look like data and are not. The fix shape that generalises: write the first
-half down while it is observable, resolve it later when the second half
-exists, and give the resolver three distinguishable states — *not yet*,
-*measured-nothing*, *measured-something* — because collapsing "not yet" into
-"nothing" is exactly how a silent gap is born.
-
-## 2026-09-27 — backticks in a commit message are command substitution
-
-`git commit -m "... `now - uptime` ..."` in a shell eats every backticked
-fragment as a command substitution: the pushed message (`a655921`) has the
-fragments missing and the shell printed "command not found" for each one.
-The subject and the rest survived, so it was committed and pushed rather than
-rewritten (no force-push, no history rewrite). Write the message to a file
-with write_file and use `git commit -F <file>`, or drop the backticks.
