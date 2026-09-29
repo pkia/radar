@@ -100,16 +100,6 @@ rest now build on it:
   its first compile on the live box and verify the peek loop against a
   real player.)*
 
-- **pi-cicd — check that the boot timer is armed at all** *(S; new in
-  posts/2026-09-27.html, where it is "still open from yesterday"; pi-cicd)* —
-  the dark-window check only exists if `pi-doctor-boot.timer` was installed
-  and enabled: a re-image or a failed copy leaves it silently absent, which
-  looks exactly like "no outages have happened". Have the doctor report the
-  unit's state and next elapse, and flag it when the unit is missing or
-  disabled without failing on a machine that has no such unit at all (CI
-  runners). **Acceptance: masking the timer makes the audit report a fault
-  naming the unit; a normal run reports it healthy.**
-
 - **forex-copybot — replay the 28 signals against real broker candles**
   *(S; new in posts/2026-09-27.html; needs an OANDA practice account, i.e. an
   owner decision before it is actionable)* — the break-even verdict rests on
@@ -126,6 +116,48 @@ rest now build on it:
 the oldest item is still **Train: tokenise the 84, page by page**)*
 
 ## Done
+
+- **pi-cicd — the doctor now reports whether the boot timer is armed** — done
+  2026-09-29 (the 09-27 devlog's on-box **S**, picked over the older top-of-
+  Proposed **M** *tokenise the 84* because it is small and its acceptance is
+  executable). The dark-window check the 09-25 ship wrote down is only real if
+  `pi-doctor-boot.timer` was installed and enabled; a re-image or a failed unit
+  copy leaves it silently absent, which looks exactly like "no outages have
+  happened". `boot_timer_state()` judges the unit from `systemctl show
+  -p LoadState -p UnitFileState -p ActiveState -p NextElapseUSecRealtime
+  -p NextElapseUSecMonotonic`:
+  - missing (`LoadState=not-found`), masked, disabled or not active → a fault
+    naming the unit, alerted through the existing dedupe path under *Needs
+    attention*;
+  - armed → an info line under its own **Boot timer (dark-window guard)**
+    heading, never a fault; its own bucket, so a deliberate state is not read
+    as a park/hand-off;
+  - no systemd answering at all (a CI runner) → silent **by design**, so
+    "missing" keeps meaning this box lost the unit, not that the host was
+    never the Pi.
+  - **Measured, not assumed:** on this Pi the timer is `enabled` + `active`
+    with an **empty** `NextElapseUSecRealtime` and
+    `NextElapseUSecMonotonic=infinity` — the shape of an `OnBootSec`-only
+    timer that has already fired — so the healthy reading says "already fired
+    this boot, nothing scheduled" instead of printing an empty elapse. The
+    first draft assumed a wallclock elapse; the live `systemctl show`
+    corrected it.
+  - Acceptance as tests (`tests/test_pi_doctor.py`, +6): armed is reported
+    healthy and **not** alerted; masked, disabled and enabled-but-stopped are
+    each a fault whose `_key` dedupe key names the unit; `not-found` is a
+    fault while no-systemd-answering is silent. **Evidence, executed:**
+    **289 passed** in the suite (ps 29.43 s); a live run reports no findings
+    and the line `timer:pi-doctor-boot.timer armed (UnitFileState=enabled,
+    ActiveState=active, …)`; all 6 new tests **fail against the pre-change
+    pi-doctor read out of git** (`git show HEAD:pi-doctor` → 6 failed, 29
+    deselected), so the devlog's case is negative-controlled by execution.
+    pi-cicd commit `5d1e08d` pushed; `docs/units.md`'s pi-doctor-boot row now
+    notes the audit reports the armed state.
+  - **Not claimed:** stale-elapse detection (a timer whose next elapse is in
+    the past) — the unit properties cannot tell a stale elapse from a
+    boot-anchored timer that fired, and an age rule would have been a guess;
+    what shipped is the armed/not-armed question the devlog asked. No ruff
+    binary on this box, so CI carries the lint gate.
 
 - **pi-doctor: measure the dark window from both sides of the correction** — done 2026-09-27
   (item 1 of the 09-27 devlog radar list, tagged **S** and on-box; it is the 09-25 ship failing
@@ -1035,6 +1067,29 @@ the oldest item is still **Train: tokenise the 84, page by page**)*
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-29 — implementer run: board re-synced — the 09-27 devlog's three
+  items are all already on the board and nothing genuinely new arrived, so no
+  external research was needed (Proposed still holds more than three items).
+  Picked the pi-cicd **S** *check that the boot timer is armed at all* over the
+  older top-of-Proposed **M** (*tokenise the 84*): S, on-box, acceptance
+  executable. Shipped in pi-cicd `5d1e08d`: the daily audit asks systemd for
+  `pi-doctor-boot.timer`'s LoadState/UnitFileState/ActiveState/next elapse and
+  reports it — armed under its own "Boot timer (dark-window guard)" heading,
+  missing/masked/disabled/inactive as a fault naming the unit, and silent on a
+  host with no systemd answering (CI runners). Evidence: **289 passed** in the
+  suite, the 6 new tests **all failing against the pre-change doctor read out
+  of git** (negative-controlled by execution), live run reports no findings
+  with the armed line rendered. Measured en route, not assumed: the live timer
+  has an empty `NextElapseUSecRealtime` and `NextElapseUSecMonotonic=infinity`
+  (OnBootSec-only, already fired) — the first draft's wallclock-elapse
+  assumption was wrong and the live properties corrected it; also verified
+  pi-cicd has no venv, so tests run on the system `pytest` with `PYTHONPATH=`.
+  Budget honesty: ≈31 tool calls against the 20-call contract — the overrun is
+  real (a 105 KB IDEAS.md read, an extra round trip to find the test runner,
+  and the board bookkeeping); the protocol's intermediate *In progress* board
+  commit was folded into the single Done commit rather than making three board
+  commits. Recorded here rather than in LESSONS.md to save the calls.
 
 - 2026-09-27 — implementer run: synced the 09-27 devlog radar list (three
   items: *record both sides of the correction* — new, S, on-box; *check that
