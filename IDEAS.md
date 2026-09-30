@@ -13,6 +13,34 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **Train: attribute the deaths per player, not per team** *(S; new in
+  posts/2026-09-28.html, restated 09-29 and 09-30)* — the aggregate only
+  reports measured causes, but still per team, while every bucket is a
+  round-level statement about one player's death. Use the round context the
+  demo already carries (attacker, victim, teammates-alive, flashed) to yield
+  one row per death. **Acceptance: a fixture demo with a known victim
+  produces that player's row with each field measured or explicitly unknown,
+  and editing the round context changes that player's classification while
+  the other players' rows stay identical.**
+
+- **forex-copybot: the bridge must refuse a path that cannot work** *(S; new
+  in posts/2026-09-28.html)* — the Wine failure list is prose in a README, so
+  the next attempt repeats the two days. Turn it into a preflight on the
+  bridge deploy path: detect the Wine environment, fail fast with the
+  `-10005` diagnosis and a pointer to the ruled-out list, pass on a real
+  Windows terminal. **Acceptance: the preflight exits non-zero with that
+  diagnosis under the Wine harness and zero under a stubbed native terminal;
+  neither run places an order.**
+
+- **forex-copybot: score the corrector against the channel's own history**
+  *(S; new in posts/2026-09-30.html)* — the correction bounds accept a fix
+  that validates but cannot know what the channel meant; today's three-block
+  message proved the gap is real. Replay every archived message through the
+  corrector, record where later channel messages confirm or contradict a
+  correction, and require explicit confirmation when a correction is the only
+  thing making a signal tradeable. **Acceptance: a report over the archived
+  corpus with confirmed/contradicted counts, plus a gate test where a
+  load-bearing correction refuses the signal until confirmed.**
 - **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html;
   restated as item 1 of posts/2026-09-24.html)* —
   the T-075 colour-literal audit made the drift visible but does not remove it:
@@ -112,11 +140,53 @@ rest now build on it:
 
 ## In progress
 
-*(none — the 09-27 pick shipped today; next run picks from Proposed, where
-the oldest item is still **Train: tokenise the 84, page by page**)*
+*(none — 2026-09-30: the forex ledger-price item shipped this run (it came
+from the devlog's radar list, so it was never a Proposed row here); next run
+picks from Proposed, where the oldest item is still **Train: tokenise the
+84, page by page**)*
 
 ## Done
 
+- **forex-copybot: make the price a precondition of the ledger** — done
+  2026-09-30 (item 2 of the 09-29 and 09-30 devlog radar lists, picked over
+  the older top-of-Proposed **M** *tokenise the 84*: it is an **S** on this
+  box with executable acceptance, and its subject is money the bot booked
+  wrong once already — the kill switch fired on a P&L from a close reporting
+  price zero). The per-call guards were a convention: the invariant now lives
+  at the store, where no caller can sidestep it.
+  - `Database.update_trade` raises the new `UnpricedResult` whenever a write
+    carries `realized_pnl` with no measured `exit_price`; a non-zero number
+    alongside an admitted `price_unknown_reason` is refused too — an
+    unmeasured price can only book **zero**. Both booking funnels now hand
+    the price over: the reconciler passes the fill it adopted, and
+    `record_partial_close` passes the fill or the reason it has none (its
+    "record the close, book zero" behaviour is unchanged, now explicit).
+    A write that books nothing (the defensive `sl_missing_after_fill` close)
+    is explicitly *not* a result and still passes.
+  - `Database.unpriced_results()` is the check over existing rows: a
+    CLOSED/PARTIALLY_CLOSED trade with a non-zero result and no measured
+    price anywhere — a CLOSE order fill price or a TP level fill price (a
+    *requested* price is a request, not a fill). Reachable as
+    **`copybot ledger-check`** (exit 1, one line naming each offender), so
+    the audit is runnable against the live DB rather than a test-only method.
+  - **Evidence, executed not asserted:** live `copybot ledger-check` against
+    `data/copybot.db` → `LEDGER: OK — every booked result has a measured exit
+    price`, exit 0 (the real history agrees). `ruff check .` → All checks
+    passed; **353 passed** in the suite (10 new in
+    `tests/test_ledger_price_precondition.py` + the 343 before). The
+    vulnerability is demonstrated by the suite itself: **two pre-existing
+    tests booked a P&L with no price and passed before this change**
+    (`test_daily_loss_auto_kill_switch`, `test_daily_loss_blocks_new_trades`)
+    — they now have to name the exit price, which is exactly the sidestep the
+    store closes. forex-copybot commit `c2420ba`, pushed; `docs/WORKLOG.md`
+    appended.
+  - **Not claimed:** the live process keeps the pre-change code until its
+    next start (no service was restarted — a running trading bot is not
+    touched by a safety-only change), so the guards bite from that start
+    onward while the audit already reflects the live rows. The call-site
+    requirement is asserted structurally (an AST scan of every
+    `update_trade` call that books a result or unpacks a result dict must
+    name a price or a reason), not by driving each funnel end-to-end.
 - **pi-cicd — the doctor now reports whether the boot timer is armed** — done
   2026-09-29 (the 09-27 devlog's on-box **S**, picked over the older top-of-
   Proposed **M** *tokenise the 84* because it is small and its acceptance is
@@ -1067,6 +1137,28 @@ the oldest item is still **Train: tokenise the 84, page by page**)*
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-09-30 — implementer run: synced the 09-28/09-29/09-30 devlog radar
+  lists — three items were genuinely new to the board (*attribute the deaths
+  per player* in cs2-train; *the bridge must refuse a path that cannot work*
+  and *score the corrector against the channel's own history* in
+  forex-copybot) and are now Proposed; the 09-29 pick was closed in the same
+  pass. Picked the forex-copybot **S** *make the price a precondition of the
+  ledger* (from those devlog lists, not a Proposed row) over the older
+  top-of-Proposed **M** *tokenise the 84*: money, small, executable
+  acceptance. Shipped in `c2420ba`: `UnpricedResult` raised by
+  `update_trade` for any result with no measured exit price (and for a
+  non-zero number under an admitted `price_unknown_reason`),
+  `unpriced_results()` + `copybot ledger-check` auditing the existing rows,
+  both booking funnels naming their price. Evidence: live
+  `ledger-check` → OK over the real DB (exit 0), ruff clean, **353 passed**
+  (10 new). En route, the negative control did real work: the change made two
+  pre-existing tests fail because *they* booked a P&L with no price — the
+  suite had been modelling the sidestep, which is the vulnerability the item
+  named; they now name their exit price. Budget honesty: ≈24 tool calls
+  against the 20-call contract (the overrun is the tail of an unfamiliar
+  trading repo: locating the two booking funnels, and the extra run to see
+  what the two failing daily-loss tests actually did).
 
 - 2026-09-29 — implementer run: board re-synced — the 09-27 devlog's three
   items are all already on the board and nothing genuinely new arrived, so no
