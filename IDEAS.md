@@ -147,6 +147,52 @@ picks from Proposed, where the oldest item is still **Train: tokenise the
 
 ## Done
 
+- **twitter-launch: probe the media path from where the poster fetches it** —
+  done 2026-10-01 (the new **S** in posts/2026-10-01.html's radar list and the
+  freshest item there; the list's other two — *score the corrector against the
+  channel's own history* and *attribute the deaths per player* — are already
+  Proposed rows). The three lost windows (09-28..09-30) were invisible from
+  inside: the media base had been moved onto the tailnet-only funnel port
+  `:8443`, so every image post died at Buffer with "Image could not be read
+  from its URL" while `curl` on the Pi returned 200 all day. The x-writer's own
+  09-30 commit (`4d36878`) restored the funnel and repointed the base; this run
+  adds the standing check, so the next drift is a fault rather than another
+  silent window.
+  - `automation/media_probe.py` — three checks, each naming the path: the base
+    is a **publicly funnelled** host:port + path, with `tailscale funnel status`
+    as the authority (a `(Funnel on)` URL plus its `|-- /path proxy` rows;
+    anything else is tailnet-only); fetching a real media file returns 200 with
+    an image content-type and a body that is not an error page; and every media
+    file a queued item references exists on disk (a missing image is a fault
+    now, not a lost window later). **Fails closed** — an undeterminable funnel
+    state is a fault, not a pass. The base is read out of `post_buffer.py` with
+    `ast` (single source of truth, no import side effects), overridable via
+    `XMEDIA_PROBE_BASE`/`--base`; `--funnel FILE` replays a recorded status so
+    the tests drive the real CLI.
+  - **Acceptance as tests** (`tests/test_media_probe.py`, **17 passed**): the
+    acceptance pair — the `:8443` tailnet-only base is flagged by name, the
+    restored `:10000/xmedia` base passes with a 200/image fetch — plus an
+    unexposed funnel path, six fetch classifications (404/500/non-image
+    HTML/JSON/too-small body), a missing queued image as a fault, an unreadable
+    queue item, `XMEDIA_BASE` read from the poster's own module, and a
+    monkeypatched `funnel_status` that raises (fail-closed). Hermetic: fake
+    funnel text, injected opener, tmp roots — no network, no tailscale.
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_media_probe.py -q` → **17 passed**; the live run →
+    `MEDIA-PATH: OK https://…:10000/xmedia (…/boot-timer-audit.png -> image/png
+    / 513B)`, exit 0; the negative control points the same probe at the
+    tailnet-only base and **exits 1**, naming it (`FAULT media base …:8443 is
+    not publicly funnelled (tailnet-only?)`). Measured, not assumed: the live
+    `tailscale funnel status` really does carry `:8443 (tailnet only)` next to
+    `:10000 (Funnel on)` — the exact shape the devlog described.
+    twitter-launch commit `4e8667b`, pushed. Repo:
+    <https://github.com/pkia/twitter-launch>.
+  - **Not claimed:** a box inside the tailnet cannot prove public reachability,
+    so the funnel-status check carries that half while the fetch proves serving;
+    and the probe is **not scheduled** (cron/unit edits are the owner's) — it is
+    runnable by hand and from the x-writer's daily run:
+    `python3 automation/media_probe.py`.
+
 - **forex-copybot: make the price a precondition of the ledger** — done
   2026-09-30 (item 2 of the 09-29 and 09-30 devlog radar lists, picked over
   the older top-of-Proposed **M** *tokenise the 84*: it is an **S** on this
@@ -1137,6 +1183,27 @@ picks from Proposed, where the oldest item is still **Train: tokenise the
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-01 — implementer run: synced the 10-01 devlog radar list (three
+  items: *score the corrector against the channel's own history* and *attribute
+  the deaths per player* are already Proposed rows; **twitter-launch: probe the
+  media path from where the poster fetches it** is new and is the pick — S,
+  on-box, executable acceptance, and its subject is three posting windows the
+  box could not see). Shipped in twitter-launch `4e8667b`:
+  `automation/media_probe.py` — the base must be publicly funnelled per
+  `tailscale funnel status`, a real media file must fetch 200 + image
+  content-type + non-error body, and every media file a queued item references
+  must exist on disk; fails closed on an unknown funnel state — with
+  `tests/test_media_probe.py` (**17 passed**, hermetic: fake funnel text,
+  injected opener, tmp roots). Evidence: live run `MEDIA-PATH: OK …:10000/xmedia
+  (… -> image/png / 513B)` exit 0; negative control against the tailnet-only
+  `:8443` exits 1 naming the base; the live funnel status confirms
+  `:8443 (tailnet only)` beside `:10000 (Funnel on)`. Chosen over the older
+  top-of-Proposed **S** *attribute the deaths per player* (cs2-train): smaller,
+  and its failure is live this week. Not claimed: the probe is not scheduled
+  (cron edits are the owner's) and a box inside the tailnet cannot itself prove
+  public reachability. Budget honesty: ≈18 tool calls, inside the 20-call
+  contract this time.
 
 - 2026-09-30 — implementer run: synced the 09-28/09-29/09-30 devlog radar
   lists — three items were genuinely new to the board (*attribute the deaths
