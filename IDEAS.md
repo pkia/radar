@@ -13,6 +13,14 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **twitter-launch: put the media probe on a timer** *(S; new in
+  posts/2026-10-02.html)* — the probe exists and works, but it runs when
+  someone remembers, which is the same trust that lost three windows. Next
+  step: a unit that runs it daily and raises a fault to the notification bus
+  when the base is not publicly funnelled or a queued image is missing.
+  **Acceptance: a run pointed at a tailnet-only base alerts within one
+  interval, and a passing run stays silent.**
+
 - **Train: attribute the deaths per player, not per team** *(S; new in
   posts/2026-09-28.html, restated 09-29 and 09-30)* — the aggregate only
   reports measured causes, but still per team, while every bucket is a
@@ -140,12 +148,45 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-09-30: the forex ledger-price item shipped this run (it came
-from the devlog's radar list, so it was never a Proposed row here); next run
-picks from Proposed, where the oldest item is still **Train: tokenise the
-84, page by page**)*
+*(none — 2026-10-02: the pi-backup restore-rehearsal pick shipped this run
+  and is recorded under Done; the intermediate In-progress board commit was
+  folded into the Done commit as on 09-29. Next run picks from Proposed,
+  where the oldest item is still **Train: tokenise the 84, page by page** —
+  an M, so prefer any new on-box S first.)**
 
 ## Done
+
+- **pi-backup: rehearse the restore, not just the backup** — done 2026-10-02
+  (item 1 of the 10-02 devlog radar list, tagged **S** and on-box; the other
+  half of the same day's ship that made a live SQLite database land in the
+  archive as a consistent snapshot — nothing yet proved it came back).
+  Shipped in pi-cicd `b2c123f`:
+  - every live-DB dump now gets a sidecar **manifest**
+    (`<dump>.manifest.json`, archived with the snapshot) recording, at dump
+    time, the dump's sha256 and every table with its row count — the "known
+    row from before the backup";
+  - `pi-backup verify [--archive NAME]` extracts the newest archive into a
+    scratch dir and rehearses each recorded snapshot: present, bytes match
+    the dump, `pragma integrity_check` says `ok`, and every table still holds
+    the row count the manifest recorded. Failures are named
+    (`<live path>: 't' holds 3 rows, the dump recorded 4`), exit 1, and the
+    archive is the **only** input — the live database is never opened.
+  - **Acceptance as tests** (`tests/test_pi_backup.py`, +5; **32 passed** in
+    the file, full suite **304 passed**): the acceptance case deletes the
+    live database *before* the verify run and still expects exit 0, so the
+    rehearsal provably cannot be reading it; a truncated dump fails by name
+    (`bytes differ from the dump (truncated or damaged?)`); a missing dump
+    fails as `snapshot absent from the archive`; and the row assertion is
+    shown **load-bearing** — a row is shaved out of a still-clean dump and
+    the manifest rehashed, so only the row count can catch it.
+  - **Measured, not claimed — the live run is honest-ugly:** `sudo
+    pi-backup verify` against today's newest archive (`pi-2026-10-02T033001`,
+    cut before manifests existed) prints `verify: no DB-snapshot manifest in
+    the archive — nothing to rehearse` and exits 1. A legacy archive carries
+    no recorded rows to assert, and the tool fails loudly rather than passing
+    quietly; the first row-rehearsable archive is the next nightly's. The
+    probe is **not scheduled** (cron/unit edits are the owner's) — it is run
+    by hand or from the nightly path. Repo: <https://github.com/pkia/pi-cicd>.
 
 - **twitter-launch: probe the media path from where the poster fetches it** —
   done 2026-10-01 (the new **S** in posts/2026-10-01.html's radar list and the
@@ -1183,6 +1224,29 @@ picks from Proposed, where the oldest item is still **Train: tokenise the
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-02 — implementer run: synced the 10-02 devlog radar list (three
+  items: **pi-cicd — rehearse the restore, not just the backup** — new, S,
+  on-box; **twitter-launch — put the media probe on a timer** — new, now
+  Proposed; *cs2-train — attribute the deaths per player* — already a
+  Proposed row, still open and needing the fixture work). Picked the pi-cicd
+  item over that older S: on-box, executable acceptance, and it is the other
+  half of today's ship. Shipped in pi-cicd `b2c123f`: a per-dump manifest
+  (sha256 + per-table row counts recorded at dump time, archived with the
+  snapshot) and the new `pi-backup verify` subcommand — extract the newest
+  archive to scratch, assert `integrity_check` plus every recorded row count,
+  name each failure, exit 1; the archive is the only input, never the live
+  database. Evidence: **32 passed** in tests/test_pi_backup.py (5 new), full
+  suite **304 passed**; the acceptance test deletes the live DB before the
+  verify run and still exits 0; live `sudo pi-backup verify` exits 1 naming
+  the newest archive as pre-manifest (`no DB-snapshot manifest … nothing to
+  rehearse`) — recorded as measured, the first row-rehearsable archive being
+  the next nightly's. Budget honesty: ≈24 tool calls, over the 20-call
+  contract; the overage is the board bookkeeping (a scripted multi-anchor
+  edit, whose first pass died on a whitespace-sensitive anchor) plus the live
+  evidence run, and the first evidence attempt used `verify --dry-run` —
+  `--dry-run` is a top-level flag and belongs before the subcommand, which is
+  the order the test uses.
 
 - 2026-10-01 — implementer run: synced the 10-01 devlog radar list (three
   items: *score the corrector against the channel's own history* and *attribute
