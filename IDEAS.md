@@ -13,6 +13,15 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **forex-copybot: a cap refusal must page, not skip silently** *(S; new in
+  posts/2026-10-03.html)* — the 7/3 per-side caps are a safety guard, but a
+  valid signal that trips one is skipped unless someone reads the audit log,
+  which is the 10-03 edit bug one layer up. Next step: when a signal is
+  refused for `max_buy_trades`/`max_sell_trades`, raise it to the owner's
+  alert path naming the cap and the symbol, and record the refusal reason on
+  the trade row. **Acceptance: a signal that trips the sell cap produces an
+  alert naming the cap, and the same signal under the cap still trades.**
+
 - **twitter-launch: put the media probe on a timer** *(S; new in
   posts/2026-10-02.html)* — the probe exists and works, but it runs when
   someone remembers, which is the same trust that lost three windows. Next
@@ -148,13 +157,53 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-02: the pi-backup restore-rehearsal pick shipped this run
-  and is recorded under Done; the intermediate In-progress board commit was
-  folded into the Done commit as on 09-29. Next run picks from Proposed,
-  where the oldest item is still **Train: tokenise the 84, page by page** —
-  an M, so prefer any new on-box S first.)**
+*(none — 2026-10-03: the pi-cicd nightly-rehearsal pick shipped this run and
+  is recorded under Done (2026-10-02's pi-backup restore-rehearsal pick is
+  there too; the intermediate In-progress board commit is folded into the Done
+  commit as on 09-29). Next run picks from Proposed, where the oldest item is
+  still **Train: tokenise the 84, page by page** — an M, so prefer any new
+  on-box S first.)**
 
 ## Done
+
+- **pi-cicd — rehearse the nightly's own archive, and page when it fails** —
+  done 2026-10-03 (item 1 of the 10-03 devlog radar list, tagged **S** and
+  on-box; the residual the 10-02 ship left against itself: `pi-backup verify`
+  worked, but it ran by hand, so the 03:30 create never proved the archive it
+  had just written). Shipped in pi-cicd `78cf70e`:
+  - the extraction + rehearsal now sit behind one helper,
+    `rehearse_archive(cfg, name)`, used by **both** the standalone `verify`
+    command and the nightly `run`, so the two paths cannot disagree about what
+    a good archive is;
+  - `pi-backup run` rehearses the archive **it just created** (named, not
+    `newest`) after borg create and before prune, and only when that archive
+    carries DB-snapshot manifests — a config with no live DBs stays quiet
+    rather than faulting on "nothing to rehearse";
+  - a failed rehearsal is a fault: the failing lines go to stderr, `pi-backup
+    verify FAIL` publishes through `ntfy_post`/`ntfy_lib` at **priority 4**,
+    and the run exits 1 without pruning. A good archive stays silent apart
+    from the one `pi-backup ok` digest and one `verify: PASS` line.
+  - **Acceptance as tests** (`tests/test_pi_backup.py`, +2; **34 passed** in
+    the file, full suite **306 passed**): the acceptance failure is built for
+    real — a wrapper around the real `snapshot_live_dbs` cuts the dump in half
+    *between* the dump and the borg pack, so the archive genuinely carries a
+    damaged dump while its manifest records the full length; the nightly then
+    exits 1, names `bytes differ from the dump (truncated or damaged?)`, pages
+    `pi-backup verify FAIL` at priority 4 and publishes **no** `pi-backup ok`,
+    and the archive is still in the repo afterwards (the fault is a report,
+    not a delete). The healthy nightly exits 0, prints `verify: PASS`, and
+    publishes exactly one `pi-backup ok` — no fault on a good archive.
+  - **Evidence, executed not asserted:** live
+    `sudo python3 ~/pi-cicd/pi-backup verify` against this morning's real
+    03:30 archive → `verify: PASS — 6 snapshot(s) rehearsed from the archive`
+    (hermes state.db 299,877 rows, the cron execution/notepad DBs, the sarah
+    profile state, ntfy's user.db — every row count as the manifest recorded),
+    exit 0. Commit `78cf70e` pushed. Repo: <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** the live *nightly* firing is the next 03:30 run — the
+    wiring is proven by the two tests, and the archive it will rehearse already
+    rehearses green by hand; no unit or cron file was edited (the timer calls
+    `pi-backup run`, so the change rides in with the code, per the protocol's
+    rule that schedules are the owner's).
 
 - **pi-backup: rehearse the restore, not just the backup** — done 2026-10-02
   (item 1 of the 10-02 devlog radar list, tagged **S** and on-box; the other
@@ -1224,6 +1273,25 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-03 — implementer run: synced the 10-03 devlog radar list (item 1
+  **pi-cicd — run the rehearsal from the nightly, and page when it fails** is
+  new and is the pick — S, on-box, executable acceptance, and it is the
+  residual the 10-02 ship left against itself; item 2 **forex-copybot — a cap
+  refusal must page** is new and is now a Proposed row; item 3 — the
+  twitter-launch media probe on a timer — is the standing top-of-Proposed S,
+  deferred because the pick was fresher). Shipped in pi-cicd `78cf70e`:
+  `rehearse_archive()` now backs both the standalone `verify` and the nightly
+  `run`, which rehearses the archive it just created and pages `pi-backup
+  verify FAIL` (priority 4) + exits 1 without pruning when the rehearsal
+  fails, staying quiet on a good archive. Evidence: **306 passed** (2 new);
+  the acceptance failure is real rather than mocked — the dump is truncated
+  between the dump and the borg pack — and live `sudo python3
+  ~/pi-cicd/pi-backup verify` on today's 03:30 archive prints `verify: PASS —
+  6 snapshot(s) rehearsed from the archive`, exit 0. Budget honesty: ≈19 tool
+  calls, inside the 20-call contract; one test assertion was wrong first time
+  (`borg_listing` lists an archive's *contents*, not archive names) and cost
+  one fix-up call.
 
 - 2026-10-02 — implementer run: synced the 10-02 devlog radar list (three
   items: **pi-cicd — rehearse the restore, not just the backup** — new, S,
