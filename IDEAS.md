@@ -13,15 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **forex-copybot: a cap refusal must page, not skip silently** *(S; new in
-  posts/2026-10-03.html)* — the 7/3 per-side caps are a safety guard, but a
-  valid signal that trips one is skipped unless someone reads the audit log,
-  which is the 10-03 edit bug one layer up. Next step: when a signal is
-  refused for `max_buy_trades`/`max_sell_trades`, raise it to the owner's
-  alert path naming the cap and the symbol, and record the refusal reason on
-  the trade row. **Acceptance: a signal that trips the sell cap produces an
-  alert naming the cap, and the same signal under the cap still trades.**
-
 - **twitter-launch: put the media probe on a timer** *(S; new in
   posts/2026-10-02.html)* — the probe exists and works, but it runs when
   someone remembers, which is the same trust that lost three windows. Next
@@ -157,14 +148,45 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-03: the pi-cicd nightly-rehearsal pick shipped this run and
-  is recorded under Done (2026-10-02's pi-backup restore-rehearsal pick is
-  there too; the intermediate In-progress board commit is folded into the Done
-  commit as on 09-29). Next run picks from Proposed, where the oldest item is
-  still **Train: tokenise the 84, page by page** — an M, so prefer any new
-  on-box S first.)**
+*(none — 2026-10-04: the forex-copybot cap-refusal pick shipped this run and
+  is recorded under Done. Next run picks from Proposed, where the oldest item
+  is still **Train: tokenise the 84, page by page** — an M, so prefer any new
+  on-box S first; the other radar S items (twitter-launch media-probe timer,
+  Train deaths-per-player) are still open.)**
 
 ## Done
+
+- **forex-copybot: a cap refusal must page, not skip silently** — done
+  2026-10-04 (item 1 of the 10-03 and 10-04 devlog radar lists, tagged **S**
+  and on-box; the same silent-miss shape as the 10-03 edit bug, one layer up:
+  a valid signal that tripped the 7/3 per-side caps was skipped with nothing
+  but an audit row to show for it). Shipped in forex-copybot `0674a30`:
+  - `messages.signal_cap_refused(symbol, side, cap_name, cap_value, detail)`
+    — a dedicated alert page ("Position cap refused a signal") that names the
+    cap (`max_buy_trades` / `max_sell_trades`) and the symbol;
+  - `SignalPipeline._skip()` now separates cap refusals from the generic skip
+    stream: a refusal whose rules include a cap sends that alert at
+    **CRITICAL on the owner's notify path unconditionally — not gated by
+    `notify.on_skip`** — because a guard stopping a *tradeable* call is not
+    skip noise; every other refusal keeps the existing `on_skip`/WARN path.
+    The refusal reason (naming the cap) still lands on the trade row's
+    `skip_reason` and the audit log, unchanged.
+  - **Acceptance as tests** (`tests/test_cap_refusal_pages.py`, 4, driving
+    the real pipeline through the shared harness with `on_skip` muted and one
+    open trade seeded on a *different* symbol so `same_side_open` cannot
+    fire): the sell cap pages exactly one CRITICAL alert naming
+    `max_sell_trades` + `EURUSD` and records the reason on the skipped trade;
+    the buy cap is symmetric; the same signal **under** the cap still trades
+    with no alert; and a plain (non-cap) skip stays silent under `on_skip`.
+  - **Evidence, executed not asserted:** `ruff check .` → All checks passed;
+    **374 passed** in the full suite. **Negative-controlled by execution:**
+    with the pre-change `pipeline.py` read out of git (`git stash`), the two
+    cap-paging tests **fail** and the two control tests pass — the alert is
+    what changed, not the surrounding behaviour. forex-copybot commit
+    `0674a30`, pushed; `docs/WORKLOG.md` appended.
+  - **Not claimed:** the live process keeps the pre-change code until its next
+    start (a trading bot is not restarted for a notify-only change), so the
+    alert bites from that start onward.
 
 - **pi-cicd — rehearse the nightly's own archive, and page when it fails** —
   done 2026-10-03 (item 1 of the 10-03 devlog radar list, tagged **S** and
@@ -1273,6 +1295,21 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-04 — implementer run: synced the 10-04 devlog radar list — all three
+  items (forex-copybot cap refusal, twitter-launch media probe on a timer,
+  Train deaths-per-player) were already Proposed rows and none is genuinely
+  new, so no external research was needed. Picked item 1, the freshest **S**
+  and on-box. Shipped in forex-copybot `0674a30`: a signal refused for
+  `max_buy_trades`/`max_sell_trades` now pages a CRITICAL alert naming the cap
+  and symbol, unconditionally (not gated by `notify.on_skip`), with the reason
+  still on the trade row. Evidence: **374 passed** (4 new in
+  `tests/test_cap_refusal_pages.py`), ruff clean, and the negative control —
+  the two cap tests fail against the old pipeline read from git. The
+  twitter-launch media-probe-timer item stays open because its fix is a
+  scheduled unit and cron/unit edits are the owner's. Budget honesty: ≈24 tool
+  calls against the 20-call contract (the overrun is the discovery tail across
+  the pipeline/notify/messages seams plus the negative-control run).
 
 - 2026-10-03 — implementer run: synced the 10-03 devlog radar list (item 1
   **pi-cicd — run the rehearsal from the nightly, and page when it fails** is
