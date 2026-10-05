@@ -31,15 +31,6 @@ found by web research and keep their source URL.
   and editing the round context changes that player's classification while
   the other players' rows stay identical.**
 
-- **forex-copybot: the bridge must refuse a path that cannot work** *(S; new
-  in posts/2026-09-28.html)* — the Wine failure list is prose in a README, so
-  the next attempt repeats the two days. Turn it into a preflight on the
-  bridge deploy path: detect the Wine environment, fail fast with the
-  `-10005` diagnosis and a pointer to the ruled-out list, pass on a real
-  Windows terminal. **Acceptance: the preflight exits non-zero with that
-  diagnosis under the Wine harness and zero under a stubbed native terminal;
-  neither run places an order.**
-
 - **forex-copybot: score the corrector against the channel's own history**
   *(S; new in posts/2026-09-30.html)* — the correction bounds accept a fix
   that validates but cannot know what the channel meant; today's three-block
@@ -155,6 +146,42 @@ rest now build on it:
   Train deaths-per-player) are still open.)**
 
 ## Done
+
+- **forex-copybot: the bridge must refuse a path that cannot work** — done
+  2026-10-05 (item 3 of the 10-05 devlog radar list, tagged **S** and on-box;
+  the Wine failure list was prose in a README, so the next attempt in that
+  environment would repeat the two days it cost). Shipped in forex-copybot
+  `3e7fc26`:
+  - `deploy/mt5-bridge/preflight.py` — a stdlib preflight that classifies the
+    host before anything is deployed. `detect_host()` separates *native
+    Windows* from *Wine* (via ntdll's `wine_get_version`, because under Wine
+    `sys.platform` is `win32` too) and from *other* (this Pi). Wine → exit **2**
+    with the `-10005 IPC timeout` diagnosis and a pointer to the README's
+    *Linux/Wine attempt (parked — not recommended)* ruled-out list;
+    non-Windows → exit **1** naming Windows-only IPC; native Windows → a
+    read-only `mt5.initialize()`/`shutdown()` probe, exit 0 when reachable and
+    1 naming `last_error()` when not. **It cannot trade:** the only terminal
+    calls are initialize/shutdown/last_error, a refused host is never probed,
+    and the source carries no `order_send`/`order_check`.
+  - **Acceptance as tests** (`tests/test_bridge_preflight.py`, 6, driving the
+    real `main()` with an injected platform/env/Wine-probe and a fake
+    MetaTrader5 that records every call): the Wine harness is refused with
+    `-10005` plus the ruled-out pointer and **its terminal is never even
+    imported**; `WINEPREFIX` on a non-Windows interpreter is refused too; a
+    stubbed native terminal passes with `initialize`+`shutdown` recorded and
+    **no order call**; a native terminal whose IPC fails exits 1 naming
+    `last_error()`; the Pi (linux) is refused as Windows-only; and the source
+    has no order path.
+  - **Evidence, executed not asserted:** `ruff check` on both files → All
+    checks passed; **380 passed** in the full suite (6 new). Live on this Pi:
+    `python3 deploy/mt5-bridge/preflight.py` → `host = other (linux)`,
+    `REFUSED: MetaTrader5 IPC is Windows x64 only`, exit 1. forex-copybot
+    commit `3e7fc26`, pushed; `docs/WORKLOG.md` appended. Repo:
+    <https://github.com/pkia/forex-copybot>.
+  - **Not claimed:** the preflight is a gate on the *deploy path*, not a
+    scheduled check; the native-Windows pass path is proven by the stubbed
+    terminal test, not by touching a real Windows box (the live OVH bridge was
+    left alone).
 
 - **forex-copybot: a cap refusal must page, not skip silently** — done
   2026-10-04 (item 1 of the 10-03 and 10-04 devlog radar lists, tagged **S**
@@ -1295,6 +1322,18 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-05 — implementer run: synced the 10-05 devlog radar list — all three
+  items (twitter-launch media-probe timer, Train deaths-per-player, forex-copybot
+  bridge preflight) were already Proposed rows and none is genuinely new, so no
+  external research was needed. Picked item 3, the freshest **S** and on-box.
+  Shipped in forex-copybot `3e7fc26`: `deploy/mt5-bridge/preflight.py` refuses a
+  host that cannot run MT5 IPC — Wine exits 2 with the `-10005` diagnosis and a
+  pointer to the ruled-out list, non-Windows exits 1, native Windows runs a
+  read-only initialize/shutdown probe and exits 0, and no run can place an order.
+  Evidence: **380 passed** (6 new in `tests/test_bridge_preflight.py`), ruff
+  clean, and the live run on the Pi exits 1 naming Windows-only IPC. Budget
+  honesty: ≈19 tool calls against the 20-call contract, inside it this time.
 
 - 2026-10-04 — implementer run: synced the 10-04 devlog radar list — all three
   items (forex-copybot cap refusal, twitter-launch media probe on a timer,
