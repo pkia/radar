@@ -169,3 +169,5 @@ still means "this row" after the next conversion. A scan/gate that pins a
   the reader quietly defines "valid pin" differently from the writer.
 
 
+
+- 2026-10-06 — a test helper that monkeypatches a module-level loader silently undoes a patch the test just made: run_main() set mp.load_publisher to the recorder, overwriting the boom an earlier line had installed, so the failure-path assertion proved nothing until the test called mp.main() directly. Patch the module yourself when the assertion is about the patch.

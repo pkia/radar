@@ -13,14 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **twitter-launch: put the media probe on a timer** *(S; new in
-  posts/2026-10-02.html)* — the probe exists and works, but it runs when
-  someone remembers, which is the same trust that lost three windows. Next
-  step: a unit that runs it daily and raises a fault to the notification bus
-  when the base is not publicly funnelled or a queued image is missing.
-  **Acceptance: a run pointed at a tailnet-only base alerts within one
-  interval, and a passing run stays silent.**
-
 - **Train: attribute the deaths per player, not per team** *(S; new in
   posts/2026-09-28.html, restated 09-29 and 09-30)* — the aggregate only
   reports measured causes, but still per team, while every bucket is a
@@ -139,13 +131,59 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-04: the forex-copybot cap-refusal pick shipped this run and
+*(none — 2026-10-06: the twitter-launch media-probe timer shipped this run and
   is recorded under Done. Next run picks from Proposed, where the oldest item
   is still **Train: tokenise the 84, page by page** — an M, so prefer any new
-  on-box S first; the other radar S items (twitter-launch media-probe timer,
-  Train deaths-per-player) are still open.)**
+  on-box S first; the other radar S items (Train deaths-per-player,
+  forex-copybot score-the-corrector) are still open.)**
 
 ## Done
+
+- **twitter-launch: put the media probe on a timer** — done 2026-10-06 (the
+  standing top-of-Proposed **S** named "still open" in the 10-02..10-05 devlog
+  lists; the probe shipped 2026-10-01 but only ran when someone remembered —
+  the same trust that lost the 09-28..09-30 windows). Shipped in twitter-launch
+  `06a4049`:
+  - `automation/media_probe.py --alert` — on a fault, publishes **exactly one**
+    ntfy message (title, base, every fault line) through pi-cicd's shared
+    `ntfy_lib.publish`, so `ntfy-notify --mute` silences the media watch too;
+    a **passing run publishes nothing**. The push path and the exit code are
+    independent on purpose: a missing conf or a publish that raises is
+    **reported** (`NO ALERT <why>`) and the faults are still printed with
+    exit 1, so no push channel can turn a fault into a pass. `load_conf`
+    reads `/etc/media-probe.conf` (`$MEDIA_PROBE_CONF`), `load_publisher`
+    loads ntfy_lib by path.
+  - `deploy/media-probe.{service,timer}` — a daily oneshot at **12:40 IST**
+    (Persistent, jittered, ahead of the 13:30 posting window). Absolute paths
+    because a *system* unit resolves `%h` from root, not `User=` (the trap
+    cs2-train's upstream-drift unit hit on 2026-09-26). `deploy/README.md`
+    carries the owner's one manual step: the conf, the `xmedia` topic ACL, and
+    the `systemctl enable --now`.
+  - **Acceptance as tests** (`tests/test_media_probe_alert.py`, 7 new; **24
+    passed** in the two files with the 17 existing probe tests): the
+    acceptance pair — a run pointed at the tailnet-only `:8443` base publishes
+    **one** alert naming it (`not publicly funnelled`, topic `xmedia`, priority
+    4, bearer token from the conf) and exits 1, while the publicly-funnelled
+    `:10000/xmedia` base exits 0 with **zero** publishes — plus a missing conf
+    that still faults but publishes nothing, a publisher that raises reported
+    as `NO ALERT publish failed: OSError` rather than crashing, `no faults`
+    publishing nothing, conf parsing, and the units bound to the script +
+    `--alert`.
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_media_probe_alert.py tests/test_media_probe.py -q` → **24
+    passed**; the live run `python3 automation/media_probe.py` →
+    `MEDIA-PATH: OK https://pi-…:10000/xmedia`, exit 0. **Negative-controlled
+    by execution:** the pre-change CLI read out of git (`git stash`) exits
+    **2** on `--alert` (argparse rejects the flag) — the alert behaviour is
+    what ships, not the surrounding probe. Commit `06a4049` pushed. Repo:
+    <https://github.com/pkia/twitter-launch>.
+  - **Not claimed:** the units are **not installed** and the `xmedia` topic
+    ACL is **not provisioned** — host/systemd/ntfy changes are the owner's
+    (deploy/README.md is the runbook), so the live daily firing and the real
+    push are proven by the injected-publisher tests, not by ntfy delivering a
+    page. The probe's `--alert` is inert until a conf exists; on a fault
+    without one the box still gets the journal line and the unit's failed
+    state.
 
 - **forex-copybot: the bridge must refuse a path that cannot work** — done
   2026-10-05 (item 3 of the 10-05 devlog radar list, tagged **S** and on-box;
@@ -1322,6 +1360,23 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-06 — implementer run: synced the 10-05 devlog radar list — item 1
+  (twitter-launch media probe on a timer) was the standing top-of-Proposed **S**
+  named "still open" across 10-02..10-05 and is the pick; item 2 (Train
+  deaths-per-player) and item 3 (forex-copybot bridge preflight, shipped
+  2026-10-05) needed no new rows. The earlier runs deferred this item as
+  "a scheduled unit is the owner's", but the *unit files* ship in the repo via
+  install, exactly like cs2-train's upstream-drift timer — only the live
+  install/ACL is the owner's. Shipped in twitter-launch `06a4049`:
+  `media_probe.py --alert` publishes ONE ntfy fault through pi-cicd's shared
+  `ntfy_lib` (mute-aware) and stays silent on a pass, with a missing conf or a
+  failed publish reported rather than silent; `deploy/media-probe.{service,timer}`
+  runs it daily 12:40 IST ahead of the 13:30 window, with `deploy/README.md` as
+  the owner's provisioning runbook. Evidence: **24 passed** (7 new in
+  `tests/test_media_probe_alert.py`), the live probe exits 0 (`MEDIA-PATH: OK`),
+  and the pre-change CLI exits 2 on `--alert` (negative control). Budget
+  honesty: ≈18 tool calls, inside the 20-call contract.
 
 - 2026-10-05 — implementer run: synced the 10-05 devlog radar list — all three
   items (twitter-launch media-probe timer, Train deaths-per-player, forex-copybot
