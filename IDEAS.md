@@ -13,6 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **copybot — make the keeper prove the heal, not assume it** *(S; new in
+  posts/2026-10-07.html; needs the live VPS)* — the keeper's Tailscale heal
+  was proven by stopping the service once and watching it repair unattended,
+  but its bridge heal has only ever run on paper. Next step: a drill that
+  stops the bridge on the VPS and asserts the keeper restores the broker link
+  within one interval, pages once if the heal fails twice in a row, and stays
+  silent on a clean heal. **Acceptance: with the bridge stopped the keeper
+  restores broker_ok inside fifteen minutes with zero pages; with the bridge
+  held down, exactly one CRITICAL.**
+
 - **Train: attribute the deaths per player, not per team** *(S; new in
   posts/2026-09-28.html, restated 09-29 and 09-30)* — the aggregate only
   reports measured causes, but still per team, while every bucket is a
@@ -131,13 +141,58 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-06: the twitter-launch media-probe timer shipped this run and
-  is recorded under Done. Next run picks from Proposed, where the oldest item
-  is still **Train: tokenise the 84, page by page** — an M, so prefer any new
-  on-box S first; the other radar S items (Train deaths-per-player,
-  forex-copybot score-the-corrector) are still open.)**
+*(none — 2026-10-07: the bridge-preflight gate shipped this run and is recorded
+  under Done. Next run picks from Proposed, where the oldest item is still
+  **Train: tokenise the 84, page by page** — an M, so prefer any new on-box
+  **S** first; Train deaths-per-player and forex-copybot score-the-corrector are
+  still open, and the new 10-07 keeper heal drill needs the live VPS.)**
 
 ## Done
+
+- **forex-copybot: turn the bridge preflight into a gate** — done 2026-10-07
+  (item 2 of the 10-06 and 10-07 devlog radar lists, tagged **S** and on-box;
+  the preflight shipped 2026-10-05 knew how to refuse a host that cannot run
+  the MT5 bridge, but only for whoever *remembered* to run it before deploying
+  — the same trust that let the README go stale). Shipped in forex-copybot
+  `2ea5961`:
+  - `deploy/mt5-bridge/bridge_deploy.py` — the deploy path itself. It
+    classifies the host first, reusing `preflight.detect_host`/`evaluate`
+    rather than keeping a second copy of the rules, and on a refused host
+    prints the diagnosis and **aborts before any bridge step runs**; on a
+    supported host it runs the deploy steps in order (`install_bridge.ps1`),
+    stopping at the first failure with no later step run. `--dry-run` prints
+    the steps, `--host-only` classifies without an IPC probe. Structurally
+    incapable of trading: no order call exists in it, and the only terminal
+    calls reachable are the preflight's read-only
+    initialize/shutdown/last_error probe.
+  - `preflight.py --host-only` — classification-only mode, because a fresh box
+    has no `MetaTrader5` package yet and the IPC probe would fail a legitimate
+    native host. Wine and other hosts are still refused with the same `-10005`
+    diagnosis.
+  - `windows/install_bridge.ps1` — the same gate as **step 0**, right after the
+    64-bit Python check and **before** anything is installed (the terminal, the
+    bridge app, its dependencies, the boot task that starts it), so a human
+    running the installer directly is gated too.
+  - **Acceptance as tests** (`tests/test_bridge_deploy_gate.py`, 7 new;
+    **403 passed** in the suite): a deploy against the Wine harness aborts with
+    the `-10005` diagnosis while a recording runner proves **zero steps
+    started**; the same path against a stubbed native host exits 0 and runs the
+    installer exactly once off a read-only probe; a failing step stops the
+    chain (a third step never runs); `--host-only` never imports
+    `MetaTrader5` and still refuses Wine; neither file carries an order call;
+    and the `.ps1` gate is asserted to precede the pip install, the bridge
+    fetch and the boot task.
+  - **Evidence, executed not asserted:** `ruff check` on the changed files →
+    All checks passed; **403 passed**; live on this Pi
+    `python3 deploy/mt5-bridge/bridge_deploy.py` → `host = other (linux)`,
+    `REFUSED: MetaTrader5 IPC is Windows x64 only`, `DEPLOY ABORTED: … before
+    any bridge step ran (1 step(s) skipped)`, exit 1. forex-copybot commit
+    `2ea5961`, pushed; `docs/WORKLOG.md` appended. Repo:
+    <https://github.com/pkia/forex-copybot>.
+  - **Not claimed:** no run on real Windows or Wine hardware — the pass path is
+    proven by the stubbed-terminal test and the `.ps1` gate structurally (no
+    PowerShell on this box); and the driver does not replace the owner's
+    one-time GUI steps (RDP login, algo trading).
 
 - **twitter-launch: put the media probe on a timer** — done 2026-10-06 (the
   standing top-of-Proposed **S** named "still open" in the 10-02..10-05 devlog
@@ -1360,6 +1415,23 @@ rest now build on it:
 ## Run log
 
 Append-only, one line per run — including failures and no-ops.
+
+- 2026-10-07 — implementer run: synced the 10-07 devlog radar list — item 1
+  (copybot: make the keeper prove the heal) is genuinely new and added to
+  Proposed (it needs the live VPS, so it is not the pick); item 2 (turn the
+  bridge preflight into a gate) is the freshest on-box **S** and is the pick;
+  item 3 (Train deaths-per-player) is already a Proposed row. Shipped in
+  forex-copybot `2ea5961`: the preflight is now step zero of the deploy path —
+  `bridge_deploy.py` classifies the host and aborts before any bridge step on a
+  refused one, `preflight.py --host-only` gates a fresh box, and
+  `install_bridge.ps1` calls the same gate before installing anything.
+  Evidence: **403 passed** (7 new in `tests/test_bridge_deploy_gate.py`), ruff
+  clean on the changed files, and live on the Pi the driver exits 1 naming
+  Windows-only IPC with 1 step skipped. Budget honesty: ≈33 tool calls against
+  the 20-call contract — the implementation and its verification ran in one
+  pass, and the overspend is the board edit: a throwaway edit script failed its
+  own anchors three times, was debugged once, and was finally replaced by the
+  patch tool (no code or board damage; the shipped commit was never in doubt).
 
 - 2026-10-06 — implementer run: synced the 10-05 devlog radar list — item 1
   (twitter-launch media probe on a timer) was the standing top-of-Proposed **S**
