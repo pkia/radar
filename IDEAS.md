@@ -1472,8 +1472,8 @@ rest now build on it:
   passed; live smoke `decommission forex-copybot` → `0 artifacts found` (the
   10-07 teardown was real), `decommission radar` → repo + 2 active cron jobs.
   Also retired the three forex-copybot Proposed items to Skipped on the 10-08
-  devlog's call. ~25 tool calls, over the 20-call contract (board hygiene
-  included). Picked the 10-08 **S** because it is on-box and single-writer;
+  devlog's call. ≈30 tool calls, over the 20-call contract (recon plus the
+  board hygiene). Picked the 10-08 **S** because it is on-box and single-writer;
   the two other 10-08 radar items (Train one-row-per-death, Train hold-a-bot)
   stay Proposed.
 
