@@ -13,7 +13,9 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **copybot — make the keeper prove the heal, not assume it** *(S; new in
+- **copybot — make the keeper prove the heal, not assume it** — **SKIPPED
+  2026-10-08: forex-copybot decommissioned 2026-10-07, there is no VPS bridge
+  left to heal; see run log.** *(S; new in
   posts/2026-10-07.html; needs the live VPS)* — the keeper's Tailscale heal
   was proven by stopping the service once and watching it repair unattended,
   but its bridge heal has only ever run on paper. Next step: a drill that
@@ -33,7 +35,8 @@ found by web research and keep their source URL.
   and editing the round context changes that player's classification while
   the other players' rows stay identical.**
 
-- **forex-copybot: score the corrector against the channel's own history**
+- **forex-copybot: score the corrector against the channel's own history** —
+  **SKIPPED 2026-10-08: project decommissioned 2026-10-07; see run log.**
   *(S; new in posts/2026-09-30.html)* — the correction bounds accept a fix
   that validates but cannot know what the channel meant; today's three-block
   message proved the gap is real. Replay every archived message through the
@@ -129,7 +132,8 @@ rest now build on it:
   its first compile on the live box and verify the peek loop against a
   real player.)*
 
-- **forex-copybot — replay the 28 signals against real broker candles**
+- **forex-copybot — replay the 28 signals against real broker candles** —
+  **SKIPPED 2026-10-08: project decommissioned 2026-10-07; see run log.**
   *(S; new in posts/2026-09-27.html; needs an OANDA practice account, i.e. an
   owner decision before it is actionable)* — the break-even verdict rests on
   hourly Yahoo candles and modelled spreads. Pull the same windows from the
@@ -148,6 +152,54 @@ rest now build on it:
   still open, and the new 10-07 keeper heal drill needs the live VPS.)**
 
 ## Done
+
+- **pi-cicd — a decommission runbook** — done 2026-10-08 (the 10-08 devlog's
+  new radar **S**; the manual forex teardown left three scheduled tasks on the
+  VPS pointing at a directory that no longer exists — a human forgot, a script
+  wouldn't). Built `decommission` in pi-cicd: give it a project name, it walks
+  every source and prints each artifact the project owns, changing **nothing**
+  without `--apply`.
+  - `decommission PROJECT [--apply] [--json]` — reads the repos dir
+    (`/home/ev`), `/etc/systemd/system`, `~/.config/systemd/user`,
+    `hermes cron list`, and a remote registry
+    (`/etc/decommission-remotes.json`); every path is env/flag-overridable so
+    the tests stay hermetic.
+  - **`--apply` removes only what it can remove locally and safely:** units
+    (`systemctl [--user] disable --now` then `rm -f`) and the matching cron
+    job (`hermes cron remove <id>`). A repo directory and a remote task are
+    **reported, never touched** — the tool does not delete an existing repo or
+    act on a host it cannot see; both print as manual steps.
+  - A unit file under the project's name whose suffix is not
+    `.service`/`.timer` (a `.socket`, a `.path`, extensionless) is **named and
+    the run exits 2 rather than guessing** — guessing here removes the wrong
+    thing.
+  - **Acceptance as tests** (`tests/test_decommission.py`, 6 new): a stub
+    project owning one of every kind is listed in full while a recording runner
+    asserts **zero commands ran** and the tree is untouched; the same project,
+    gone, reports `0 artifacts found` and exits 0; a `.socket` leftover exits 2
+    naming it with nothing changed; `--apply` issues exactly the unit-disable +
+    rm + cron-remove commands while issuing **no** command naming the repo and
+    leaving the repo on disk; a failing action is reported and exits 1;
+    `--json` carries every kind. `install.sh` now links the tool and
+    `tests/test_install_sh.py`'s TOOLS list is extended (the installer-binding
+    gate that has caught dead tools before).
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_decommission.py tests/test_install_sh.py -q` → **8 passed**;
+    live on this Pi `./decommission forex-copybot` → `0 artifacts found —
+    nothing to decommission`, exit 0 (the repo and units really are gone after
+    the 10-07 teardown), and `./decommission radar` → the repo (reported,
+    manual) plus two matching `active` cron jobs, each with its
+    `hermes cron remove <id>` action printed. pi-cicd commit `99ad0ec`, pushed.
+    Repo: <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** remote tasks are only what the registry declares — this
+    box cannot see the remote host, so the tool reports them and stops; no
+    service, unit or cron job was removed live (the `--apply` path is proven by
+    the injected-runner tests, not by decommissioning a real project). No ruff
+    binary on this box, so CI carries the lint gate.
+  - **Board hygiene, same run:** the three forex-copybot Proposed items
+    (keeper heal, score the corrector, replay the 28 signals) are retired to
+    Skipped on the 10-08 devlog's call — the project was decommissioned
+    2026-10-07, so all three now need machinery that no longer exists.
 
 - **forex-copybot: turn the bridge preflight into a gate** — done 2026-10-07
   (item 2 of the 10-06 and 10-07 devlog radar lists, tagged **S** and on-box;
@@ -1413,6 +1465,17 @@ rest now build on it:
   the capture, write the findings report.
 
 ## Run log
+
+- 2026-10-08 — shipped **pi-cicd decommission** (`99ad0ec`): a project teardown
+  runbook — lists every artifact a project owns (repo, units, cron job, remote
+  tasks) and removes only the local ones, and only with `--apply`. 8 tests
+  passed; live smoke `decommission forex-copybot` → `0 artifacts found` (the
+  10-07 teardown was real), `decommission radar` → repo + 2 active cron jobs.
+  Also retired the three forex-copybot Proposed items to Skipped on the 10-08
+  devlog's call. ~25 tool calls, over the 20-call contract (board hygiene
+  included). Picked the 10-08 **S** because it is on-box and single-writer;
+  the two other 10-08 radar items (Train one-row-per-death, Train hold-a-bot)
+  stay Proposed.
 
 Append-only, one line per run — including failures and no-ops.
 
