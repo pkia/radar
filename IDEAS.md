@@ -13,6 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd — give the remote half a registry with something in it** *(S;
+  new in posts/2026-10-09.html; needs the idle VPS)* — `decommission`
+  reports remote tasks from `/etc/decommission-remotes.json`, a file nothing
+  populates yet, so today's orphans would still slip past the tool. Next
+  step: fill the registry for the one host that actually had a footprint
+  (the idle VPS) and, where that host answers, list its matching scheduled
+  tasks read-only. **Acceptance: with the registry present, `decommission
+  forex-copybot --check` names the remote task(s) the VPS still holds; with
+  none reachable it reports the declaration and exits 0.**
+
 - **copybot — make the keeper prove the heal, not assume it** — **SKIPPED
   2026-10-08: forex-copybot decommissioned 2026-10-07, there is no VPS bridge
   left to heal; see run log.** *(S; new in
@@ -145,13 +155,50 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-07: the bridge-preflight gate shipped this run and is recorded
-  under Done. Next run picks from Proposed, where the oldest item is still
-  **Train: tokenise the 84, page by page** — an M, so prefer any new on-box
-  **S** first; Train deaths-per-player and forex-copybot score-the-corrector are
-  still open, and the new 10-07 keeper heal drill needs the live VPS.)**
+*(none — 2026-10-09: the `decommission --check` gate shipped this run and is
+  recorded under Done. Next run picks from Proposed, whose newest entries are
+  the 10-09 remote-registry **S** (needs the idle VPS) and, still open, **Train:
+  tokenise the 84** (M, oldest) and **Train: attribute the deaths per player**
+  (S, on-box). Prefer a new on-box **S** the next devlog names.)**
 
 ## Done
+
+- **pi-cicd — make decommission assert, not just list** — done 2026-10-09
+  (item 1 of the 10-09 devlog radar list, tagged **S** and on-box; the
+  residual the 10-08 ship left against itself — the tool printed what a
+  project owned, but nothing said *"this project is actually clean"* in a
+  way another job could call). Shipped in pi-cicd `0b32bb7`:
+  - `decommission PROJECT --check` — a gate that changes **nothing** and
+    exits **3** while the project still owns any **locally removable**
+    artifact (a unit or a cron job — the kinds `--apply` can act on), else
+    **0**. A repo or a remote task is reported but never makes the run
+    unclean, because the tool cannot remove either — the gate's verdict
+    matches exactly what it could fix.
+  - `--check` and `--apply` are an `argparse` mutually exclusive group, so
+    a gate can never be mistaken for a removal. `--json` gained
+    `locally_removable` (names) and `clean` (bool) so a calling job can
+    branch on either.
+  - Unclassifiable artifacts still win: a `.socket` leftover exits **2**
+    before the check verdict, exactly as before.
+  - **Acceptance as tests** (`tests/test_decommission.py`, 3 new): a stub
+    project with one leftover unit makes `--check` exit 3 and name
+    `widget.service`, with a recording runner asserting **zero commands
+    ran**; once the units and the cron job are gone the same project is
+    clean (exit 0) while its repo and remote task are still **reported**;
+    and `--check --apply` together is refused by argparse.
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_decommission.py tests/test_install_sh.py -q` → **11 passed**;
+    live on this Pi `decommission forex-copybot --check` → `CLEAN — nothing
+    locally removable remains`, exit 0 (the 10-07 teardown really did leave
+    no units or cron), and `decommission radar --check` → `NOT CLEAN — 2
+    locally removable artifact(s) remain` naming the two `Radar implementer`
+    cron jobs, exit 3 (while the repo is listed, correctly, as *will NOT
+    touch*). pi-cicd commit `0b32bb7`, pushed. Repo:
+    <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** the exit code is the contract; no calling job is wired
+    to it yet (that is a caller's change), and the remote-task half still
+    depends on a registry nothing populates — filed as its own Proposed S
+    above.
 
 - **pi-cicd — a decommission runbook** — done 2026-10-08 (the 10-08 devlog's
   new radar **S**; the manual forex teardown left three scheduled tasks on the
@@ -2144,6 +2191,21 @@ Append-only, one line per run — including failures and no-ops.
   the first local gate attempt (`--check` + live `--fetch --drift` + `release_check.sh`) was
   killed by the tool's 420 s ceiling while the full suite ran, so the push cites the targeted
   suites and the lint gate and CI carries the full suite.
+
+- 2026-10-09 — implementer run: synced the 10-09 devlog radar list (three items:
+  **make decommission assert, not just list** — adopted as the pick, S and on-box;
+  **give the remote half a registry with something in it** — new, S, needs the idle
+  VPS, added to Proposed; *attribute the deaths per player* — already Proposed, left
+  as the S it is). Shipped in pi-cicd the `decommission --check` gate (`0b32bb7`):
+  exits 3 while a project still owns any locally removable artifact (unit or cron
+  job), 0 once clean, reporting — never counting — a repo or remote task it cannot
+  remove; `--check`/`--apply` are mutually exclusive and `--json` gained
+  `locally_removable` + `clean`. Evidence: **11 passed** across
+  `tests/test_decommission.py` + `tests/test_install_sh.py` (3 new tests), and live
+  `decommission forex-copybot --check` → CLEAN exit 0 while `decommission radar
+  --check` → NOT CLEAN exit 3 naming its two cron jobs. Budget honesty: ≈15 tool
+  calls, inside the 20-call contract. No ruff binary on this box, so CI carries the
+  lint gate.
 
 ## Notes
 
