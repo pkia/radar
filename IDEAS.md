@@ -155,13 +155,59 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-09: the `decommission --check` gate shipped this run and is
-  recorded under Done. Next run picks from Proposed, whose newest entries are
-  the 10-09 remote-registry **S** (needs the idle VPS) and, still open, **Train:
+*(none — 2026-10-10: the new 10-10 devlog **S** `staleness` (notice when a
+  service is older than its code) was picked and shipped the same run; see
+  Done. Next run picks from Proposed, whose newest entries are the 10-09
+  remote-registry **S** (needs the idle VPS) and, still open, **Train:
   tokenise the 84** (M, oldest) and **Train: attribute the deaths per player**
   (S, on-box). Prefer a new on-box **S** the next devlog names.)**
 
 ## Done
+
+- **pi-cicd — notice when a service is older than its code** — done 2026-10-10
+  (the new top-of-list **S** in posts/2026-10-10.html, on-box; the day's own
+  incident — a control plane serving pre-fix code — was found by eye, not by a
+  check, and only because the real work was blocked). Shipped in pi-cicd
+  `6bb0186`:
+  - `staleness UNIT --repo DIR [--path SUBPATH] [--grace SEC] [--json]
+    [--verbose]` — a read-only report comparing when the process started
+    against the newest commit touching its code.
+  - the process side is `systemctl show -p ActiveState -p
+    ActiveEnterTimestampMonotonic`; the monotonic stamp is converted to
+    wallclock as `(now - uptime) + us/1e6`, the two-timeline arithmetic
+    pi-doctor's dark-window check uses, with uptime read from the kernel.
+  - exit 0 fresh and **silent** (a unit whose code has not moved stays quiet
+    forever), 1 STALE naming the unit, its start instant and the commit
+    (sha + date + subject), 2 unmeasurable (systemd silent, repo not a git
+    repo, no commit touches the path) — 1 and 2 on stderr, so a caller
+    branches on the code. A unit that is not running is exit 0: a stopped
+    process cannot serve stale code; `--verbose` reports the reading anyway.
+  - **It cannot restart anything**, asserted twice: every argv the recording
+    runner sees is `systemctl show` or `git log`, and the source carries no
+    restart/stop/kill/disable verb (`--grace` absorbs the deploy window where
+    a restart legitimately lags its commit).
+  - **Acceptance as tests** (`tests/test_staleness.py`, 9 new; a real tmp git
+    repo with pinned commit dates against a recording systemctl runner):
+    started before the newest commit → rc 1 naming the sha and subject while
+    the recorded argv stays read-only; restarted after it → rc 0 silent; code
+    that has not moved → rc 0 silent; a restart lagging its commit inside
+    `--grace` → rc 0 silent; a stopped unit → rc 0, reported only under
+    `--verbose`; a repo/path with no commits → rc 2, named; `--json` carries
+    start_epoch, the commit and `gap_s`. `install.sh` links the tool and
+    `tests/test_install_sh.py`'s TOOLS list grows.
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_staleness.py tests/test_install_sh.py -q` → **10 passed**; live
+    on this Pi `staleness ais-catcher.service --repo ais_analysis` → OK
+    (started 2026-10-10 05:31:43, newest commit 2026-08-31), and the stale
+    branch proven against a **real running process** by pointing
+    `ntfy.service` at a temp repo holding one commit made seconds earlier →
+    `STALE`, rc 1, naming that commit. pi-cicd commit `6bb0186`, pushed;
+    **CI green on it (run 38024444980, conclusion success)**. Repo:
+    <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** nothing is scheduled — the check is a tool, and wiring it
+    to a timer (and naming each service/repo pair) is a config decision; no
+    real service was restarted, so a live STALE finding on a real pair is a
+    future report by whoever points it at one.
 
 - **pi-cicd — make decommission assert, not just list** — done 2026-10-09
   (item 1 of the 10-09 devlog radar list, tagged **S** and on-box; the
@@ -2206,6 +2252,26 @@ Append-only, one line per run — including failures and no-ops.
   --check` → NOT CLEAN exit 3 naming its two cron jobs. Budget honesty: ≈15 tool
   calls, inside the 20-call contract. No ruff binary on this box, so CI carries the
   lint gate.
+
+- 2026-10-10 — implementer run: synced the 10-10 devlog radar list (three
+  items: **notice when a service is older than its code** — new today, S,
+  on-box, adopted as the pick; **give the remote half a registry with
+  something in it** — the 10-09 S, restated, still needs the idle VPS;
+  *attribute the deaths per player* — already Proposed, unchanged). Shipped
+  the `staleness` tool in pi-cicd (`6bb0186`): a read-only report comparing a
+  systemd unit's process start against the newest commit touching its code —
+  exit 1 naming both when the process is older, 0 fresh and silent, 2 when a
+  side cannot be measured, structurally unable to restart anything. Evidence:
+  **10 passed** in `tests/test_staleness.py` + `tests/test_install_sh.py`
+  (9 new), live readings on real units (ais-catcher and prometheus fresh), and
+  the stale branch proven on a real process pointed at a repo committed
+  seconds before → rc 1. CI green (run 38024444980). Budget honesty: ≈25 tool
+  calls, over the 20-call contract — the extra pass was the live hunt for a
+  real STALE pair (every genuine service/repo pair on this box is fresh, so
+  the failing branch was proven by pointing a real unit at a real fresh
+  commit instead). LESSONS.md left alone: no new trap — the
+  monotonic→wallclock conversion is the one pi-doctor already documents, and
+  it is asserted in the tool's docstring and in its tests.
 
 ## Notes
 
