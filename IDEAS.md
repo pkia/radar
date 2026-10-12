@@ -13,6 +13,36 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd — make a crash leave a receipt** *(S, on-box; new in
+  posts/2026-10-12.html, its top item)* — the 10-12 devlog's forensic dead
+  end: a box that logs to RAM can only say what happened before a crash if
+  the minutes before it were copied out first, and the copy-out runs once a
+  night — so the crash left a 26-minute hole, `vcgencmd get_throttled` read
+  `0x0` ("since last boot") and the durable copy held nothing from that day.
+  Next step: get a small, durable, low-volume slice of the journal onto disk
+  continuously (priority warning and above, or a periodic flush mirroring
+  the nightly sync) plus a check that reads back the previous boot and says
+  *"no shutdown sequence recorded"* out loud. **Acceptance: after a forced
+  unclean reboot the durable copy holds entries from the five minutes before
+  the boot and the check quotes them; with the durable slice disabled the
+  check reports the missing shutdown record explicitly; nothing in the tool
+  restarts, reboots or powers anything off.** Split note for the picker: the
+  check half is provable on this box from recorded journals; a genuinely
+  forced reboot is not something this loop may do, so the slice half must be
+  shipped as config + fixture-proven, stated as such.
+
+- **twitter-launch — an unpostable item must be skipped and reported, not
+  retried every window** *(S, on-box; new in posts/2026-10-12.html)* — one
+  image whose URL could not be read cost the whole day's posting and was
+  queued first for the next window. Next step: on a refusal, move the item
+  aside with the error attached so it cannot block the queue, report the
+  failure once, and let the next due item post in the same run.
+  **Acceptance: with an item whose image cannot be read, the window reports
+  one failure, quarantines that item with its error, and the next due item
+  still goes out; a healthy item takes exactly the path it takes today.**
+  Stretch, the sharper half: make the pre-flight probe report what the
+  *internet* sees rather than what the box sees.
+
 - **pi-cicd — give the remote half a registry with something in it** *(S;
   new in posts/2026-10-09.html; needs the idle VPS)* — `decommission`
   reports remote tasks from `/etc/decommission-remotes.json`, a file nothing
@@ -155,14 +185,56 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-10: the new 10-10 devlog **S** `staleness` (notice when a
-  service is older than its code) was picked and shipped the same run; see
-  Done. Next run picks from Proposed, whose newest entries are the 10-09
-  remote-registry **S** (needs the idle VPS) and, still open, **Train:
-  tokenise the 84** (M, oldest) and **Train: attribute the deaths per player**
-  (S, on-box). Prefer a new on-box **S** the next devlog names.)**
+*(none — 2026-10-12: the 10-11 devlog's top **S** (teach the staleness
+  report the difference between stale and stale-that-matters) was picked and
+  shipped the same run; see Done. Next run picks from Proposed, whose newest
+  entries are the 10-12 pair — pi-cicd *make a crash leave a receipt*
+  (S, on-box) and twitter-launch's unpostable-item quarantine (S, on-box) —
+  plus the still-open remote-registry **S** (needs the idle VPS) and the two
+  Train items (tokenise the 84, M; deaths per player, S). Prefer a new on-box
+  **S** the next devlog names.)*
 
 ## Done
+
+- **pi-cicd — teach the staleness report stale-on-purpose** — done 2026-10-12
+  (the top **S** of the 10-11 devlog radar list, on-box; the 10-11 implementer
+  run died at dispatch, so this run resumed the same pick one day late). That
+  sweep flagged `prometheus.service` against the pi-cicd checkout and
+  `xmedia.service` against twitter-launch — pairings where a process being
+  older than the newest commit is *expected*, because a commit in that
+  directory is not a reason to restart everything that reads it. Two flags a
+  human had to know how to read; now they are data.
+  - `staleness UNIT --repo DIR [--allowlist FILE]` — one entry per line,
+    `<unit-glob> <repo-glob> [reason]`, `#` comments, the repo matched on its
+    full path *and* its basename; default path `/etc/staleness-allowlist`
+    (`$STALENESS_ALLOWLIST_FILE`). A matching pair exits **0** and prints
+    `staleness: OK — <unit> is stale …, allowlisted: <reason>`, so the
+    reading stays visible without being a finding; `--json` gained
+    `state: allowlisted` and `allow_reason`.
+  - **An absent, empty or unreadable file is today's behaviour exactly**
+    (exit 1), asserted — an allowlist that failed open would silence the tool
+    permanently. The measurement is still made on an allowlisted pair (the
+    JSON carries the real `gap_s`); only the verdict changes, and the source
+    still carries no restart path.
+  - **Acceptance as tests** (`tests/test_staleness.py`, 3 new): an allowlisted
+    pair exits 0 naming the reason while stderr stays empty; deleting the
+    entry — and pointing at a file that does not exist — restores exit 1 with
+    `STALE`; an entry naming another unit does not cover the pair; a bare
+    entry defaults its reason; and `--json` reports allowlisted-with-reason
+    only when the entry matched (a fresh pair stays `fresh`).
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_staleness.py tests/test_install_sh.py -q` → **13 passed**;
+    live, the same reading twice on a real unit — `staleness ntfy.service
+    --repo <drill repo committed after ntfy started> --allowlist
+    /nonexistent` → `STALE`, rc 1, and with the drill allowlist → `OK …
+    allowlisted: drill entry: stale on purpose`, rc 0. Found en route **by
+    the suite**: `--json` was also printing the human line, so the machine
+    output would not parse — fixed before the commit (the first test run was
+    one failure, then 13 passed). pi-cicd commit `4a3795d`, pushed.
+  - **Not claimed:** no `/etc/staleness-allowlist` exists on this box (host
+    config stays the owner's), so live behaviour is unchanged until it does;
+    CI on `4a3795d` was not waited for this run — the local suite is green and
+    CI carries the ruff gate. Repo: <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — notice when a service is older than its code** — done 2026-10-10
   (the new top-of-list **S** in posts/2026-10-10.html, on-box; the day's own
@@ -2272,6 +2344,22 @@ Append-only, one line per run — including failures and no-ops.
   commit instead). LESSONS.md left alone: no new trap — the
   monotonic→wallclock conversion is the one pi-doctor already documents, and
   it is asserted in the tool's docstring and in its tests.
+
+- 2026-10-12 — implementer run: synced the 10-11 and 10-12 devlog radar
+  lists (the 10-11 run died at dispatch, so its pick was still open). Picked
+  and shipped the 10-11 top **S** — the staleness allowlist — in pi-cicd
+  (`4a3795d`): a data file of unit/repo pairs that are meant to be stale now
+  exits 0 with the stated reason, and an absent file restores exit 1 exactly.
+  Evidence: **13 passed** in `tests/test_staleness.py` +
+  `tests/test_install_sh.py` (3 new), and the live pair `ntfy.service` against
+  a drill repo → `STALE` rc 1 / `allowlisted` rc 0; the suite caught one real
+  bug en route (`--json` printed the human line too). The 10-12 pair (pi-cicd
+  *make a crash leave a receipt*, twitter-launch's unpostable-item quarantine)
+  and the 10-11 remote-registry item are recorded in Proposed. Budget honesty:
+  ≈23 tool calls, over the 20-call contract — the overrun is the board record
+  itself (three targeted patches plus two pushes), not a wasted discovery
+  pass. LESSONS.md left alone: no new trap, though the `--json`-prints-both
+  bug is the same shape as the earlier "a caller parses stdout" class.
 
 ## Notes
 
