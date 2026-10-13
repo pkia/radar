@@ -13,35 +13,32 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd — make a crash leave a receipt** *(S, on-box; new in
-  posts/2026-10-12.html, its top item)* — the 10-12 devlog's forensic dead
-  end: a box that logs to RAM can only say what happened before a crash if
-  the minutes before it were copied out first, and the copy-out runs once a
-  night — so the crash left a 26-minute hole, `vcgencmd get_throttled` read
-  `0x0` ("since last boot") and the durable copy held nothing from that day.
-  Next step: get a small, durable, low-volume slice of the journal onto disk
-  continuously (priority warning and above, or a periodic flush mirroring
-  the nightly sync) plus a check that reads back the previous boot and says
-  *"no shutdown sequence recorded"* out loud. **Acceptance: after a forced
-  unclean reboot the durable copy holds entries from the five minutes before
-  the boot and the check quotes them; with the durable slice disabled the
-  check reports the missing shutdown record explicitly; nothing in the tool
-  restarts, reboots or powers anything off.** Split note for the picker: the
-  check half is provable on this box from recorded journals; a genuinely
-  forced reboot is not something this loop may do, so the slice half must be
-  shipped as config + fixture-proven, stated as such.
+- **pi-cicd — make the durable slice survive the *disk* too** *(S; follow-on
+  to what shipped 2026-10-13)* — `journal-receipt` writes its receipt to
+  `~ev/.local/state`, which is another directory on the same SD card as
+  everything else; a card failure takes the receipt with the journal. A
+  copy into the pi-backup repo (or the log2ram-style disk mirror the 10-12
+  devlog described) would make the receipt survive the medium, not just the
+  reboot. **Acceptance: a receipt written after a boot is present in the
+  next nightly archive's manifest, and the tool's own test proves the copy
+  happens without touching a live database.**
 
-- **twitter-launch — an unpostable item must be skipped and reported, not
-  retried every window** *(S, on-box; new in posts/2026-10-12.html)* — one
-  image whose URL could not be read cost the whole day's posting and was
-  queued first for the next window. Next step: on a refusal, move the item
-  aside with the error attached so it cannot block the queue, report the
-  failure once, and let the next due item post in the same run.
-  **Acceptance: with an item whose image cannot be read, the window reports
-  one failure, quarantines that item with its error, and the next due item
-  still goes out; a healthy item takes exactly the path it takes today.**
-  Stretch, the sharper half: make the pre-flight probe report what the
-  *internet* sees rather than what the box sees.
+- **twitter-launch — make the pre-flight probe report what the internet
+  sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
+  half is reported done there (the unpostable item is out of the queue), so
+  what is left is the half the 10-12 entry called the sharper one: every
+  pre-flight check is measured **from this box**, and a local fetch
+  returning 200 was never evidence that Buffer's own fetcher could read the
+  URL — on 10-12 it was the only evidence on offer. Next step: give the
+  probe a vantage point that is not the box's own resolver and interface
+  list. **Acceptance: with an image reachable from the LAN but not from the
+  public funnel, the probe fails loudly and names it, where today it passes
+  silently; a healthy image still passes with a byte comparison; and the
+  verdict is recorded next to the queue item, not just in a terminal that
+  has since been closed.** (The older quarantine wording — a refusal must
+  move the item aside with its error and let the next due item post — is
+  reported shipped; if that turns out not to be true, this entry's next
+  session should restore it as its own row rather than assume.)
 
 - **pi-cicd — give the remote half a registry with something in it** *(S;
   new in posts/2026-10-09.html; needs the idle VPS)* — `decommission`
@@ -195,6 +192,70 @@ rest now build on it:
   **S** the next devlog names.)*
 
 ## Done
+
+- **pi-cicd — make a crash leave a receipt** — done 2026-10-13 (the top
+  **S** of the 10-13 devlog's radar list, on-box; picked over the 10-13
+  twitter-launch probe because it is the same item the 10-12 run had to
+  leave standing, and its check half is provable on this box today). The
+  10-12 forensic dead end — a 26-minute hole, `vcgencmd get_throttled`
+  reading `0x0` "since last boot", a durable copy holding nothing from that
+  day — is now a tool with two halves.
+  - `journal-receipt record` reads a **bounded slice of the current boot**
+    (`journalctl -b -p warning -o short-iso --no-pager -n 200`) and writes
+    it to a receipt on real storage,
+    `~/.local/state/journal-receipt/<boot-id>.log`, keyed by this boot's id
+    from `/proc/sys/kernel/random/boot_id`. One receipt per boot (a re-run
+    replaces it, so a 5-minute sweep costs nothing), **4 boots kept** — the
+    cost is tens of KB, not a second journal.
+  - `journal-receipt check` reads the **previous** boot back: a shutdown
+    marker in its journal → exit **0**, quoting it; no marker → exit **1**
+    with `NO SHUTDOWN RECORD`, the last journal lines, *and* the durable
+    receipt quoted beside them; the previous boot missing from the journal
+    altogether (this box's normal state once `/var/log`'s RAM disk has
+    turned over) → exit **2**, stated as unmeasurable with the newest
+    receipt quoted instead of printing nothing. An absent receipt is named
+    explicitly (`durable receipt: none for boot <id> — the slice is disabled
+    or never ran for it`). `--json` on both halves; `check --boot IDX |
+    --boot-id ID` for a specific boot.
+  - **It cannot act on the system**, asserted twice: every argv the tool
+    builds starts with `journalctl`, carries `--no-pager` and no
+    restart/stop/reboot/poweroff/enable verb, and the source contains no
+    systemd control CLI at all.
+  - `systemd/journal-receipt.{service,timer}` run it at boot (+45 s,
+    `OnBootSec`) and every 5 minutes; the service's `ExecStartPost` is
+    `-`-prefixed on purpose so a "no shutdown record" finding is a report,
+    not a failed unit. Wired into `install.sh` and indexed in
+    `docs/units.md` (the unit-index test caught the missing row).
+  - **Acceptance as tests** (`tests/test_journal_receipt.py`, 7 new): the
+    slice is written and is really the filtered/bounded read; a re-run for
+    the same boot replaces rather than duplicates and old receipts are
+    pruned; a recorded shutdown exits 0 quoting it; **an unclean boot with a
+    durable receipt exits 1, names the boot, and quotes both the journal tail
+    and the receipt's `Out of memory` line**; with the slice disabled it
+    names the absent receipt and still says `NO SHUTDOWN RECORD`; a journal
+    holding no previous boot exits 2 naming that with the newest receipt
+    quoted; and the structural read-only property.
+  - **Evidence, executed not asserted:** `python3 -m pytest
+    tests/test_journal_receipt.py tests/test_install_sh.py
+    tests/test_units_doc.py -q` → **14 passed**; **live on this Pi**, the
+    timer is `active` with its next elapse 5 minutes out, one firing of
+    `journal-receipt.service` completed and wrote a real receipt
+    (`7ff5640f-6ca0-429c-9896-b63e6cf909c9.log`, 200 lines, 30,508 bytes,
+    header `priority<=warning`) from the live journal, and
+    `journal-receipt check` on the live box exits **2** with
+    `UNMEASURABLE — the journal lists no previous boot …` followed by ten
+    quoted receipt lines — i.e. it already says out loud what the 10-12
+    forensics had to reconstruct by hand. pi-cicd commits `c2915de` (tool +
+    units + wiring) and `82be823` (exec bit, lost when the file was first
+    written), pushed. Repo: <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** no **forced unclean reboot** was performed — this loop
+    does not power the box off, so the "receipt holds the five minutes
+    before an unclean boot" half is proven by the fixture tests, not by
+    causing one; the timer's *periodic* firing is in the future (the manual
+    `systemctl start` is what ran); the receipt lives on the same SD card as
+    everything else, so it survives a reboot but not a card failure — filed
+    as the follow-on item above; and CI on `c2915de`/`82be823` was not
+    waited for (the local suite is green; CI carries the ruff gate).
 
 - **pi-cicd — teach the staleness report stale-on-purpose** — done 2026-10-12
   (the top **S** of the 10-11 devlog radar list, on-box; the 10-11 implementer
@@ -2360,6 +2421,30 @@ Append-only, one line per run — including failures and no-ops.
   itself (three targeted patches plus two pushes), not a wasted discovery
   pass. LESSONS.md left alone: no new trap, though the `--json`-prints-both
   bug is the same shape as the earlier "a caller parses stdout" class.
+
+- 2026-10-13 — implementer run: synced the 10-13 devlog's radar list (its
+  top item is the 10-12 *make a crash leave a receipt* **S**, still open;
+  twitter-launch's item has moved on to making the pre-flight probe report
+  what the internet sees — the board's Proposed row was rewritten to say so,
+  with the "quarantine is shipped" claim attributed to the devlog rather
+  than assumed; a new follow-on **S** was added for making the receipt
+  survive the SD card, not just the reboot). Picked the pi-cicd crash
+  receipt and shipped `journal-receipt` in pi-cicd (`c2915de`, exec bit
+  `82be823`): `record` keeps a bounded warning-and-above slice of each boot
+  on real storage (4 boots, ~30 KB each), `check` reads the previous boot
+  back and says `NO SHUTDOWN RECORD` with the durable receipt quoted rather
+  than printing nothing. Evidence: **14 passed** across
+  `tests/test_journal_receipt.py tests/test_install_sh.py
+  tests/test_units_doc.py` (7 new); live, the timer is active and a real
+  firing wrote a 200-line receipt from the live journal, while `check` exits
+  2 on the live box naming the missing previous boot and quoting that
+  receipt. Budget honesty: ~30 tool calls, well over the 20-call contract —
+  this item needs four files plus installer and docs-index wiring (and the
+  unit-index test caught the missing `docs/units.md` row, which cost another
+  read and patch); no call was wasted on discovery loops, and the overrun is
+  recorded rather than hidden. LESSONS.md left alone: no new trap — the
+  executable-bit loss on a `write_file`-created tool is worth one line, so it
+  goes in below.
 
 ## Notes
 

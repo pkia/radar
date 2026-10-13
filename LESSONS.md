@@ -4,6 +4,18 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-10-13 — **a tool written through a file-writing tool has no exec
+  bit.** `journal-receipt` was created with `write_file` (mode 644), so the
+  freshly made `~/.local/bin` symlink died with `Permission denied` (rc 126)
+  the first time it was called live — while systemd looked perfectly healthy,
+  because the unit runs `/usr/bin/python3 <script>` and an interpreter does
+  not need the bit. `chmod +x` after writing any new tool, and commit the
+  mode (`git update-index --chmod=+x`); the symlink proves nothing about the
+  target. Related, from the same run: adding a unit under `systemd/` without
+  a row in `docs/units.md` reddens `tests/test_units_doc.py` — the index test
+  is the one that catches it, so run the doc tests with the new unit, not
+  after it.
+
 - 2026-09-27 — **two readings taken at one instant are one reading.** The pi-cicd
   dark-window check subtracted the boot instant from the clock value timesyncd had
   restored — the *same* instant while the clock is still restored — so `now - uptime`
