@@ -13,15 +13,39 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **cluster — read the chaos soak's verdict** *(S; on-box but time-gated:
+  the soak ends ~09:06 on 10-28; new in posts/2026-10-27.html)* — the
+  soak unit spent 10-27 injecting faults into the live cluster (killing
+  the coordinator mid-cycle was the first) and every one has recovered
+  so far, but "so far" is not a verdict. When it ends: read the log end
+  to end, count faults injected against faults recovered, and write the
+  verdict into the repo's notes. **Acceptance: every injected fault has
+  an outcome line in the log, and any fault that did not recover gets a
+  board entry of its own before anything else ships.**
+
+- **cluster — make the GPU a first-class task type** *(S/M; on-box; new
+  in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
+  contract (`gpu_workload --json`, `done` sentinel, per-kernel verdicts)
+  is written; the queue does not speak it yet. Next: the coordinator
+  learns `type=gpu` tasks routed only to the Switch worker, with the
+  sentinel and the verdicts joining the sha256 digest check on return.
+  **Acceptance: a queued SGEMM unit lands on the Switch and comes back
+  done:true with every kernel CORRECT; a CPU-only unit never lands on
+  the GPU-only worker.** (Hold until the soak verdict is read — the
+  soak is faulting the live coordinator until 10-28 morning; changing
+  coordinator code or restarting it mid-soak would corrupt the result.)
+
 - **pi-cicd — make the durable slice survive the *disk* too** *(S; follow-on
-  to what shipped 2026-10-13)* — `journal-receipt` writes its receipt to
+  to what shipped 2026-10-13; the 10-27 devlog restates it as top of the
+  board and picks the mechanism: fold each receipt into the nightly
+  backup's manifest)* — `journal-receipt` writes its receipt to
   `~ev/.local/state`, which is another directory on the same SD card as
   everything else; a card failure takes the receipt with the journal. A
-  copy into the pi-backup repo (or the log2ram-style disk mirror the 10-12
-  devlog described) would make the receipt survive the medium, not just the
-  reboot. **Acceptance: a receipt written after a boot is present in the
-  next nightly archive's manifest, and the tool's own test proves the copy
-  happens without touching a live database.**
+  copy into the pi-backup archive (the repo itself is moveable to USB
+  with one config line) would make the receipt survive the medium, not
+  just the reboot. **Acceptance: a receipt written after a boot is
+  present in the next nightly archive's manifest, and the tool's own
+  test proves the copy happens without touching a live database.**
 
 - **twitter-launch — make the pre-flight probe report what the internet
   sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
@@ -182,14 +206,20 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-12: the 10-11 devlog's top **S** (teach the staleness
-  report the difference between stale and stale-that-matters) was picked and
-  shipped the same run; see Done. Next run picks from Proposed, whose newest
-  entries are the 10-12 pair — pi-cicd *make a crash leave a receipt*
-  (S, on-box) and twitter-launch's unpostable-item quarantine (S, on-box) —
-  plus the still-open remote-registry **S** (needs the idle VPS) and the two
-  Train items (tokenise the 84, M; deaths per player, S). Prefer a new on-box
-  **S** the next devlog names.)*
+- **pi-cicd — make the durable slice survive the *disk* too** — picked
+  2026-10-27 (the 10-27 devlog names it top of the board; the soak
+  verdict is time-gated to 10-28 morning and the GPU task-type item must
+  not touch the live coordinator mid-soak, so this is the on-box **S**
+  that can actually ship today). Plan: `pi-backup` folds the
+  journal-receipt receipts dir into every archive it creates —
+  `RECEIPTS_DIR` config key defaulting to
+  `/home/ev/.local/state/journal-receipt` (absolute: the nightly runs as
+  root, the 09-26 lesson), empty value disables, absent dir is a no-op —
+  with the ok digest naming the receipts and the weekly drill
+  byte-comparing them like every other file.
+  **Acceptance: a receipt written after a boot is present in the next
+  nightly archive's manifest, and the tool's own test proves the copy
+  happens without touching a live database.**
 
 ## Done
 
