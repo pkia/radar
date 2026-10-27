@@ -206,22 +206,81 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — make the durable slice survive the *disk* too** — picked
-  2026-10-27 (the 10-27 devlog names it top of the board; the soak
-  verdict is time-gated to 10-28 morning and the GPU task-type item must
-  not touch the live coordinator mid-soak, so this is the on-box **S**
-  that can actually ship today). Plan: `pi-backup` folds the
-  journal-receipt receipts dir into every archive it creates —
-  `RECEIPTS_DIR` config key defaulting to
-  `/home/ev/.local/state/journal-receipt` (absolute: the nightly runs as
-  root, the 09-26 lesson), empty value disables, absent dir is a no-op —
-  with the ok digest naming the receipts and the weekly drill
-  byte-comparing them like every other file.
-  **Acceptance: a receipt written after a boot is present in the next
-  nightly archive's manifest, and the tool's own test proves the copy
-  happens without touching a live database.**
+*(none — 2026-10-27: the receipts-survive-the-disk item shipped the run
+it was picked; see Done. Next run: the newest Proposed are the 10-27
+pair — **read the soak verdict** (S, but time-gated: the soak ends
+~09:06 on 10-28, so the 10-28 04:00 implementer run must NOT read it
+early; the 10-29 run is the first safely after the end) and **make the
+GPU a first-class task type** (S/M, hold until the verdict is read —
+do not change or restart the live coordinator mid-soak). The pi-cicd
+disk item this run shipped was itself the devlog's "top of the board".)*
 
 ## Done
+
+- **pi-cicd — make the durable slice survive the *disk* too** — done
+  2026-10-27 (the 10-27 devlog's "top of the board" **S**, the follow-on
+  the 10-13 ship filed against itself: the crash receipt lived on the
+  same SD card as the journal it describes, so a card failure took both).
+  Shipped in pi-cicd `260b31c`:
+  - `pi-backup` folds journal-receipt's receipts into **every** archive:
+    `RECEIPTS_DIR` (default `/home/ev/.local/state/journal-receipt` —
+    absolute on purpose, the nightly runs as root; empty value disables;
+    a relative value is a config error) is staged into `SNAPSHOT_DIR`
+    **mirroring the live path, like the DB dumps**, and borg is handed
+    the staged copies, never the live files — the 5-minute timer
+    rewrites the receipt in place (truncate + write) and borg aborts on
+    a file that changes while it reads it, which would have made the
+    nightly flaky from the first week. Staging re-copies fresh every
+    run and prunes its own stale copies, so boots that age out of the
+    live dir (journal-receipt keeps 4) do not accumulate.
+  - **The fold is proven or the nightly says so:** a receipt that cannot
+    be staged fails the run loudly (the DB-dump contract), and the ok
+    digest — printed and published to `backups` — names the receipts
+    ("… (+1 crash receipt(s))"), so a receipt-less nightly is visible in
+    the notification. The weekly drill byte-compares the staged copies
+    like every other file. The receipt now lives wherever the archive
+    lives: moving `REPO=` to USB takes the crash receipts off the SD
+    card with one config line.
+  - **Acceptance as tests** (`tests/test_pi_backup.py`, 7 new): the
+    acceptance case — receipts staged, archived and extracted
+    byte-identical from a source tree holding **no SQLite file at all**,
+    with `stats["snapshots"] == []` proving no DB path ran and the borg
+    listing containing no live-receipt path (borg never reads the dir
+    the timer rewrites); default/override/validation of the key
+    (missing → default, empty → disabled, relative → config error);
+    absent-or-disabled changes nothing across three archive runs; stale
+    staged receipts pruned after a live receipt ages out; an unreadable
+    receipt raises, named; the drill byte-compares source + receipt; the
+    digest names the receipts in stdout and in the published payload.
+    `write_config` now pins `RECEIPTS_DIR=` so the suite stays hermetic
+    on this box, where the real dir exists.
+  - **Evidence, executed not asserted:** **41 passed** in the file, full
+    suite **344 passed, 1 skipped**; negative-controlled by execution —
+    with the pre-change `pi-backup` stashed, all 7 new tests **fail**
+    (7 failed, 34 deselected) and pass after the restore; **CI green**
+    on the push (run 40519655209). Live on this Pi the nightly path was
+    run by hand (`sudo pi-backup --dry-run run`): archive
+    `pi-2026-10-27T141551`, digest `43 files … (+1 crash receipt(s))`,
+    `verify: PASS`; the receipt written after this boot
+    (`f5be4e36-1410-46a7-b941-da1b0481c8f8.log`, header
+    `recorded_at=2026-10-27T14:11:05Z`) restored **out of that archive**
+    sha256-identical (`6355aa7e…`) to both the live file and the staged
+    copy — the "present in the nightly archive's manifest" half proven
+    end to end. Tonight's 03:30 timer runs the same checkout (service →
+    `~/.local/bin/pi-backup` → the repo file), so the *actual* next
+    nightly archive folds the receipt with zero wiring. Repo:
+    <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** the borg repo is still on the same SD card
+    (`/var/backups/pi-borg`) — the receipt now survives any reboot and
+    any journal loss, but a *card* failure still takes archive and
+    receipt together until the owner moves `REPO=` to USB (the move is
+    documented; the decision is theirs). A receipt rewritten inside the
+    microsecond window while `copyfile` runs could stage a torn copy for
+    that one night — bounded, self-healing (the next nightly re-stages),
+    and never a borg abort since borg reads only staged copies; not
+    detected or asserted tonight. And `pi-backup verify` rehearses DB
+    snapshots only — it does not yet assert receipts came back; the
+    drill's byte-compare is the standing receipt check.
 
 - **pi-cicd — make a crash leave a receipt** — done 2026-10-13 (the top
   **S** of the 10-13 devlog's radar list, on-box; picked over the 10-13
@@ -2475,6 +2534,30 @@ Append-only, one line per run — including failures and no-ops.
   recorded rather than hidden. LESSONS.md left alone: no new trap — the
   executable-bit loss on a `write_file`-created tool is worth one line, so it
   goes in below.
+
+- 2026-10-27 — implementer run: synced the 10-27 devlog radar list
+  (three items: **read the soak verdict** — new, S, but time-gated to
+  10-28 ~09:06, added to Proposed; **make the GPU a first-class task
+  type** — new, S/M, added to Proposed with a hold-until-after-the-
+  verdict note; **make the durable slice survive the disk** — already
+  Proposed, named top of the board by the devlog, and the pick). Shipped
+  in pi-cicd `260b31c`: pi-backup folds journal-receipt's receipts into
+  every archive — staged into SNAPSHOT_DIR mirroring the live path
+  (borg is handed the copy, never the live file the 5-minute timer
+  rewrites in place, which would have aborted the nightly with "file
+  changed while we backed it up"), staging failures are fatal, and the
+  ok digest names the receipts; the weekly drill byte-compares them.
+  Evidence: **344 passed, 1 skipped** in the suite (41 in the file, 7
+  new), all 7 new tests red against the stashed pre-change tool, CI
+  green (run 40519655209), and live the nightly path run by hand made
+  archive `pi-2026-10-27T141551` whose digest reads `(+1 crash
+  receipt(s))` with this boot's receipt restored out of it sha256-
+  identical to the live file. Budget honesty: ≈35 tool calls, well over
+  the 20-call contract — the overrun is the live-restore evidence tail
+  (a blocked `rm`, then a glob that expanded in the ev-shell before
+  sudo and could not traverse the root-owned 700 restore dir; the
+  restore itself had succeeded on the first attempt) plus the negative-
+  control stash round trip. LESSONS.md: one line on the hermeticity pin.
 
 ## Notes
 
