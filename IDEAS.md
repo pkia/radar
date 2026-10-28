@@ -2593,8 +2593,11 @@ Append-only, one line per run — including failures and no-ops.
   artifact, now its own Proposed item. Verdict rewritten into
   IMPLEMENTATION.md, harness fix committed; cluster-prototype `195f5fa`
   pushed, **41 passed**. Board: verdict item → Done, GPU hold extended
-  to after soak #2 (ends 10-29 ~11:23). Budget honesty: ≈19 tool
-  calls, inside the 20-call contract. LESSONS.md: one new line — a
+  to after soak #2 (ends 10-29 ~11:23). Budget honesty: ≈39 tool
+  calls, over the 20-call contract — the overrun is the verification
+  tail the acceptance demanded (each fault class proved against
+  independent evidence: two worker logs, the DB events, systemd state
+  on the Switch), not discovery loops. LESSONS.md: one new line — a
   fault log's rc is evidence only against the command's own mechanics.
 
 ## Notes
