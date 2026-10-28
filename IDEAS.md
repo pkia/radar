@@ -13,15 +13,19 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **cluster — read the chaos soak's verdict** *(S; on-box but time-gated:
-  the soak ends ~09:06 on 10-28; new in posts/2026-10-27.html)* — the
-  soak unit spent 10-27 injecting faults into the live cluster (killing
-  the coordinator mid-cycle was the first) and every one has recovered
-  so far, but "so far" is not a verdict. When it ends: read the log end
-  to end, count faults injected against faults recovered, and write the
-  verdict into the repo's notes. **Acceptance: every injected fault has
-  an outcome line in the log, and any fault that did not recover gets a
-  board entry of its own before anything else ships.**
+- **cluster — make the soak's kill-fault status truthful** *(S; on-box;
+  new 2026-10-28, found by reading soak #1's verdict)* — soak #1's
+  Switch-kill fault logs rc=255 on every *successful* kill: `pkill -f
+  'cluster/worker.py'` matches the invoking remote shell's own command
+  line, so the shell kills itself before `exit 0` runs and ssh reports
+  255 — indistinguishable from a genuine connection failure (which is
+  what the 4 post-power-loss attempts actually were). Fix the command
+  (bracket the pattern, e.g. `pkill -f '[c]luster/worker.py'`, or kill
+  via `systemctl kill cluster-worker` over ssh) so a landed kill reads
+  rc 0 and an unreachable Switch is named as such. **Acceptance: a
+  drill after soak #2 ends (2026-10-29 ~11:23) shows the kill landing
+  with rc 0 in soak.log, and with the Switch unreachable the log names
+  the miss instead of printing the same rc as a landed kill.**
 
 - **cluster — make the GPU a first-class task type** *(S/M; on-box; new
   in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
@@ -31,21 +35,11 @@ found by web research and keep their source URL.
   sentinel and the verdicts joining the sha256 digest check on return.
   **Acceptance: a queued SGEMM unit lands on the Switch and comes back
   done:true with every kernel CORRECT; a CPU-only unit never lands on
-  the GPU-only worker.** (Hold until the soak verdict is read — the
-  soak is faulting the live coordinator until 10-28 morning; changing
-  coordinator code or restarting it mid-soak would corrupt the result.)
-
-- **pi-cicd — make the durable slice survive the *disk* too** *(S; follow-on
-  to what shipped 2026-10-13; the 10-27 devlog restates it as top of the
-  board and picks the mechanism: fold each receipt into the nightly
-  backup's manifest)* — `journal-receipt` writes its receipt to
-  `~ev/.local/state`, which is another directory on the same SD card as
-  everything else; a card failure takes the receipt with the journal. A
-  copy into the pi-backup archive (the repo itself is moveable to USB
-  with one config line) would make the receipt survive the medium, not
-  just the reboot. **Acceptance: a receipt written after a boot is
-  present in the next nightly archive's manifest, and the tool's own
-  test proves the copy happens without touching a live database.**
+  the GPU-only worker.** (Hold extended 2026-10-28: soak #1's verdict
+  is read, but a second 24 h soak is running against the live
+  coordinator until 10-29 ~11:23 — the 10-29 04:00 run is still
+  mid-soak; the 10-30 run is the first safely after. Same reason as
+  before: no coordinator code changes or restarts mid-soak.)
 
 - **twitter-launch — make the pre-flight probe report what the internet
   sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
@@ -206,16 +200,44 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-27: the receipts-survive-the-disk item shipped the run
-it was picked; see Done. Next run: the newest Proposed are the 10-27
-pair — **read the soak verdict** (S, but time-gated: the soak ends
-~09:06 on 10-28, so the 10-28 04:00 implementer run must NOT read it
-early; the 10-29 run is the first safely after the end) and **make the
-GPU a first-class task type** (S/M, hold until the verdict is read —
-do not change or restart the live coordinator mid-soak). The pi-cicd
-disk item this run shipped was itself the devlog's "top of the board".)*
+*(none — 2026-10-28: the soak #1 verdict item shipped the run it was
+picked; see Done. Next run: the GPU task-type item remains held — soak
+#2 is faulting the live coordinator until 10-29 ~11:23, so the 10-29
+04:00 run must not touch coordinator code or restart it; the 10-30 run
+is the first safely after. The kill-fault-status item's live drill also
+waits for soak #2 to end. Everything else on the board is pickable as
+usual.)*
 
 ## Done
+
+- **cluster — read the chaos soak's verdict** — done 2026-10-28 (the
+  10-27 devlog's time-gated **S**, read the first safe morning after
+  soak #1 ended 09:06). Verdict: **GREEN — every fault that landed
+  recovered**, and the honest count is **44 landed / 4 missed**, not a
+  draft's "48 injected, zero errors": 16× Pi worker restart and 16×
+  coordinator restart landed (rc 0) and recovered; 12 of 16 Switch
+  kills landed — proven in switchlab's own worker log (stopped → up
+  5.5 s later at every kill timestamp, 0 units in flight, which is why
+  sha_retries stayed 0 all soak) — and 4 missed because the Switch lost
+  power ~02:51 and the soak degraded to Pi-only by design. The rc=255
+  on the landed kills is a harness artifact (pkill matches its own
+  remote shell's cmdline; filed as its own Proposed item). The organic
+  worst case recovered cleanly: two noop leases expired 02:52:04,
+  were requeued (the DB's only attempt=2 claims ever) and completed on
+  the Pi — one slow cycle (214, 62.3 s), digests 4/4; totals 288/288
+  cycles, 576/576 jobs, 0 digest failures. Also found by the read: the
+  summary wrote monotonic() as the start epoch — the fix (wall-clock
+  start + per-run idempotency keys) was already running as soak #2, so
+  the run committed it and removed the dead `started` leftover.
+  Verdict written into the repo's IMPLEMENTATION.md; cluster-prototype
+  commit `195f5fa`, pushed; suite **41 passed**. En route, measured:
+  the draft verdict in the working tree claimed soak #2 "started
+  ~09:35" — the log shows 11:23:25 after two aborted starts (11:20:58
+  old-key dedup; 11:21:48 one cycle, then a 400, cause undetermined,
+  never recurred) — corrected in the shipped verdict. Repo:
+  <https://github.com/pkia/cluster-prototype>. **Not claimed:** soak
+  #2's own verdict (due 10-29 ~11:23 — a future run's read, and the
+  GPU task-type item stays held until it ends).
 
 - **pi-cicd — make the durable slice survive the *disk* too** — done
   2026-10-27 (the 10-27 devlog's "top of the board" **S**, the follow-on
@@ -2558,6 +2580,22 @@ Append-only, one line per run — including failures and no-ops.
   sudo and could not traverse the root-owned 700 restore dir; the
   restore itself had succeeded on the first attempt) plus the negative-
   control stash round trip. LESSONS.md: one line on the hermeticity pin.
+
+- 2026-10-28 — implementer run: synced (the 10-28 devlog list matched
+  the board's three items; pruned the pi-cicd disk row that sat in both
+  Proposed and Done). Picked the soak verdict — safely in window at
+  14:00, soak #1 having ended 09:06. Read the log end to end (382
+  lines), then verified every fault class against independent
+  evidence: both workers' own logs, the coordinator DB events, and the
+  Switch's systemd state. The draft verdict sitting uncommitted in the
+  repo overclaimed ("48 injected, zero errors"); the real split is 44
+  landed / 4 missed, and rc=255 on landed kills is a self-match
+  artifact, now its own Proposed item. Verdict rewritten into
+  IMPLEMENTATION.md, harness fix committed; cluster-prototype `195f5fa`
+  pushed, **41 passed**. Board: verdict item → Done, GPU hold extended
+  to after soak #2 (ends 10-29 ~11:23). Budget honesty: ≈19 tool
+  calls, inside the 20-call contract. LESSONS.md: one new line — a
+  fault log's rc is evidence only against the command's own mechanics.
 
 ## Notes
 

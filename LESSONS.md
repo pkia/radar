@@ -4,6 +4,19 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-10-28 — **A fault log's rc is evidence only against the command's
+  own mechanics, not against the world.** Soak #1's Switch-kill logged
+  rc=255 on all 16 attempts, but 12 of them were *successful* kills:
+  `pkill -f 'cluster/worker.py'` matches the invoking remote shell's
+  own cmdline, so the shell self-kills before `exit 0` and ssh reports
+  255 — the same output a real connection failure gives (which the
+  other 4 were). A draft verdict trusted the line and got it wrong both
+  ways ("48 injected, zero errors"). When one status code has two
+  possible causes, prove the effect out-of-band (the worker's own log
+  showed stopped→up at every landed kill) before counting anything, and
+  fix the tool so the codes become distinguishable (bracket the
+  pattern: `pkill -f '[c]luster/worker.py'`).
+
 - 2026-10-13 — **a tool written through a file-writing tool has no exec
   bit.** `journal-receipt` was created with `write_file` (mode 644), so the
   freshly made `~/.local/bin` symlink died with `Permission denied` (rc 126)
