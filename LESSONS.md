@@ -4,6 +4,33 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-10-29 — **A negative control runs the real code, so its side
+  effects are real.** The NC of the soak-harness tests hung (by design —
+  the pre-fix end condition) on a fake-clock tight loop that reached
+  FAULT_EVERY=6 in milliseconds and fired the REAL fault lambdas: 879
+  systemctl restarts across ~21 minutes (start-limit finally stopped
+  it) and uncounted real pkills at the Switch — every one survived by
+  Restart=always, but the box churned and both units ended start-limit
+  failed. Guards, all now standard: (1) behavioral tests patch every
+  side-effecting module attr inert (here FAULTS and FAULT_EVERY), not
+  just the ones the assertion reads — a hang or an old checkout must
+  not change what the test can do to the world; (2) negative controls
+  run under `timeout -s KILL` — SIGTERM cannot kill a pytest that hangs
+  inside graceful shutdown, so the process outlives the tool call and
+  keeps side-effecting for as long as its loop lives; (3) after any NC
+  that touches a live system, diff the journal for the side-effecting
+  command names — the zero-delta check is part of the run, not a hope.
+
+- 2026-10-29 — **Run a harness the way its unit runs it.** The drill
+  invoked soak.py under sudo; sudo's HOME=/root has no ssh key, so
+  every kill reported "missed: Switch unreachable (rc=255)" while the
+  Switch was fine — the unit runs User=ev precisely so Path.home()
+  resolves to ev's key. The new per-rc verdict line is what made the
+  miss visible instead of silent, turning a confusing drill into a
+  one-line diagnosis. Corollary: an env-dependent identity (HOME, PATH,
+  key paths) is part of the harness contract; document the invocation
+  next to the env overrides.
+
 - 2026-10-28 — **A fault log's rc is evidence only against the command's
   own mechanics, not against the world.** Soak #1's Switch-kill logged
   rc=255 on all 16 attempts, but 12 of them were *successful* kills:

@@ -187,43 +187,73 @@ rest now build on it:
 
 ## In progress
 
-- **cluster — make the soak's kill-fault status truthful** *(S; on-box;
-  picked 2026-10-29 ~14:05; scope grown at pick time by measurement)* —
-  the original ask stands (bracket the pkill pattern so a landed kill
-  reads rc 0 and a miss is named), but the pick-time verification found
-  the drill's gate was never going to open on its own: soak #2 did NOT
-  end ~11:23 — it was still active past 14:01 and still faulting —
-  because the 10-28 wall-clock refactor left tests/soak.py comparing
-  `time.monotonic()` (uptime, ~245 000 s) against a wall-clock epoch
-  deadline (`while time.monotonic() < deadline`), a race it cannot lose
-  for ~56 000 years; soak #1's pre-refactor code derived both sides
-  from monotonic and self-ended at exactly 24 h. The same read found
-  the docstring's "summary written on SIGTERM" has been false since
-  birth (no signal handler exists — a `systemctl stop` kills the
-  process with no summary). The pick therefore carries, in one harness
-  file: (1) the bracketed kill with the rc allowed through (drop
-  `; exit 0`, which masked every outcome) and a per-rc verdict line in
-  soak.log — landed / missed (no matching process) / missed (Switch
-  unreachable); (2) the end condition back on one timeline so a soak
-  ends at SOAK_HOURS; (3) a real SIGTERM handler so the documented stop
-  path leaves a summary; (4) SOAK_SWITCH_HOST override so the
-  unreachable half of the drill runs without powering the Switch off.
-  The drill uses the harness's own env overrides
-  (SOAK_HOURS/SOAK_INTERVAL_MIN/SOAK_FAULT_EVERY) as a bounded short
-  soak, not a third 24 h run. **Acceptance (rewritten): in soak.log a
-  drill kill on the reachable Switch reads rc 0/landed, and with the
-  Switch host pointed at a closed port the same fault names the miss
-  with its reason instead of a bare rc; the drill soak ends by itself
-  at its deadline, and `systemctl stop` on a soak leaves a summary.**
-  Soak #2 was stopped by hand (its documented stop path) after this
-  scope was committed to the board — its summary was NOT auto-written
-  (pre-fix process, no handler: the exact bug class being fixed), so
-  its verdict read works from soak.log like any other evidence.
-
-*(2026-10-28 note retired: the "soak #2 until ~11:23" assumption it
-rested on was falsified by measurement — see above and the GPU row.)*
+*(none — 2026-10-29: the kill-fault item shipped the run it was picked;
+see Done. Next run: read soak #2's verdict from var/soak.log — 322
+cycles, every line green at the stop; its summary was never auto-written
+because the pre-fix process had no SIGTERM handler, so the read works
+from the log exactly the way the 10-28 run read soak #1's. The GPU
+task-type item's hold is lifted with the soak over — the 10-30 run may
+pick either.)*
 
 ## Done
+
+- **cluster — make the soak's kill-fault status truthful** — done
+  2026-10-29 (top Proposed item, picked ~14:05 after the run measured
+  soak #2 still alive past its assumed ~11:23 end and found why: the
+  10-28 wall-clock refactor left tests/soak.py comparing
+  `time.monotonic()` against a wall-clock epoch deadline — a race the
+  loop cannot lose — so soak #2 could never self-end; it was stopped by
+  hand at 14:11 via its documented stop path, ~26.8 h in, 322 cycles,
+  every line green). The pick grew to the harness defects the
+  acceptance drill depends on, shipped in cluster-prototype `cf4d52d`:
+  - **the kill fault is truthful:** pattern bracketed
+    (`'[c]luster/worker.py'`) and `; exit 0` dropped — it masked every
+    outcome — so pkill's rc is the evidence; inject_fault classifies
+    per rc: `landed (rc=0)` / `missed: no matching process (rc=1)` /
+    `missed: Switch unreachable (rc=255)`. Landed and missed can no
+    longer share a spelling in soak.log.
+  - **the deadline is one timeline again** (wall vs wall): a soak ends
+    itself at SOAK_HOURS.
+  - **the docstring's "summary written on SIGTERM" is finally true:** a
+    handler unwinds into the KeyboardInterrupt path that writes the
+    summary — `systemctl stop` leaves the numbers (soak #2's never got
+    written: the pre-fix process had no handler — the exact class
+    fixed).
+  - **SOAK_SWITCH_HOST** drills the unreachable case without powering
+    the Switch off.
+  **Acceptance, executed live:** drill A (Switch reachable,
+  SOAK_HOURS=0.02): kill faults at cycles 4 and 10 read
+  `landed (rc=0)` in soak.log; out-of-band, switchlab's cluster-worker
+  restarted at 14:51:58 — five seconds after the second landed kill.
+  Drill B (`SOAK_SWITCH_HOST=127.0.0.65`): the same fault reads
+  `missed: Switch unreachable (rc=255)` — named, never the landed
+  spelling — while cycles stay green Pi-only. Both drills ended
+  themselves at their deadline (~73 s). Tests
+  (`tests/test_soak_harness.py`, 7): bracketed rc-revealing kill
+  command; verdicts distinct and named; classifier wired to the kill
+  FAULTS entry; source pin — the loop compares wall against wall;
+  behavioral self-end over fake clocks; SIGTERM against the real
+  script exits 0 with a summary (pre-fix: rc=-15, none).
+  Negative-controlled on 7be9c53's soak.py under `timeout -s KILL`:
+  6 failed + the hang SIGKILLed (exit 137) with **zero** restart
+  commands in the journal. Suite **48 passed, 1 skipped in 10.05 s**;
+  **CI green on the tip** (run 40896326875). Commits: `cf4d52d`
+  (harness), `83ad198` (behavioral test's fault path made inert — see
+  LESSONS), `5c48953` + `e34068d` (two gpu-llm CI blockers, red since
+  08:52, fixed en route: referee_test's import error aborting pytest
+  collection repo-wide, then referee_qwen's undefined `LAST` failing
+  the F821 gate; ruff now installed on this box, gate verified locally
+  before push). Repo: <https://github.com/pkia/cluster-prototype>.
+  **Incident, owned honestly:** the first negative-control run fired
+  the REAL fault lambdas from its hang — 879 systemctl restarts
+  (start-limit stopped it at 14:37) and uncounted Switch pkills, every
+  one survived by Restart=always, coordinator integrity_check=ok
+  throughout; units were reset and restored active by the same run.
+  And the drill's first invocation ran under sudo, whose HOME=/root
+  has no ssh key — run the harness the way its unit runs (User=ev).
+  **Not claimed:** soak #2's verdict read (from soak.log — its summary
+  was never auto-written), the natural next pick; the GPU task-type
+  item (hold lifted, pickable).
 
 - **cluster — read the chaos soak's verdict** — done 2026-10-28 (the
   10-27 devlog's time-gated **S**, read the first safe morning after
@@ -2614,6 +2644,30 @@ Append-only, one line per run — including failures and no-ops.
   independent evidence: two worker logs, the DB events, systemd state
   on the Switch), not discovery loops. LESSONS.md: one new line — a
   fault log's rc is evidence only against the command's own mechanics.
+
+- 2026-10-29 — shipped the **soak kill-fault truthfulness** item
+  (cluster-prototype `cf4d52d`; plus `83ad198` test hardening and
+  `5c48953`/`e34068d` clearing two gpu-llm CI blockers that had kept
+  the repo red since 08:52). Pick-time measurement found soak #2 still
+  alive past its assumed ~11:23 end — its end condition could never
+  fire (monotonic vs wall-clock deadline, the 10-28 refactor's own
+  regression) — so it was stopped by hand at 14:11 (cycles 322, all
+  green; the wall-clock refactor that broke the loop shipped inside
+  the verdict commit this entry's predecessor describes). Harness
+  fixes: bracketed pkill with rc allowed through and per-rc verdict
+  lines (landed rc=0 / missed: no matching process / missed: Switch
+  unreachable), one-timeline deadline, real SIGTERM handler,
+  SOAK_SWITCH_HOST override. Acceptance drilled live: landed (rc=0)
+  twice in soak.log with the Switch worker's own restart 5 s later as
+  out-of-band proof; the miss named with a closed-port host; both
+  drills self-ended at their deadline. Suite 48 passed, 1 skipped;
+  CI green (40896326875). **Incident owned:** the first negative-
+  control run fired the real fault lambdas from its hang — 879
+  systemctl restarts (start-limit stopped it at 14:37) plus uncounted
+  Switch pkills, all survived by Restart=always; units reset and
+  restored active by the same run, coordinator integrity_check=ok
+  throughout. LESSONS: two new lines (NC side effects are real; run
+  harnesses the way their unit runs them).
 
 ## Notes
 
