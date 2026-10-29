@@ -13,20 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **cluster — make the soak's kill-fault status truthful** *(S; on-box;
-  new 2026-10-28, found by reading soak #1's verdict)* — soak #1's
-  Switch-kill fault logs rc=255 on every *successful* kill: `pkill -f
-  'cluster/worker.py'` matches the invoking remote shell's own command
-  line, so the shell kills itself before `exit 0` runs and ssh reports
-  255 — indistinguishable from a genuine connection failure (which is
-  what the 4 post-power-loss attempts actually were). Fix the command
-  (bracket the pattern, e.g. `pkill -f '[c]luster/worker.py'`, or kill
-  via `systemctl kill cluster-worker` over ssh) so a landed kill reads
-  rc 0 and an unreachable Switch is named as such. **Acceptance: a
-  drill after soak #2 ends (2026-10-29 ~11:23) shows the kill landing
-  with rc 0 in soak.log, and with the Switch unreachable the log names
-  the miss instead of printing the same rc as a landed kill.**
-
 - **cluster — make the GPU a first-class task type** *(S/M; on-box; new
   in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
   contract (`gpu_workload --json`, `done` sentinel, per-kernel verdicts)
@@ -35,11 +21,12 @@ found by web research and keep their source URL.
   sentinel and the verdicts joining the sha256 digest check on return.
   **Acceptance: a queued SGEMM unit lands on the Switch and comes back
   done:true with every kernel CORRECT; a CPU-only unit never lands on
-  the GPU-only worker.** (Hold extended 2026-10-28: soak #1's verdict
-  is read, but a second 24 h soak is running against the live
-  coordinator until 10-29 ~11:23 — the 10-29 04:00 run is still
-  mid-soak; the 10-30 run is the first safely after. Same reason as
-  before: no coordinator code changes or restarts mid-soak.)
+  the GPU-only worker.** (Hold lifted 2026-10-29: the board's "~11:23
+  end" was wrong — measured at 14:01 the soak was still active and
+  faulting, because its end condition can never fire (see In
+  progress); it was stopped by hand that afternoon via its documented
+  stop path. No coordinator code changed while it ran. The 10-30 run
+  is the first safely after.)
 
 - **twitter-launch — make the pre-flight probe report what the internet
   sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
@@ -200,13 +187,41 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-28: the soak #1 verdict item shipped the run it was
-picked; see Done. Next run: the GPU task-type item remains held — soak
-#2 is faulting the live coordinator until 10-29 ~11:23, so the 10-29
-04:00 run must not touch coordinator code or restart it; the 10-30 run
-is the first safely after. The kill-fault-status item's live drill also
-waits for soak #2 to end. Everything else on the board is pickable as
-usual.)*
+- **cluster — make the soak's kill-fault status truthful** *(S; on-box;
+  picked 2026-10-29 ~14:05; scope grown at pick time by measurement)* —
+  the original ask stands (bracket the pkill pattern so a landed kill
+  reads rc 0 and a miss is named), but the pick-time verification found
+  the drill's gate was never going to open on its own: soak #2 did NOT
+  end ~11:23 — it was still active past 14:01 and still faulting —
+  because the 10-28 wall-clock refactor left tests/soak.py comparing
+  `time.monotonic()` (uptime, ~245 000 s) against a wall-clock epoch
+  deadline (`while time.monotonic() < deadline`), a race it cannot lose
+  for ~56 000 years; soak #1's pre-refactor code derived both sides
+  from monotonic and self-ended at exactly 24 h. The same read found
+  the docstring's "summary written on SIGTERM" has been false since
+  birth (no signal handler exists — a `systemctl stop` kills the
+  process with no summary). The pick therefore carries, in one harness
+  file: (1) the bracketed kill with the rc allowed through (drop
+  `; exit 0`, which masked every outcome) and a per-rc verdict line in
+  soak.log — landed / missed (no matching process) / missed (Switch
+  unreachable); (2) the end condition back on one timeline so a soak
+  ends at SOAK_HOURS; (3) a real SIGTERM handler so the documented stop
+  path leaves a summary; (4) SOAK_SWITCH_HOST override so the
+  unreachable half of the drill runs without powering the Switch off.
+  The drill uses the harness's own env overrides
+  (SOAK_HOURS/SOAK_INTERVAL_MIN/SOAK_FAULT_EVERY) as a bounded short
+  soak, not a third 24 h run. **Acceptance (rewritten): in soak.log a
+  drill kill on the reachable Switch reads rc 0/landed, and with the
+  Switch host pointed at a closed port the same fault names the miss
+  with its reason instead of a bare rc; the drill soak ends by itself
+  at its deadline, and `systemctl stop` on a soak leaves a summary.**
+  Soak #2 was stopped by hand (its documented stop path) after this
+  scope was committed to the board — its summary was NOT auto-written
+  (pre-fix process, no handler: the exact bug class being fixed), so
+  its verdict read works from soak.log like any other evidence.
+
+*(2026-10-28 note retired: the "soak #2 until ~11:23" assumption it
+rested on was falsified by measurement — see above and the GPU row.)*
 
 ## Done
 
