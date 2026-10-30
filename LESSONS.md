@@ -4,6 +4,20 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-10-30 — **A soak verdict's kill evidence lives in the worker's
+  own log — not in soak.log, not in systemd.** soak.log's pre-fix kill
+  lines cannot distinguish landed-self-match from unreachable (both
+  rc=255); switchlab's ev1 cannot read the system journal; and the
+  unit's `NRestarts` counter is cumulative across incidents (60 after
+  the 10-29 pkill storm), so none of the three attributes a restart to
+  a timestamp. What does:
+  `switchlab:~/cluster/var/logs/worker-switchlab.log` writes
+  `worker stopped; 0 unit(s) were still active` at the kill second and
+  a `worker switchlab up` banner ~5 s later — pull the banners and
+  match programmatically (exactly one banner within ~15 s per kill
+  timestamp), reading the whole banner (cap=1 vs cap=3 across soaks is
+  a deploy between them, not noise).
+
 - 2026-10-29 — **A negative control runs the real code, so its side
   effects are real.** The NC of the soak-harness tests hung (by design —
   the pre-fix end condition) on a fake-clock tight loop that reached

@@ -187,15 +187,46 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-29: the kill-fault item shipped the run it was picked;
-see Done. Next run: read soak #2's verdict from var/soak.log — 322
-cycles, every line green at the stop; its summary was never auto-written
-because the pre-fix process had no SIGTERM handler, so the read works
-from the log exactly the way the 10-28 run read soak #1's. The GPU
-task-type item's hold is lifted with the soak over — the 10-30 run may
-pick either.)*
+*(none — 2026-10-30: soak #2's verdict read shipped the run it was
+picked; see Done. Pickable next: the GPU first-class task type (S/M,
+hold lifted — top of the queue), the twitter probe vantage (S), the
+pi-cicd remote registry (S).)*
 
 ## Done
+
+- **cluster — read soak #2's verdict** — done 2026-10-30 (the 10-30
+  devlog's top **S**, the board's named next pick after two runs
+  carried it as "Not claimed"; ended by hand-stop 10-29 ~14:11, so —
+  pre-fix process, no SIGTERM handler — no summary was auto-written and
+  the read worked from `var/soak.log` lines 345–720 exactly the way the
+  10-28 run read soak #1's). **Verdict: GREEN — all 53 faults landed
+  and all 53 recovered** (soak #1 was 44 landed / 4 missed). Window
+  2026-10-28 11:23:25 → last cycle 2026-10-29 14:08:27 (~26.8 h);
+  322/322 cycles contiguous, every line ok=True, digests 4/4,
+  sha_retries=0; 644/644 jobs, 0 failed, 0 digest failures. The log's
+  fault spellings are pre-fix and untrustworthy by construction (18
+  kills all read `rc=255`, 35 restarts all read `(ok)` — the truthful
+  harness landed after the stop), so every fault was corroborated
+  out-of-band: the Pi journal holds exactly 18 `cluster-worker` + 17
+  `cluster-coordinator` Stopped/Started pairs at the faults' own
+  seconds (35/35 restarts landed); switchlab's worker log holds exactly
+  18 `worker stopped; 0 unit(s) were still active` records + 18
+  `worker switchlab up` banners, one 5–6 s after every kill timestamp
+  across the whole window including overnight (18/18 kills landed; the
+  Switch never left the network — contrast soak #1's 02:51 power
+  loss). Zero requeues, zero attempt=2, zero lease expiries in the
+  window — organically the quietest soak yet. En route, measured: ev1
+  cannot read switchlab's system journal and the unit's `NRestarts=60`
+  is polluted by the 10-29 incident's uncounted Switch pkills — neither
+  is soak evidence; the worker's own banner log is (LESSONS line
+  filed). Verdict written into the repo's IMPLEMENTATION.md;
+  cluster-prototype commit `c83f231`, pushed; suite **48 passed, 1
+  skipped** (read-only run — no coordinator/worker code touched; the
+  live units were left exactly as found). Repo:
+  <https://github.com/pkia/cluster-prototype>. **Not claimed:** the GPU
+  first-class task type (S/M, hold lifted) stays the top pickable item;
+  whether soak #3 runs on the fixed harness is an owner decision, not a
+  board item.
 
 - **cluster — make the soak's kill-fault status truthful** — done
   2026-10-29 (top Proposed item, picked ~14:05 after the run measured
@@ -2668,6 +2699,19 @@ Append-only, one line per run — including failures and no-ops.
   restored active by the same run, coordinator integrity_check=ok
   throughout. LESSONS: two new lines (NC side effects are real; run
   harnesses the way their unit runs them).
+
+- 2026-10-30 — shipped **cluster: read soak #2's verdict**
+  (cluster-prototype `c83f231`, docs-only): GREEN — all 53 faults
+  landed and recovered, each corroborated out-of-band (Pi journal
+  Stopped/Started pairs; switchlab worker stopped/up banners at +5–6 s)
+  because soak.log's kill lines carry the pre-fix rc=255 spelling.
+  322/322 cycles, 644/644 jobs, 0 failures, no organic anomalies —
+  quieter than soak #1. Suite 48 passed, 1 skipped. Sync: the
+  10-28..10-30 devlog radar lists matched the board (verdict read
+  picked; GPU + twitter probe already Proposed); no new rows, no
+  external search (Proposed ≫ 3). ≈23 tool calls — the out-of-band
+  corroboration (Switch journal permission + polluted NRestarts
+  detours) is the overrun; lesson filed.
 
 ## Notes
 
