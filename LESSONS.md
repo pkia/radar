@@ -4,6 +4,17 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-10-31 — **The devlog's radar list can propose work that already
+  shipped.** The GPU first-class task type was proposed in the 10-27
+  01:00 devlog and shipped that same afternoon (`99f8676`; the JSON
+  contract landed next morning as `bdfb8b2`, with tests and a live
+  end-to-end job) — but only the repo recorded that, so the board row
+  kept its stale premise and three runs carried it forward as the top
+  pick. Before picking a board item, check the target repo's own
+  log/docs for prior art (`git log`, IMPLEMENTATION.md): the board
+  tracks intentions, the repo tracks the world; where they disagree,
+  the repo wins.
+
 - 2026-10-30 — **A soak verdict's kill evidence lives in the worker's
   own log — not in soak.log, not in systemd.** soak.log's pre-fix kill
   lines cannot distinguish landed-self-match from unreachable (both

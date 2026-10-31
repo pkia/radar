@@ -26,7 +26,9 @@ found by web research and keep their source URL.
   faulting, because its end condition can never fire (see In
   progress); it was stopped by hand that afternoon via its documented
   stop path. No coordinator code changed while it ran. The 10-30 run
-  is the first safely after.)
+  is the first safely after.) **RECORDED DONE 2026-10-31 — shipped
+  before this row was ever picked** (10-27 `99f8676`; the JSON
+  contract 10-28 `bdfb8b2`): the premise above was stale — see Done.
 
 - **twitter-launch — make the pre-flight probe report what the internet
   sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
@@ -187,15 +189,50 @@ rest now build on it:
 
 ## In progress
 
-- **cluster — make the GPU a first-class task type** — picked 2026-10-31
-  (top of the queue, hold lifted; the 10-31 devlog's own top item). Next
-  step: coordinator learns `type=gpu` tasks routed only to the Switch
-  worker; sentinel + verdicts join the sha256 digest check on return.
-  **Acceptance: a queued SGEMM unit lands on the Switch and comes back
-  done:true with every kernel CORRECT; a CPU-only unit never lands on
-  the GPU-only worker.** *(no code written yet this run)*
+*(none — 2026-10-31: the GPU item resolved as already-shipped and was
+recorded Done after fresh verification; see Done. Pickable next: the
+twitter probe vantage (S), the pi-cicd remote registry (S).)*
 
 ## Done
+
+- **cluster — make the GPU a first-class task type** — recorded done
+  2026-10-31, with an honest twist: **the work shipped four days ago and
+  no run ever looked.** The 10-27 01:00 devlog proposed it; the
+  same-day implementation landed in the repo's initial commit
+  (`99f8676`, 2026-10-27 10:17 — `gpu_sgemm` handler with the
+  capability-aware `&types=` claim filter, the GPU-home probe
+  `CLUSTER_GPU_HOME` → `~/switch-l4t-gpu` → `~/gpu`, legacy-text
+  parsing, sanity-bounded verify), and the JSON contract this row
+  asked for — `gpu_workload --json` with the `done` sentinel and
+  per-kernel verdicts parse-gated on the worker — landed 10-28 06:33
+  (`bdfb8b2`, +61 lines of tests). IMPLEMENTATION.md's GPU addendum
+  documented all of it including a live end-to-end job (39, switchlab
+  only). The board row kept its stale premise ("the queue does not
+  speak it yet") and three runs carried it forward as the top pick
+  without re-reading the repo. **This run wrote no code; it verified
+  the shipped state fresh and recorded it.** Evidence, executed not
+  asserted: unit suite **48/48 OK**; acceptance **8/8 PASS** (real
+  coordinator/worker subprocesses, temp DB; receipt re-committed); CI
+  green on the tip (run 41069530199, `c83f231`); and the acceptance
+  criterion executed live on the production queue — `gpu_sgemm` job
+  **1303** submitted with an idempotency key, claimed by **switchlab**
+  (the only worker whose advertised `handlers` include `gpu_sgemm`;
+  `raspberrypi` advertises `noop,sha256_range` only), complete in ~4 s
+  with `correct: true`, `kernels_verified: [sgemm, sgemm_naive,
+  sgemm_opt, sgemm_tiled4]` (the worker's parse gate had required the
+  harness's `done:true` and every kernel CORRECT or the unit fails),
+  gflops {256: 10.0, 512: 19.8, 1024: 64.6}, gbps 22.2, inside the
+  coordinator's sanity bounds. The reverse routing half (a GPU-only
+  worker never receives CPU units) is asserted by
+  `test_claim_respects_type_filter` and
+  `test_claim_types_filter_and_validation`; the sentinel/verdict
+  gates by `test_gpu_run_rejects_json_missing_done` /
+  `test_gpu_run_rejects_wrong_kernel`. Repo:
+  <https://github.com/pkia/cluster-prototype> (shipped in `99f8676` +
+  `bdfb8b2`; this run's verification commit is the acceptance-rerun
+  receipt). **Lesson filed:** the devlog can propose work that already
+  shipped — check the target repo's log/docs for prior art before
+  picking; where board and repo disagree, the repo wins.
 
 - **cluster — read soak #2's verdict** — done 2026-10-30 (the 10-30
   devlog's top **S**, the board's named next pick after two runs
@@ -2715,6 +2752,18 @@ Append-only, one line per run — including failures and no-ops.
   external search (Proposed ≫ 3). ≈23 tool calls — the out-of-band
   corroboration (Switch journal permission + polluted NRestarts
   detours) is the overrun; lesson filed.
+
+- 2026-10-31 — recorded **cluster: the GPU first-class task type** as
+  Done — no code written; a verification-and-correction run. The item
+  shipped 10-27/28 (`99f8676`, `bdfb8b2`) but was never recorded, so
+  the board re-proposed it three times. Verified fresh: 48/48 unit
+  tests, acceptance 8/8, CI green (41069530199), and a live
+  `gpu_sgemm` job (1303) claimed by switchlab only, `correct:true`,
+  4 kernels verified, numbers in bounds. Board corrected
+  (Proposed → Done, In progress cleared); LESSONS line filed: check
+  the target repo's log/docs for prior art before picking. Sync: the
+  10-31 devlog's three items were all already board rows. ≈23 tool
+  calls.
 
 ## Notes
 
