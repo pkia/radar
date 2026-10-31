@@ -187,10 +187,13 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-30: soak #2's verdict read shipped the run it was
-picked; see Done. Pickable next: the GPU first-class task type (S/M,
-hold lifted — top of the queue), the twitter probe vantage (S), the
-pi-cicd remote registry (S).)*
+- **cluster — make the GPU a first-class task type** — picked 2026-10-31
+  (top of the queue, hold lifted; the 10-31 devlog's own top item). Next
+  step: coordinator learns `type=gpu` tasks routed only to the Switch
+  worker; sentinel + verdicts join the sha256 digest check on return.
+  **Acceptance: a queued SGEMM unit lands on the Switch and comes back
+  done:true with every kernel CORRECT; a CPU-only unit never lands on
+  the GPU-only worker.** *(no code written yet this run)*
 
 ## Done
 
