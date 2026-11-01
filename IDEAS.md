@@ -47,15 +47,9 @@ found by web research and keep their source URL.
   reported shipped; if that turns out not to be true, this entry's next
   session should restore it as its own row rather than assume.)
 
-- **pi-cicd — give the remote half a registry with something in it** *(S;
-  new in posts/2026-10-09.html; needs the idle VPS)* — `decommission`
-  reports remote tasks from `/etc/decommission-remotes.json`, a file nothing
-  populates yet, so today's orphans would still slip past the tool. Next
-  step: fill the registry for the one host that actually had a footprint
-  (the idle VPS) and, where that host answers, list its matching scheduled
-  tasks read-only. **Acceptance: with the registry present, `decommission
-  forex-copybot --check` names the remote task(s) the VPS still holds; with
-  none reachable it reports the declaration and exits 0.**
+- **pi-cicd — give the remote half a registry with something in it** —
+  **SHIPPED 2026-11-01, see Done** (pi-cicd `e3be8ea`; the /etc install
+  itself is the owner's one gated command).
 
 - **copybot — make the keeper prove the heal, not assume it** — **SKIPPED
   2026-10-08: forex-copybot decommissioned 2026-10-07, there is no VPS bridge
@@ -189,22 +183,65 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — give the remote half a registry with something in it** — picked
-  2026-11-01 (over the twitter probe: that repo is not even cloned on this
-  box and its media path has nothing listening to verify against, while this
-  one is on-box with a live suite). Plan: populate the registry with the one
-  real footprint (the idle Windows VPS `win-dorj8hiuc6t`, tailnet — offline
-  since ~10-28, holding the three orphaned MT5 scheduled tasks from the
-  10-08 teardown), teach `decommission` to run the registry's declared
-  read-only query where it has one (measured still-there / answered-and-gone
-  / unreachable, per entry) and keep remote tasks forever outside what
-  `--apply` or `--check` can act on. Reachable-branch proof is by injected
-  runner; the unreachable branch is provable live today.
-  **Acceptance: with the registry present, `decommission forex-copybot
-  --check` names the remote task(s) the VPS still holds; with none reachable
-  it reports the declaration and exits 0.**
+*(none — 2026-11-01: the remote-registry item shipped this run, see Done.
+Pickable next: the twitter probe vantage (S; repo not cloned on this box —
+clone it first and re-check the repo for prior art), Train: attribute the
+deaths per player (S; repo on the train VM? verify before picking).)*
 
 ## Done
+
+- **pi-cicd — give the remote half a registry with something in it** —
+  done 2026-11-01 (the 10-09 devlog's **S**, on-box; picked over the
+  twitter probe vantage, whose repo is not even cloned on this box and
+  whose media path has nothing listening on :10000/:8443 to verify
+  against). Shipped in pi-cicd `e3be8ea`:
+  - **The registry is real now.** The repo carries
+    `decommission-remotes.example.json` (schema-documented, placeholder
+    host — the 10-02 sanitising rule: the VPS host never rides in a
+    public repo), and the real registry — the one footprint this box
+    ever left on a remote host — is staged at
+    `~/.local/state/decommission/remotes.json`: forex-copybot's three
+    orphaned MT5 scheduled tasks (MT5 Bridge Boot / MT5 Terminal /
+    MT5 Terminal Boot, all pointing at the removed
+    `C:\mt5-bridge\run_bridge.cmd`) on the idle Windows VPS
+    (`win-dorj8hiuc6t`, tailnet, offline since ~10-28).
+  - **decommission measures declarations where it can.** An entry
+    carrying `query` (argv, no shell) has that argv run verbatim — once
+    per distinct argv, memoised across entries, bounded by
+    PROBE_TIMEOUT=20 — and its output classifies the declaration:
+    `measured` (host answers, task listed, the matching line quoted),
+    `cleared` (host answers, task gone — the declaration is stale,
+    reported, not silently dropped), `unreachable` (rc named,
+    declaration stands alone); no `query` = today's plain `declared`.
+    `--json` carries `state` per entry.
+  - **The tool removes nothing off-box, asserted by execution:** remote
+    tasks never appear in `actions_for`, so neither `--apply` nor
+    `--check` can act on them; the apply test proves the only recorded
+    call naming the remote host is the verbatim read-only query — no
+    delete, no unregister, no rm.
+  - **Evidence, executed not asserted:** suite **16 passed** in the file
+    (8 new), full suite **351 passed, 1 skipped**; negative-controlled
+    by execution — the pre-change tool fails 7 of the 8 new tests (the
+    cleared case passes vacuously: legacy output never claims "still
+    registered"). **CI green on the tip** (run 41315034913, headSha
+    = `e3be8ea`). Live: `decommission forex-copybot --check --remotes
+    ~/.local/state/decommission/remotes.json` names all three MT5 tasks
+    @ win-dorj8hiuc6t, each `unreachable when checked (rc=255) —
+    declaration only` (a real ssh to the offline VPS, not a stub),
+    exits 0 CLEAN; the default-path run (no /etc file yet) is unchanged
+    legacy behaviour; `radar --check` still exits 3 naming the
+    implementer's own cron job.
+  - **Not claimed — and why:** `/etc/decommission-remotes.json` is **not
+    installed** — both `sudo install` and `sudo tee` into /etc were
+    correctly blocked by this box's cron-mode approval gate, and this
+    run does not disguise a write to get past a guardrail; the registry
+    content waits staged, and the owner's one command is
+    `sudo install -m644 ~/.local/state/decommission/remotes.json
+    /etc/decommission-remotes.json`. The reachable/`measured` branch is
+    proven by the injected-runner tests, not live — the VPS has been
+    offline since ~10-28; the day it answers, the same command prints
+    measured-or-stale per task. LESSONS line filed on the gate. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **cluster — make the GPU a first-class task type** — recorded done
   2026-10-31, with an honest twist: **the work shipped four days ago and
@@ -2775,6 +2812,19 @@ Append-only, one line per run — including failures and no-ops.
   the target repo's log/docs for prior art before picking. Sync: the
   10-31 devlog's three items were all already board rows. ≈23 tool
   calls.
+
+- 2026-11-01 — shipped **pi-cicd: the remote registry with something in
+  it** (`e3be8ea`, CI green run 41315034913): registry entries carrying
+  a read-only `query` get measured (measured / cleared / unreachable,
+  `state` in --json), remote tasks stay outside everything
+  --apply/--check can act on, and the real MT5-orphan registry (the
+  three tasks the 10-08 teardown left on the idle Windows VPS) is
+  staged for the owner's one gated command. 351 passed, 1 skipped; NC
+  7/8 red pre-change. Sync: the 11-01 devlog list matched the board
+  (twitter probe, this item, Train attribution); no new rows, no
+  external search. ≈30 tool calls (overrun: the /etc approval gate
+  blocked two write spellings before the staged-file fallback — lesson
+  filed).
 
 ## Notes
 

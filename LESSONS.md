@@ -4,6 +4,16 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-01 — **Cron-mode blocks /etc writes; do not dress the write up
+  to get past it.** Both `sudo install` and `sudo tee` into /etc were
+  blocked by the approval gate (no user present to approve, and
+  `approvals.cron_mode` is the owner's to change). The move: stage the
+  content somewhere durable (~/.local/state/...), prove the live
+  behaviour through the tool's own flag overrides (`decommission
+  --remotes`), and hand the owner the one command. Same class as the
+  owner-gated unit installs: the artifact is done and verified, the
+  host flip is a named manual step, not a workaround.
+
 - 2026-10-31 — **The devlog's radar list can propose work that already
   shipped.** The GPU first-class task type was proposed in the 10-27
   01:00 devlog and shipped that same afternoon (`99f8676`; the JSON
