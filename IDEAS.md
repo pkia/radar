@@ -31,7 +31,8 @@ found by web research and keep their source URL.
   contract 10-28 `bdfb8b2`): the premise above was stale — see Done.
 
 - **twitter-launch — make the pre-flight probe report what the internet
-  sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
+  sees** — **SKIPPED 2026-11-02: out of scope — old Pi deployment project
+  (owner directive; see Notes).** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
   half is reported done there (the unpostable item is out of the queue), so
   what is left is the half the 10-12 entry called the sharper one: every
   pre-flight check is measured **from this box**, and a local fetch
@@ -63,7 +64,7 @@ found by web research and keep their source URL.
   restores broker_ok inside fifteen minutes with zero pages; with the bridge
   held down, exactly one CRITICAL.**
 
-- **Train: attribute the deaths per player, not per team** *(S; new in
+- **Train: attribute the deaths per player, not per team** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; new in
   posts/2026-09-28.html, restated 09-29 and 09-30)* — the aggregate only
   reports measured causes, but still per team, while every bucket is a
   round-level statement about one player's death. Use the round context the
@@ -83,7 +84,7 @@ found by web research and keep their source URL.
   thing making a signal tradeable. **Acceptance: a report over the archived
   corpus with confirmed/contradicted counts, plus a gate test where a
   load-bearing correction refuses the signal until confirmed.**
-- **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html;
+- **Train: tokenise the 84, page by page** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(M; new in posts/2026-09-21.html;
   restated as item 1 of posts/2026-09-24.html)* —
   the T-075 colour-literal audit made the drift visible but does not remove it:
   84 (file, literal) spellings still sit outside `:root`. Next step per the
@@ -91,7 +92,7 @@ found by web research and keep their source URL.
   deliberately with `token_audit.py --write` after each, and let `STALE` confirm
   the literal actually left rather than merely moved.
 
-- **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
+- **Train: stage the proof run** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
   validate_chain.sh into the automated boot test that runs the moment a
   server is up — fresh install, bundle pull, plugin load, one scored
@@ -102,7 +103,7 @@ found by web research and keep their source URL.
   the open link is the human test — `!train start` with a real player in
   the seat.)*
 
-- **Train: give the box room to hold a bot** *(S; code lives on this box;
+- **Train: give the box room to hold a bot** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; code lives on this box;
   repo private)* — new in posts/2026-09-12.html and named there as the new
   P0: set `sv_hibernate_when_empty 0` in the launcher and assert it in the
   seed guard with a test that fails when the line is missing — **shipped
@@ -111,7 +112,7 @@ found by web research and keep their source URL.
   log line says `placed 5/5` and holds for a minute) needs the live box and
   stays open below.
 
-- **Train: the box must hold a bot (placed 5/5)** *(S; needs the train
+- **Train: the box must hold a bot (placed 5/5)** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; needs the train
   VM)* — the second half of the 09-12 P0, unsplit from it by this run so
   the shipped half is not mistaken for the whole: with hibernation off,
   find why a spawned bot is kicked (`bot_quota` / team-limit /
@@ -120,14 +121,14 @@ found by web research and keep their source URL.
   `placed 5/5` observed in the live log, bot still standing one minute
   later. Until then no headless end-to-end drill claim is real.
 
-- **Train: fix the attribution before anything else** *(M; needs a cloud
+- **Train: fix the attribution before anything else** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(M; needs a cloud
   box; repo private)* — new in posts/2026-09-11.html, and named the new
   P0: the plugin must send the Steam identity it already has in the game
   session, scope the session-linking call to that identity instead of the
   placeholder, and prove it by starting one drill as a real account and
   watching history fill in. Every other customer-facing feature is
   decorative until this lands. Blocked on cloud budget.
-- **Train: retry the live spatial pass** *(S; repo private)* — new in
+- **Train: retry the live spatial pass** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; repo private)* — new in
   posts/2026-09-11.html: the real-geometry drift check is shipped and
   unit-tested; its live run was blocked by the box's bot-spawn quirk.
   Next: run it against the live server now that map prep handles bot
@@ -156,7 +157,7 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Train's first post-release feature: moving practice bots** *(L; new
+- **Train's first post-release feature: moving practice bots** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(L; new
   in posts/2026-09-08.html)* — FEATURE_PARITY marks bot behaviour the
   biggest gap vs SCL/Refrag; owner wants xfire-style bots (peeks,
   counter-strafes, swings) instead of standing targets. First concrete
@@ -184,9 +185,10 @@ rest now build on it:
 ## In progress
 
 *(none — 2026-11-01: the remote-registry item shipped this run, see Done.
-Pickable next: the twitter probe vantage (S; repo not cloned on this box —
-clone it first and re-check the repo for prior art), Train: attribute the
-deaths per player (S; repo on the train VM? verify before picking).)*
+2026-11-02: the previously "pickable next" items — the twitter probe
+vantage and Train attribution — are out of scope per the owner's
+deployment directive (see Notes); every remaining Proposed row is
+already recorded as shipped/skipped in place.)*
 
 ## Done
 
@@ -2827,6 +2829,16 @@ Append-only, one line per run — including failures and no-ops.
   filed).
 
 ## Notes
+
+- **Deployment scope locked by owner 2026-11-02** — the radar works on
+  the current Pi 5 deployment's projects only (cluster-prototype,
+  switch-l4t-gpu, pi-cicd, personal-website, radar, plus new repos the
+  loop creates here). Ideas targeting the old Pi deployment's projects —
+  twitter-launch, forex-copybot, maritime-dashboard, project-hub,
+  ais_analysis, camoufox-setup — or Train / cs2-train (train VM/cloud)
+  are out of scope: never sync, pick, or re-add them from devlog posts
+  or anywhere else; stamp any that surface as Skipped. The open rows
+  were stamped in place that day.
 
 - **AIS/RF track paused by owner 2026-08-23** — do not re-add AIS ideas
   (including from older devlog posts' "On the radar" lists) unless the

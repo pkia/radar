@@ -4,6 +4,14 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-02 — **Scope check comes before the pick.** The owner locked
+  the radar to the current Pi 5 deployment's repos (cluster-prototype,
+  switch-l4t-gpu, pi-cicd, personal-website, radar; old-deployment
+  projects and Train are out of scope — see IDEAS.md Notes). The board
+  and the devlog radar lists still carry rows from earlier eras: an
+  idea whose repo is not checked out on this box is not actionable
+  here, however good it reads — retire it, don't pick it.
+
 - 2026-11-01 — **Cron-mode blocks /etc writes; do not dress the write up
   to get past it.** Both `sudo install` and `sudo tee` into /etc were
   blocked by the approval gate (no user present to approve, and
