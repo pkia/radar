@@ -189,9 +189,20 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-31: the GPU item resolved as already-shipped and was
-recorded Done after fresh verification; see Done. Pickable next: the
-twitter probe vantage (S), the pi-cicd remote registry (S).)*
+- **pi-cicd — give the remote half a registry with something in it** — picked
+  2026-11-01 (over the twitter probe: that repo is not even cloned on this
+  box and its media path has nothing listening to verify against, while this
+  one is on-box with a live suite). Plan: populate the registry with the one
+  real footprint (the idle Windows VPS `win-dorj8hiuc6t`, tailnet — offline
+  since ~10-28, holding the three orphaned MT5 scheduled tasks from the
+  10-08 teardown), teach `decommission` to run the registry's declared
+  read-only query where it has one (measured still-there / answered-and-gone
+  / unreachable, per entry) and keep remote tasks forever outside what
+  `--apply` or `--check` can act on. Reachable-branch proof is by injected
+  runner; the unreachable branch is provable live today.
+  **Acceptance: with the registry present, `decommission forex-copybot
+  --check` names the remote task(s) the VPS still holds; with none reachable
+  it reports the declaration and exits 0.**
 
 ## Done
 
