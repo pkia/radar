@@ -13,18 +13,26 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd — make the durable slice survive the *disk* too** *(S; follow-on
-  to what shipped 2026-10-13)* — `journal-receipt` writes its receipt to
-  `~ev/.local/state`, which is another directory on the same SD card as
-  everything else; a card failure takes the receipt with the journal. A
-  copy into the pi-backup repo (or the log2ram-style disk mirror the 10-12
-  devlog described) would make the receipt survive the medium, not just the
-  reboot. **Acceptance: a receipt written after a boot is present in the
-  next nightly archive's manifest, and the tool's own test proves the copy
-  happens without touching a live database.**
+- **cluster — make the GPU a first-class task type** *(S/M; on-box; new
+  in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
+  contract (`gpu_workload --json`, `done` sentinel, per-kernel verdicts)
+  is written; the queue does not speak it yet. Next: the coordinator
+  learns `type=gpu` tasks routed only to the Switch worker, with the
+  sentinel and the verdicts joining the sha256 digest check on return.
+  **Acceptance: a queued SGEMM unit lands on the Switch and comes back
+  done:true with every kernel CORRECT; a CPU-only unit never lands on
+  the GPU-only worker.** (Hold lifted 2026-10-29: the board's "~11:23
+  end" was wrong — measured at 14:01 the soak was still active and
+  faulting, because its end condition can never fire (see In
+  progress); it was stopped by hand that afternoon via its documented
+  stop path. No coordinator code changed while it ran. The 10-30 run
+  is the first safely after.) **RECORDED DONE 2026-10-31 — shipped
+  before this row was ever picked** (10-27 `99f8676`; the JSON
+  contract 10-28 `bdfb8b2`): the premise above was stale — see Done.
 
 - **twitter-launch — make the pre-flight probe report what the internet
-  sees** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
+  sees** — **SKIPPED 2026-11-02: out of scope — old Pi deployment project
+  (owner directive; see Notes).** *(S, on-box; the top twitter item of the 10-13 devlog)* — the 10-12
   half is reported done there (the unpostable item is out of the queue), so
   what is left is the half the 10-12 entry called the sharper one: every
   pre-flight check is measured **from this box**, and a local fetch
@@ -40,15 +48,9 @@ found by web research and keep their source URL.
   reported shipped; if that turns out not to be true, this entry's next
   session should restore it as its own row rather than assume.)
 
-- **pi-cicd — give the remote half a registry with something in it** *(S;
-  new in posts/2026-10-09.html; needs the idle VPS)* — `decommission`
-  reports remote tasks from `/etc/decommission-remotes.json`, a file nothing
-  populates yet, so today's orphans would still slip past the tool. Next
-  step: fill the registry for the one host that actually had a footprint
-  (the idle VPS) and, where that host answers, list its matching scheduled
-  tasks read-only. **Acceptance: with the registry present, `decommission
-  forex-copybot --check` names the remote task(s) the VPS still holds; with
-  none reachable it reports the declaration and exits 0.**
+- **pi-cicd — give the remote half a registry with something in it** —
+  **SHIPPED 2026-11-01, see Done** (pi-cicd `e3be8ea`; the /etc install
+  itself is the owner's one gated command).
 
 - **copybot — make the keeper prove the heal, not assume it** — **SKIPPED
   2026-10-08: forex-copybot decommissioned 2026-10-07, there is no VPS bridge
@@ -62,7 +64,7 @@ found by web research and keep their source URL.
   restores broker_ok inside fifteen minutes with zero pages; with the bridge
   held down, exactly one CRITICAL.**
 
-- **Train: attribute the deaths per player, not per team** *(S; new in
+- **Train: attribute the deaths per player, not per team** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; new in
   posts/2026-09-28.html, restated 09-29 and 09-30)* — the aggregate only
   reports measured causes, but still per team, while every bucket is a
   round-level statement about one player's death. Use the round context the
@@ -82,7 +84,7 @@ found by web research and keep their source URL.
   thing making a signal tradeable. **Acceptance: a report over the archived
   corpus with confirmed/contradicted counts, plus a gate test where a
   load-bearing correction refuses the signal until confirmed.**
-- **Train: tokenise the 84, page by page** *(M; new in posts/2026-09-21.html;
+- **Train: tokenise the 84, page by page** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(M; new in posts/2026-09-21.html;
   restated as item 1 of posts/2026-09-24.html)* —
   the T-075 colour-literal audit made the drift visible but does not remove it:
   84 (file, literal) spellings still sit outside `:root`. Next step per the
@@ -90,7 +92,7 @@ found by web research and keep their source URL.
   deliberately with `token_audit.py --write` after each, and let `STALE` confirm
   the literal actually left rather than merely moved.
 
-- **Train: stage the proof run** *(S; new in posts/2026-09-03.html)* —
+- **Train: stage the proof run** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; new in posts/2026-09-03.html)* —
   cs2-train's fresh-install validation is one pod away from done: turn
   validate_chain.sh into the automated boot test that runs the moment a
   server is up — fresh install, bundle pull, plugin load, one scored
@@ -101,7 +103,7 @@ found by web research and keep their source URL.
   the open link is the human test — `!train start` with a real player in
   the seat.)*
 
-- **Train: give the box room to hold a bot** *(S; code lives on this box;
+- **Train: give the box room to hold a bot** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; code lives on this box;
   repo private)* — new in posts/2026-09-12.html and named there as the new
   P0: set `sv_hibernate_when_empty 0` in the launcher and assert it in the
   seed guard with a test that fails when the line is missing — **shipped
@@ -110,7 +112,7 @@ found by web research and keep their source URL.
   log line says `placed 5/5` and holds for a minute) needs the live box and
   stays open below.
 
-- **Train: the box must hold a bot (placed 5/5)** *(S; needs the train
+- **Train: the box must hold a bot (placed 5/5)** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; needs the train
   VM)* — the second half of the 09-12 P0, unsplit from it by this run so
   the shipped half is not mistaken for the whole: with hibernation off,
   find why a spawned bot is kicked (`bot_quota` / team-limit /
@@ -119,14 +121,14 @@ found by web research and keep their source URL.
   `placed 5/5` observed in the live log, bot still standing one minute
   later. Until then no headless end-to-end drill claim is real.
 
-- **Train: fix the attribution before anything else** *(M; needs a cloud
+- **Train: fix the attribution before anything else** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(M; needs a cloud
   box; repo private)* — new in posts/2026-09-11.html, and named the new
   P0: the plugin must send the Steam identity it already has in the game
   session, scope the session-linking call to that identity instead of the
   placeholder, and prove it by starting one drill as a real account and
   watching history fill in. Every other customer-facing feature is
   decorative until this lands. Blocked on cloud budget.
-- **Train: retry the live spatial pass** *(S; repo private)* — new in
+- **Train: retry the live spatial pass** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(S; repo private)* — new in
   posts/2026-09-11.html: the real-geometry drift check is shipped and
   unit-tested; its live run was blocked by the box's bot-spawn quirk.
   Next: run it against the live server now that map prep handles bot
@@ -155,7 +157,7 @@ rest now build on it:
   instead. Remaining from the original item, if ever wanted:
   browser-based arbitrary-page diffing with visual selector support.
   **S** <https://github.com/dgtlmoon/changedetection.io>
-- **Train's first post-release feature: moving practice bots** *(L; new
+- **Train's first post-release feature: moving practice bots** — **SKIPPED 2026-11-02: out of scope (owner deployment directive — Train/cs2-train lives off this box); see Notes.** *(L; new
   in posts/2026-09-08.html)* — FEATURE_PARITY marks bot behaviour the
   biggest gap vs SCL/Refrag; owner wants xfire-style bots (peeks,
   counter-strafes, swings) instead of standing targets. First concrete
@@ -182,16 +184,291 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-10-12: the 10-11 devlog's top **S** (teach the staleness
-  report the difference between stale and stale-that-matters) was picked and
-  shipped the same run; see Done. Next run picks from Proposed, whose newest
-  entries are the 10-12 pair — pi-cicd *make a crash leave a receipt*
-  (S, on-box) and twitter-launch's unpostable-item quarantine (S, on-box) —
-  plus the still-open remote-registry **S** (needs the idle VPS) and the two
-  Train items (tokenise the 84, M; deaths per player, S). Prefer a new on-box
-  **S** the next devlog names.)*
+*(none — 2026-11-01: the remote-registry item shipped this run, see Done.
+2026-11-02: the previously "pickable next" items — the twitter probe
+vantage and Train attribution — are out of scope per the owner's
+deployment directive (see Notes); every remaining Proposed row is
+already recorded as shipped/skipped in place.)*
 
 ## Done
+
+- **pi-cicd — give the remote half a registry with something in it** —
+  done 2026-11-01 (the 10-09 devlog's **S**, on-box; picked over the
+  twitter probe vantage, whose repo is not even cloned on this box and
+  whose media path has nothing listening on :10000/:8443 to verify
+  against). Shipped in pi-cicd `e3be8ea`:
+  - **The registry is real now.** The repo carries
+    `decommission-remotes.example.json` (schema-documented, placeholder
+    host — the 10-02 sanitising rule: the VPS host never rides in a
+    public repo), and the real registry — the one footprint this box
+    ever left on a remote host — is staged at
+    `~/.local/state/decommission/remotes.json`: forex-copybot's three
+    orphaned MT5 scheduled tasks (MT5 Bridge Boot / MT5 Terminal /
+    MT5 Terminal Boot, all pointing at the removed
+    `C:\mt5-bridge\run_bridge.cmd`) on the idle Windows VPS
+    (`win-dorj8hiuc6t`, tailnet, offline since ~10-28).
+  - **decommission measures declarations where it can.** An entry
+    carrying `query` (argv, no shell) has that argv run verbatim — once
+    per distinct argv, memoised across entries, bounded by
+    PROBE_TIMEOUT=20 — and its output classifies the declaration:
+    `measured` (host answers, task listed, the matching line quoted),
+    `cleared` (host answers, task gone — the declaration is stale,
+    reported, not silently dropped), `unreachable` (rc named,
+    declaration stands alone); no `query` = today's plain `declared`.
+    `--json` carries `state` per entry.
+  - **The tool removes nothing off-box, asserted by execution:** remote
+    tasks never appear in `actions_for`, so neither `--apply` nor
+    `--check` can act on them; the apply test proves the only recorded
+    call naming the remote host is the verbatim read-only query — no
+    delete, no unregister, no rm.
+  - **Evidence, executed not asserted:** suite **16 passed** in the file
+    (8 new), full suite **351 passed, 1 skipped**; negative-controlled
+    by execution — the pre-change tool fails 7 of the 8 new tests (the
+    cleared case passes vacuously: legacy output never claims "still
+    registered"). **CI green on the tip** (run 41315034913, headSha
+    = `e3be8ea`). Live: `decommission forex-copybot --check --remotes
+    ~/.local/state/decommission/remotes.json` names all three MT5 tasks
+    @ win-dorj8hiuc6t, each `unreachable when checked (rc=255) —
+    declaration only` (a real ssh to the offline VPS, not a stub),
+    exits 0 CLEAN; the default-path run (no /etc file yet) is unchanged
+    legacy behaviour; `radar --check` still exits 3 naming the
+    implementer's own cron job.
+  - **Not claimed — and why:** `/etc/decommission-remotes.json` is **not
+    installed** — both `sudo install` and `sudo tee` into /etc were
+    correctly blocked by this box's cron-mode approval gate, and this
+    run does not disguise a write to get past a guardrail; the registry
+    content waits staged, and the owner's one command is
+    `sudo install -m644 ~/.local/state/decommission/remotes.json
+    /etc/decommission-remotes.json`. The reachable/`measured` branch is
+    proven by the injected-runner tests, not live — the VPS has been
+    offline since ~10-28; the day it answers, the same command prints
+    measured-or-stale per task. LESSONS line filed on the gate. Repo:
+    <https://github.com/pkia/pi-cicd>.
+
+- **cluster — make the GPU a first-class task type** — recorded done
+  2026-10-31, with an honest twist: **the work shipped four days ago and
+  no run ever looked.** The 10-27 01:00 devlog proposed it; the
+  same-day implementation landed in the repo's initial commit
+  (`99f8676`, 2026-10-27 10:17 — `gpu_sgemm` handler with the
+  capability-aware `&types=` claim filter, the GPU-home probe
+  `CLUSTER_GPU_HOME` → `~/switch-l4t-gpu` → `~/gpu`, legacy-text
+  parsing, sanity-bounded verify), and the JSON contract this row
+  asked for — `gpu_workload --json` with the `done` sentinel and
+  per-kernel verdicts parse-gated on the worker — landed 10-28 06:33
+  (`bdfb8b2`, +61 lines of tests). IMPLEMENTATION.md's GPU addendum
+  documented all of it including a live end-to-end job (39, switchlab
+  only). The board row kept its stale premise ("the queue does not
+  speak it yet") and three runs carried it forward as the top pick
+  without re-reading the repo. **This run wrote no code; it verified
+  the shipped state fresh and recorded it.** Evidence, executed not
+  asserted: unit suite **48/48 OK**; acceptance **8/8 PASS** (real
+  coordinator/worker subprocesses, temp DB; receipt re-committed); CI
+  green on the tip (run 41069530199, `c83f231`); and the acceptance
+  criterion executed live on the production queue — `gpu_sgemm` job
+  **1303** submitted with an idempotency key, claimed by **switchlab**
+  (the only worker whose advertised `handlers` include `gpu_sgemm`;
+  `raspberrypi` advertises `noop,sha256_range` only), complete in ~4 s
+  with `correct: true`, `kernels_verified: [sgemm, sgemm_naive,
+  sgemm_opt, sgemm_tiled4]` (the worker's parse gate had required the
+  harness's `done:true` and every kernel CORRECT or the unit fails),
+  gflops {256: 10.0, 512: 19.8, 1024: 64.6}, gbps 22.2, inside the
+  coordinator's sanity bounds. The reverse routing half (a GPU-only
+  worker never receives CPU units) is asserted by
+  `test_claim_respects_type_filter` and
+  `test_claim_types_filter_and_validation`; the sentinel/verdict
+  gates by `test_gpu_run_rejects_json_missing_done` /
+  `test_gpu_run_rejects_wrong_kernel`. Repo:
+  <https://github.com/pkia/cluster-prototype> (shipped in `99f8676` +
+  `bdfb8b2`; this run's verification commit is the acceptance-rerun
+  receipt). **Lesson filed:** the devlog can propose work that already
+  shipped — check the target repo's log/docs for prior art before
+  picking; where board and repo disagree, the repo wins.
+
+- **cluster — read soak #2's verdict** — done 2026-10-30 (the 10-30
+  devlog's top **S**, the board's named next pick after two runs
+  carried it as "Not claimed"; ended by hand-stop 10-29 ~14:11, so —
+  pre-fix process, no SIGTERM handler — no summary was auto-written and
+  the read worked from `var/soak.log` lines 345–720 exactly the way the
+  10-28 run read soak #1's). **Verdict: GREEN — all 53 faults landed
+  and all 53 recovered** (soak #1 was 44 landed / 4 missed). Window
+  2026-10-28 11:23:25 → last cycle 2026-10-29 14:08:27 (~26.8 h);
+  322/322 cycles contiguous, every line ok=True, digests 4/4,
+  sha_retries=0; 644/644 jobs, 0 failed, 0 digest failures. The log's
+  fault spellings are pre-fix and untrustworthy by construction (18
+  kills all read `rc=255`, 35 restarts all read `(ok)` — the truthful
+  harness landed after the stop), so every fault was corroborated
+  out-of-band: the Pi journal holds exactly 18 `cluster-worker` + 17
+  `cluster-coordinator` Stopped/Started pairs at the faults' own
+  seconds (35/35 restarts landed); switchlab's worker log holds exactly
+  18 `worker stopped; 0 unit(s) were still active` records + 18
+  `worker switchlab up` banners, one 5–6 s after every kill timestamp
+  across the whole window including overnight (18/18 kills landed; the
+  Switch never left the network — contrast soak #1's 02:51 power
+  loss). Zero requeues, zero attempt=2, zero lease expiries in the
+  window — organically the quietest soak yet. En route, measured: ev1
+  cannot read switchlab's system journal and the unit's `NRestarts=60`
+  is polluted by the 10-29 incident's uncounted Switch pkills — neither
+  is soak evidence; the worker's own banner log is (LESSONS line
+  filed). Verdict written into the repo's IMPLEMENTATION.md;
+  cluster-prototype commit `c83f231`, pushed; suite **48 passed, 1
+  skipped** (read-only run — no coordinator/worker code touched; the
+  live units were left exactly as found). Repo:
+  <https://github.com/pkia/cluster-prototype>. **Not claimed:** the GPU
+  first-class task type (S/M, hold lifted) stays the top pickable item;
+  whether soak #3 runs on the fixed harness is an owner decision, not a
+  board item.
+
+- **cluster — make the soak's kill-fault status truthful** — done
+  2026-10-29 (top Proposed item, picked ~14:05 after the run measured
+  soak #2 still alive past its assumed ~11:23 end and found why: the
+  10-28 wall-clock refactor left tests/soak.py comparing
+  `time.monotonic()` against a wall-clock epoch deadline — a race the
+  loop cannot lose — so soak #2 could never self-end; it was stopped by
+  hand at 14:11 via its documented stop path, ~26.8 h in, 322 cycles,
+  every line green). The pick grew to the harness defects the
+  acceptance drill depends on, shipped in cluster-prototype `cf4d52d`:
+  - **the kill fault is truthful:** pattern bracketed
+    (`'[c]luster/worker.py'`) and `; exit 0` dropped — it masked every
+    outcome — so pkill's rc is the evidence; inject_fault classifies
+    per rc: `landed (rc=0)` / `missed: no matching process (rc=1)` /
+    `missed: Switch unreachable (rc=255)`. Landed and missed can no
+    longer share a spelling in soak.log.
+  - **the deadline is one timeline again** (wall vs wall): a soak ends
+    itself at SOAK_HOURS.
+  - **the docstring's "summary written on SIGTERM" is finally true:** a
+    handler unwinds into the KeyboardInterrupt path that writes the
+    summary — `systemctl stop` leaves the numbers (soak #2's never got
+    written: the pre-fix process had no handler — the exact class
+    fixed).
+  - **SOAK_SWITCH_HOST** drills the unreachable case without powering
+    the Switch off.
+  **Acceptance, executed live:** drill A (Switch reachable,
+  SOAK_HOURS=0.02): kill faults at cycles 4 and 10 read
+  `landed (rc=0)` in soak.log; out-of-band, switchlab's cluster-worker
+  restarted at 14:51:58 — five seconds after the second landed kill.
+  Drill B (`SOAK_SWITCH_HOST=127.0.0.65`): the same fault reads
+  `missed: Switch unreachable (rc=255)` — named, never the landed
+  spelling — while cycles stay green Pi-only. Both drills ended
+  themselves at their deadline (~73 s). Tests
+  (`tests/test_soak_harness.py`, 7): bracketed rc-revealing kill
+  command; verdicts distinct and named; classifier wired to the kill
+  FAULTS entry; source pin — the loop compares wall against wall;
+  behavioral self-end over fake clocks; SIGTERM against the real
+  script exits 0 with a summary (pre-fix: rc=-15, none).
+  Negative-controlled on 7be9c53's soak.py under `timeout -s KILL`:
+  6 failed + the hang SIGKILLed (exit 137) with **zero** restart
+  commands in the journal. Suite **48 passed, 1 skipped in 10.05 s**;
+  **CI green on the tip** (run 40896326875). Commits: `cf4d52d`
+  (harness), `83ad198` (behavioral test's fault path made inert — see
+  LESSONS), `5c48953` + `e34068d` (two gpu-llm CI blockers, red since
+  08:52, fixed en route: referee_test's import error aborting pytest
+  collection repo-wide, then referee_qwen's undefined `LAST` failing
+  the F821 gate; ruff now installed on this box, gate verified locally
+  before push). Repo: <https://github.com/pkia/cluster-prototype>.
+  **Incident, owned honestly:** the first negative-control run fired
+  the REAL fault lambdas from its hang — 879 systemctl restarts
+  (start-limit stopped it at 14:37) and uncounted Switch pkills, every
+  one survived by Restart=always, coordinator integrity_check=ok
+  throughout; units were reset and restored active by the same run.
+  And the drill's first invocation ran under sudo, whose HOME=/root
+  has no ssh key — run the harness the way its unit runs (User=ev).
+  **Not claimed:** soak #2's verdict read (from soak.log — its summary
+  was never auto-written), the natural next pick; the GPU task-type
+  item (hold lifted, pickable).
+
+- **cluster — read the chaos soak's verdict** — done 2026-10-28 (the
+  10-27 devlog's time-gated **S**, read the first safe morning after
+  soak #1 ended 09:06). Verdict: **GREEN — every fault that landed
+  recovered**, and the honest count is **44 landed / 4 missed**, not a
+  draft's "48 injected, zero errors": 16× Pi worker restart and 16×
+  coordinator restart landed (rc 0) and recovered; 12 of 16 Switch
+  kills landed — proven in switchlab's own worker log (stopped → up
+  5.5 s later at every kill timestamp, 0 units in flight, which is why
+  sha_retries stayed 0 all soak) — and 4 missed because the Switch lost
+  power ~02:51 and the soak degraded to Pi-only by design. The rc=255
+  on the landed kills is a harness artifact (pkill matches its own
+  remote shell's cmdline; filed as its own Proposed item). The organic
+  worst case recovered cleanly: two noop leases expired 02:52:04,
+  were requeued (the DB's only attempt=2 claims ever) and completed on
+  the Pi — one slow cycle (214, 62.3 s), digests 4/4; totals 288/288
+  cycles, 576/576 jobs, 0 digest failures. Also found by the read: the
+  summary wrote monotonic() as the start epoch — the fix (wall-clock
+  start + per-run idempotency keys) was already running as soak #2, so
+  the run committed it and removed the dead `started` leftover.
+  Verdict written into the repo's IMPLEMENTATION.md; cluster-prototype
+  commit `195f5fa`, pushed; suite **41 passed**. En route, measured:
+  the draft verdict in the working tree claimed soak #2 "started
+  ~09:35" — the log shows 11:23:25 after two aborted starts (11:20:58
+  old-key dedup; 11:21:48 one cycle, then a 400, cause undetermined,
+  never recurred) — corrected in the shipped verdict. Repo:
+  <https://github.com/pkia/cluster-prototype>. **Not claimed:** soak
+  #2's own verdict (due 10-29 ~11:23 — a future run's read, and the
+  GPU task-type item stays held until it ends).
+
+- **pi-cicd — make the durable slice survive the *disk* too** — done
+  2026-10-27 (the 10-27 devlog's "top of the board" **S**, the follow-on
+  the 10-13 ship filed against itself: the crash receipt lived on the
+  same SD card as the journal it describes, so a card failure took both).
+  Shipped in pi-cicd `260b31c`:
+  - `pi-backup` folds journal-receipt's receipts into **every** archive:
+    `RECEIPTS_DIR` (default `/home/ev/.local/state/journal-receipt` —
+    absolute on purpose, the nightly runs as root; empty value disables;
+    a relative value is a config error) is staged into `SNAPSHOT_DIR`
+    **mirroring the live path, like the DB dumps**, and borg is handed
+    the staged copies, never the live files — the 5-minute timer
+    rewrites the receipt in place (truncate + write) and borg aborts on
+    a file that changes while it reads it, which would have made the
+    nightly flaky from the first week. Staging re-copies fresh every
+    run and prunes its own stale copies, so boots that age out of the
+    live dir (journal-receipt keeps 4) do not accumulate.
+  - **The fold is proven or the nightly says so:** a receipt that cannot
+    be staged fails the run loudly (the DB-dump contract), and the ok
+    digest — printed and published to `backups` — names the receipts
+    ("… (+1 crash receipt(s))"), so a receipt-less nightly is visible in
+    the notification. The weekly drill byte-compares the staged copies
+    like every other file. The receipt now lives wherever the archive
+    lives: moving `REPO=` to USB takes the crash receipts off the SD
+    card with one config line.
+  - **Acceptance as tests** (`tests/test_pi_backup.py`, 7 new): the
+    acceptance case — receipts staged, archived and extracted
+    byte-identical from a source tree holding **no SQLite file at all**,
+    with `stats["snapshots"] == []` proving no DB path ran and the borg
+    listing containing no live-receipt path (borg never reads the dir
+    the timer rewrites); default/override/validation of the key
+    (missing → default, empty → disabled, relative → config error);
+    absent-or-disabled changes nothing across three archive runs; stale
+    staged receipts pruned after a live receipt ages out; an unreadable
+    receipt raises, named; the drill byte-compares source + receipt; the
+    digest names the receipts in stdout and in the published payload.
+    `write_config` now pins `RECEIPTS_DIR=` so the suite stays hermetic
+    on this box, where the real dir exists.
+  - **Evidence, executed not asserted:** **41 passed** in the file, full
+    suite **344 passed, 1 skipped**; negative-controlled by execution —
+    with the pre-change `pi-backup` stashed, all 7 new tests **fail**
+    (7 failed, 34 deselected) and pass after the restore; **CI green**
+    on the push (run 40519655209). Live on this Pi the nightly path was
+    run by hand (`sudo pi-backup --dry-run run`): archive
+    `pi-2026-10-27T141551`, digest `43 files … (+1 crash receipt(s))`,
+    `verify: PASS`; the receipt written after this boot
+    (`f5be4e36-1410-46a7-b941-da1b0481c8f8.log`, header
+    `recorded_at=2026-10-27T14:11:05Z`) restored **out of that archive**
+    sha256-identical (`6355aa7e…`) to both the live file and the staged
+    copy — the "present in the nightly archive's manifest" half proven
+    end to end. Tonight's 03:30 timer runs the same checkout (service →
+    `~/.local/bin/pi-backup` → the repo file), so the *actual* next
+    nightly archive folds the receipt with zero wiring. Repo:
+    <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** the borg repo is still on the same SD card
+    (`/var/backups/pi-borg`) — the receipt now survives any reboot and
+    any journal loss, but a *card* failure still takes archive and
+    receipt together until the owner moves `REPO=` to USB (the move is
+    documented; the decision is theirs). A receipt rewritten inside the
+    microsecond window while `copyfile` runs could stage a torn copy for
+    that one night — bounded, self-healing (the next nightly re-stages),
+    and never a borg abort since borg reads only staged copies; not
+    detected or asserted tonight. And `pi-backup verify` rehearses DB
+    snapshots only — it does not yet assert receipts came back; the
+    drill's byte-compare is the standing receipt check.
 
 - **pi-cicd — make a crash leave a receipt** — done 2026-10-13 (the top
   **S** of the 10-13 devlog's radar list, on-box; picked over the 10-13
@@ -2446,7 +2723,122 @@ Append-only, one line per run — including failures and no-ops.
   executable-bit loss on a `write_file`-created tool is worth one line, so it
   goes in below.
 
+- 2026-10-27 — implementer run: synced the 10-27 devlog radar list
+  (three items: **read the soak verdict** — new, S, but time-gated to
+  10-28 ~09:06, added to Proposed; **make the GPU a first-class task
+  type** — new, S/M, added to Proposed with a hold-until-after-the-
+  verdict note; **make the durable slice survive the disk** — already
+  Proposed, named top of the board by the devlog, and the pick). Shipped
+  in pi-cicd `260b31c`: pi-backup folds journal-receipt's receipts into
+  every archive — staged into SNAPSHOT_DIR mirroring the live path
+  (borg is handed the copy, never the live file the 5-minute timer
+  rewrites in place, which would have aborted the nightly with "file
+  changed while we backed it up"), staging failures are fatal, and the
+  ok digest names the receipts; the weekly drill byte-compares them.
+  Evidence: **344 passed, 1 skipped** in the suite (41 in the file, 7
+  new), all 7 new tests red against the stashed pre-change tool, CI
+  green (run 40519655209), and live the nightly path run by hand made
+  archive `pi-2026-10-27T141551` whose digest reads `(+1 crash
+  receipt(s))` with this boot's receipt restored out of it sha256-
+  identical to the live file. Budget honesty: ≈35 tool calls, well over
+  the 20-call contract — the overrun is the live-restore evidence tail
+  (a blocked `rm`, then a glob that expanded in the ev-shell before
+  sudo and could not traverse the root-owned 700 restore dir; the
+  restore itself had succeeded on the first attempt) plus the negative-
+  control stash round trip. LESSONS.md: one line on the hermeticity pin.
+
+- 2026-10-28 — implementer run: synced (the 10-28 devlog list matched
+  the board's three items; pruned the pi-cicd disk row that sat in both
+  Proposed and Done). Picked the soak verdict — safely in window at
+  14:00, soak #1 having ended 09:06. Read the log end to end (382
+  lines), then verified every fault class against independent
+  evidence: both workers' own logs, the coordinator DB events, and the
+  Switch's systemd state. The draft verdict sitting uncommitted in the
+  repo overclaimed ("48 injected, zero errors"); the real split is 44
+  landed / 4 missed, and rc=255 on landed kills is a self-match
+  artifact, now its own Proposed item. Verdict rewritten into
+  IMPLEMENTATION.md, harness fix committed; cluster-prototype `195f5fa`
+  pushed, **41 passed**. Board: verdict item → Done, GPU hold extended
+  to after soak #2 (ends 10-29 ~11:23). Budget honesty: ≈39 tool
+  calls, over the 20-call contract — the overrun is the verification
+  tail the acceptance demanded (each fault class proved against
+  independent evidence: two worker logs, the DB events, systemd state
+  on the Switch), not discovery loops. LESSONS.md: one new line — a
+  fault log's rc is evidence only against the command's own mechanics.
+
+- 2026-10-29 — shipped the **soak kill-fault truthfulness** item
+  (cluster-prototype `cf4d52d`; plus `83ad198` test hardening and
+  `5c48953`/`e34068d` clearing two gpu-llm CI blockers that had kept
+  the repo red since 08:52). Pick-time measurement found soak #2 still
+  alive past its assumed ~11:23 end — its end condition could never
+  fire (monotonic vs wall-clock deadline, the 10-28 refactor's own
+  regression) — so it was stopped by hand at 14:11 (cycles 322, all
+  green; the wall-clock refactor that broke the loop shipped inside
+  the verdict commit this entry's predecessor describes). Harness
+  fixes: bracketed pkill with rc allowed through and per-rc verdict
+  lines (landed rc=0 / missed: no matching process / missed: Switch
+  unreachable), one-timeline deadline, real SIGTERM handler,
+  SOAK_SWITCH_HOST override. Acceptance drilled live: landed (rc=0)
+  twice in soak.log with the Switch worker's own restart 5 s later as
+  out-of-band proof; the miss named with a closed-port host; both
+  drills self-ended at their deadline. Suite 48 passed, 1 skipped;
+  CI green (40896326875). **Incident owned:** the first negative-
+  control run fired the real fault lambdas from its hang — 879
+  systemctl restarts (start-limit stopped it at 14:37) plus uncounted
+  Switch pkills, all survived by Restart=always; units reset and
+  restored active by the same run, coordinator integrity_check=ok
+  throughout. LESSONS: two new lines (NC side effects are real; run
+  harnesses the way their unit runs them).
+
+- 2026-10-30 — shipped **cluster: read soak #2's verdict**
+  (cluster-prototype `c83f231`, docs-only): GREEN — all 53 faults
+  landed and recovered, each corroborated out-of-band (Pi journal
+  Stopped/Started pairs; switchlab worker stopped/up banners at +5–6 s)
+  because soak.log's kill lines carry the pre-fix rc=255 spelling.
+  322/322 cycles, 644/644 jobs, 0 failures, no organic anomalies —
+  quieter than soak #1. Suite 48 passed, 1 skipped. Sync: the
+  10-28..10-30 devlog radar lists matched the board (verdict read
+  picked; GPU + twitter probe already Proposed); no new rows, no
+  external search (Proposed ≫ 3). ≈23 tool calls — the out-of-band
+  corroboration (Switch journal permission + polluted NRestarts
+  detours) is the overrun; lesson filed.
+
+- 2026-10-31 — recorded **cluster: the GPU first-class task type** as
+  Done — no code written; a verification-and-correction run. The item
+  shipped 10-27/28 (`99f8676`, `bdfb8b2`) but was never recorded, so
+  the board re-proposed it three times. Verified fresh: 48/48 unit
+  tests, acceptance 8/8, CI green (41069530199), and a live
+  `gpu_sgemm` job (1303) claimed by switchlab only, `correct:true`,
+  4 kernels verified, numbers in bounds. Board corrected
+  (Proposed → Done, In progress cleared); LESSONS line filed: check
+  the target repo's log/docs for prior art before picking. Sync: the
+  10-31 devlog's three items were all already board rows. ≈23 tool
+  calls.
+
+- 2026-11-01 — shipped **pi-cicd: the remote registry with something in
+  it** (`e3be8ea`, CI green run 41315034913): registry entries carrying
+  a read-only `query` get measured (measured / cleared / unreachable,
+  `state` in --json), remote tasks stay outside everything
+  --apply/--check can act on, and the real MT5-orphan registry (the
+  three tasks the 10-08 teardown left on the idle Windows VPS) is
+  staged for the owner's one gated command. 351 passed, 1 skipped; NC
+  7/8 red pre-change. Sync: the 11-01 devlog list matched the board
+  (twitter probe, this item, Train attribution); no new rows, no
+  external search. ≈30 tool calls (overrun: the /etc approval gate
+  blocked two write spellings before the staged-file fallback — lesson
+  filed).
+
 ## Notes
+
+- **Deployment scope locked by owner 2026-11-02** — the radar works on
+  the current Pi 5 deployment's projects only (cluster-prototype,
+  switch-l4t-gpu, pi-cicd, personal-website, radar, plus new repos the
+  loop creates here). Ideas targeting the old Pi deployment's projects —
+  twitter-launch, forex-copybot, maritime-dashboard, project-hub,
+  ais_analysis, camoufox-setup — or Train / cs2-train (train VM/cloud)
+  are out of scope: never sync, pick, or re-add them from devlog posts
+  or anywhere else; stamp any that surface as Skipped. The open rows
+  were stamped in place that day.
 
 - **AIS/RF track paused by owner 2026-08-23** — do not re-add AIS ideas
   (including from older devlog posts' "On the radar" lists) unless the

@@ -4,6 +4,89 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-02 — **Scope check comes before the pick.** The owner locked
+  the radar to the current Pi 5 deployment's repos (cluster-prototype,
+  switch-l4t-gpu, pi-cicd, personal-website, radar; old-deployment
+  projects and Train are out of scope — see IDEAS.md Notes). The board
+  and the devlog radar lists still carry rows from earlier eras: an
+  idea whose repo is not checked out on this box is not actionable
+  here, however good it reads — retire it, don't pick it.
+
+- 2026-11-01 — **Cron-mode blocks /etc writes; do not dress the write up
+  to get past it.** Both `sudo install` and `sudo tee` into /etc were
+  blocked by the approval gate (no user present to approve, and
+  `approvals.cron_mode` is the owner's to change). The move: stage the
+  content somewhere durable (~/.local/state/...), prove the live
+  behaviour through the tool's own flag overrides (`decommission
+  --remotes`), and hand the owner the one command. Same class as the
+  owner-gated unit installs: the artifact is done and verified, the
+  host flip is a named manual step, not a workaround.
+
+- 2026-10-31 — **The devlog's radar list can propose work that already
+  shipped.** The GPU first-class task type was proposed in the 10-27
+  01:00 devlog and shipped that same afternoon (`99f8676`; the JSON
+  contract landed next morning as `bdfb8b2`, with tests and a live
+  end-to-end job) — but only the repo recorded that, so the board row
+  kept its stale premise and three runs carried it forward as the top
+  pick. Before picking a board item, check the target repo's own
+  log/docs for prior art (`git log`, IMPLEMENTATION.md): the board
+  tracks intentions, the repo tracks the world; where they disagree,
+  the repo wins.
+
+- 2026-10-30 — **A soak verdict's kill evidence lives in the worker's
+  own log — not in soak.log, not in systemd.** soak.log's pre-fix kill
+  lines cannot distinguish landed-self-match from unreachable (both
+  rc=255); switchlab's ev1 cannot read the system journal; and the
+  unit's `NRestarts` counter is cumulative across incidents (60 after
+  the 10-29 pkill storm), so none of the three attributes a restart to
+  a timestamp. What does:
+  `switchlab:~/cluster/var/logs/worker-switchlab.log` writes
+  `worker stopped; 0 unit(s) were still active` at the kill second and
+  a `worker switchlab up` banner ~5 s later — pull the banners and
+  match programmatically (exactly one banner within ~15 s per kill
+  timestamp), reading the whole banner (cap=1 vs cap=3 across soaks is
+  a deploy between them, not noise).
+
+- 2026-10-29 — **A negative control runs the real code, so its side
+  effects are real.** The NC of the soak-harness tests hung (by design —
+  the pre-fix end condition) on a fake-clock tight loop that reached
+  FAULT_EVERY=6 in milliseconds and fired the REAL fault lambdas: 879
+  systemctl restarts across ~21 minutes (start-limit finally stopped
+  it) and uncounted real pkills at the Switch — every one survived by
+  Restart=always, but the box churned and both units ended start-limit
+  failed. Guards, all now standard: (1) behavioral tests patch every
+  side-effecting module attr inert (here FAULTS and FAULT_EVERY), not
+  just the ones the assertion reads — a hang or an old checkout must
+  not change what the test can do to the world; (2) negative controls
+  run under `timeout -s KILL` — SIGTERM cannot kill a pytest that hangs
+  inside graceful shutdown, so the process outlives the tool call and
+  keeps side-effecting for as long as its loop lives; (3) after any NC
+  that touches a live system, diff the journal for the side-effecting
+  command names — the zero-delta check is part of the run, not a hope.
+
+- 2026-10-29 — **Run a harness the way its unit runs it.** The drill
+  invoked soak.py under sudo; sudo's HOME=/root has no ssh key, so
+  every kill reported "missed: Switch unreachable (rc=255)" while the
+  Switch was fine — the unit runs User=ev precisely so Path.home()
+  resolves to ev's key. The new per-rc verdict line is what made the
+  miss visible instead of silent, turning a confusing drill into a
+  one-line diagnosis. Corollary: an env-dependent identity (HOME, PATH,
+  key paths) is part of the harness contract; document the invocation
+  next to the env overrides.
+
+- 2026-10-28 — **A fault log's rc is evidence only against the command's
+  own mechanics, not against the world.** Soak #1's Switch-kill logged
+  rc=255 on all 16 attempts, but 12 of them were *successful* kills:
+  `pkill -f 'cluster/worker.py'` matches the invoking remote shell's
+  own cmdline, so the shell self-kills before `exit 0` and ssh reports
+  255 — the same output a real connection failure gives (which the
+  other 4 were). A draft verdict trusted the line and got it wrong both
+  ways ("48 injected, zero errors"). When one status code has two
+  possible causes, prove the effect out-of-band (the worker's own log
+  showed stopped→up at every landed kill) before counting anything, and
+  fix the tool so the codes become distinguishable (bracket the
+  pattern: `pkill -f '[c]luster/worker.py'`).
+
 - 2026-10-13 — **a tool written through a file-writing tool has no exec
   bit.** `journal-receipt` was created with `write_file` (mode 644), so the
   freshly made `~/.local/bin` symlink died with `Permission denied` (rc 126)
@@ -183,3 +266,5 @@ still means "this row" after the next conversion. A scan/gate that pins a
 
 
 - 2026-10-06 — a test helper that monkeypatches a module-level loader silently undoes a patch the test just made: run_main() set mp.load_publisher to the recorder, overwriting the boom an earlier line had installed, so the failure-path assertion proved nothing until the test called mp.main() directly. Patch the module yourself when the assertion is about the patch.
+
+- 2026-10-27 — **a host-specific default leaks host files into hermetic tests on the dev box.** The pi-backup tests share one `write_config` helper, so adding `RECEIPTS_DIR` with a real-path default meant every existing tmp archive on this Pi would silently fold the live receipts in — breaking exact `nfiles` counts here while staying green on CI (where `/home/ev` doesn't exist), a Pi-only flake by construction. Pin the default *out* (`KEY=` empty) in the shared helper and give the default itself its own dedicated test; same shape as the 09-08 machine-private-state rule, one level down: it is not only test-*read* host state that bites, it is test-*input* defaults.

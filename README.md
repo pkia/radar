@@ -23,15 +23,21 @@ tests, TODOs, CI flakes), and from periodic external research tagged
 *(external)*. [LESSONS.md](LESSONS.md) is the implementer's carry-over
 memory. The implementer's protocol is in [AGENTS.md](AGENTS.md).
 
-Owned repos it may work across (any repo under `/home/ev` whose origin
-remote points at `pkia` on GitHub):
+In-scope repos — the **current Pi 5 deployment only** (owner directive
+2026-11-02; pkia-owned and checked out on this box):
 
-- [maritime-dashboard](https://github.com/pkia/maritime-dashboard) — AIS ship tracker + NOAA weather-satellite kiosk
-- [project-hub](https://github.com/pkia/project-hub) — home-server ops portal
+- [cluster-prototype](https://github.com/pkia/cluster-prototype) — Pi 5 + Switch distributed-computing coordinator
+- [switch-l4t-gpu](https://github.com/pkia/switch-l4t-gpu) — NVIDIA GPU workload harness for the Switch worker
 - [pi-cicd](https://github.com/pkia/pi-cicd) — CI/CD architecture reference
-- [ais_analysis](https://github.com/pkia/ais_analysis) — AIS data exploration
-- [camoufox-setup](https://github.com/pkia/camoufox-setup) — browser automation setup
 - [pkia.github.io](https://github.com/pkia/pkia.github.io) — portfolio + devlog
+- [radar](https://github.com/pkia/radar) — this loop
+
+Plus any new repo the loop itself creates on this box. Projects from
+the **old Pi deployment** — twitter-launch, forex-copybot,
+maritime-dashboard, project-hub, ais_analysis, camoufox-setup — and
+**Train / cs2-train** (train VM/cloud) are out of scope: the radar does
+not sync, pick, or implement ideas for them (see AGENTS.md "Deployment
+scope" and the IDEAS.md Notes).
 
 ## Known constraints
 

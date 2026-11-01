@@ -8,6 +8,26 @@ Core principle: **the board is the state, not your context.** Every run
 starts fresh. Anything worth remembering must be written to IDEAS.md,
 LESSONS.md, or a git commit before the run ends.
 
+## Deployment scope (owner directive 2026-11-02)
+
+The radar serves the **current Pi 5 deployment only**. In scope:
+
+- The pkia-owned repos checked out on this box: **cluster-prototype**,
+  **switch-l4t-gpu**, **pi-cicd**, **personal-website** (pkia.github.io),
+  **radar** — plus any new repo the loop itself creates here.
+
+Out of scope, everywhere, unless the owner lifts it: projects from the
+**old Pi deployment** — `twitter-launch`, `forex-copybot`,
+`maritime-dashboard`, `project-hub`, `ais_analysis`, `camoufox-setup` —
+and **Train / cs2-train** (repo and server live away from this box).
+Never sync, pick, resume, or implement an idea targeting them, whatever
+the source (board history, devlog radar lists, repo evidence); never
+clone those repos to work on them. When the sync pass meets such an
+idea, retire it: stamp the open board row **Skipped** citing this
+directive and do not count it as a candidate. The dashboard kiosk
+(`/home/ev/dashboard`) is current-deployment infra but live and not a
+git checkout — leave it to the owner.
+
 ## The loop (every run)
 
 1. **Sync ideas.** Collect candidates from three sources and add genuinely
@@ -33,12 +53,12 @@ LESSONS.md, or a git commit before the run ends.
    Every pick needs a one-line acceptance criterion — rewrite the idea
    until it has one. Move it to In progress, commit the board.
 3. **Implement it.**
-   - In the owned repo where it belongs — repos under `/home/ev` whose
-     `git remote get-url origin` points at `pkia` (maritime-dashboard,
-     project-hub, pi-cicd, ais_analysis, camoufox-setup,
-     personal-website). Read that repo's README/AGENTS.md and test setup
-     first and follow its conventions; read only what you need — the token
-     budget is scarce.
+   - In the owned repo where it belongs — the in-scope repos checked
+     out on this box (cluster-prototype, switch-l4t-gpu, pi-cicd,
+     personal-website, radar; see "Deployment scope" above). Read that
+     repo's README/AGENTS.md and test setup
+     first and follow its conventions; read only what you need — the
+     token budget is scarce.
    - As a new repo when it's genuinely new: create `/home/ev/<kebab-name>/`
      with a README (what/why/how to run), tests, `.gitignore`, then
      `git init`, commit, and `gh repo create pkia/<name> --public
