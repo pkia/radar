@@ -13,6 +13,43 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **cluster — worker silence should page, not wait for a soak** *(S;
+  on-box; new in posts/2026-11-02.html)* — the chaos soaks prove the
+  cluster recovers from faults, but only because a harness was watching;
+  day to day, a worker that goes quiet just makes the queue deeper while
+  the coordinator stays green. The database already holds everything
+  needed — worker heartbeats (`workers.last_seen`), claim timestamps,
+  unit statuses. Next: a read-only health snapshot on the dispatch API
+  (per-worker last-seen age, queue depth, `healthy:false` past the
+  threshold) so pi-cicd's service-probe can poll it like every other
+  service and alert on DOWN. **Acceptance: with both workers live the
+  snapshot reports healthy and the probe passes; a worker aged past the
+  threshold flips `healthy:false` naming the worker and its age; a probe
+  entry against it fires exactly one alert and one recovery.**
+
+- **switch-l4t-gpu — give the GPU numbers a baseline to defend** *(S;
+  on-box; new in posts/2026-11-02.html)* — the measured peaks — the FMA
+  ceiling, the SGEMM rates, the memory bandwidth — live in docs and
+  devlog posts, so drift is currently detected by a human remembering.
+  Next: a committed baseline JSON beside a checker that reruns the
+  standard kernels, compares within a band, and exits nonzero naming the
+  drifted metric and both numbers — the cheap tripwire for thermal
+  throttle, an nvpmodel surprise, or a bad build. **Acceptance: an
+  in-band run exits 0 and archives its measured JSON; a degraded run
+  (mocked or clock-capped) exits 1 naming the metric; the checker is
+  read-only on hardware state — no clock or model changes, ever.**
+
+- **personal-website — make the site's house rules executable** *(S;
+  on-box; new in posts/2026-11-02.html)* — this repo's rules are
+  enforced by remembering them: every asset reference resolves, feed and
+  sitemap match the posts directory one-to-one, the blog index stays
+  newest-first, and no network address ever ships in a post. Next: one
+  stdlib check script running those gates, locally and in CI on push.
+  **Acceptance: exits 0 on the current tree; each planted fault — a
+  dangling asset path, a feed missing a post, a private address in a
+  scratch post, an out-of-order index card — fails naming file and
+  line.**
+
 - **cluster — make the GPU a first-class task type** *(S/M; on-box; new
   in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
   contract (`gpu_workload --json`, `done` sentinel, per-kernel verdicts)
@@ -184,11 +221,21 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-01: the remote-registry item shipped this run, see Done.
-2026-11-02: the previously "pickable next" items — the twitter probe
-vantage and Train attribution — are out of scope per the owner's
-deployment directive (see Notes); every remaining Proposed row is
-already recorded as shipped/skipped in place.)*
+- **cluster — worker silence should page, not wait for a soak** — picked
+  2026-11-02 (top item of the 11-02 devlog's radar list; on-box, and the
+  cluster is the live system whose one daily failure mode this closes).
+  Plan: `Store.health_snapshot()` + `GET /health` — bearer-authed like
+  every route (the API's stated contract stays intact; the coordinator
+  binds 0.0.0.0), stale threshold identical to `status_summary`'s
+  "recent" rule so the two endpoints cannot disagree; pi-cicd's
+  service-probe gains per-probe header support
+  (`PROBE_HTTP_HEADER Name=Header: value`, values never printed or
+  persisted) so it can carry the bearer token; acceptance executed as a
+  real drill — temp coordinator subprocess + seeded DB + the real
+  service-probe against it, counting exactly one DOWN and one UP digest
+  at a local ntfy sink. The live coordinator keeps running its current
+  code until its next restart (no manual service restarts); the drill is
+  the evidence, as with the GPU acceptance re-run.
 
 ## Done
 
