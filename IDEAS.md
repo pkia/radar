@@ -221,23 +221,64 @@ rest now build on it:
 
 ## In progress
 
-- **cluster — worker silence should page, not wait for a soak** — picked
-  2026-11-02 (top item of the 11-02 devlog's radar list; on-box, and the
-  cluster is the live system whose one daily failure mode this closes).
-  Plan: `Store.health_snapshot()` + `GET /health` — bearer-authed like
-  every route (the API's stated contract stays intact; the coordinator
-  binds 0.0.0.0), stale threshold identical to `status_summary`'s
-  "recent" rule so the two endpoints cannot disagree; pi-cicd's
-  service-probe gains per-probe header support
-  (`PROBE_HTTP_HEADER Name=Header: value`, values never printed or
-  persisted) so it can carry the bearer token; acceptance executed as a
-  real drill — temp coordinator subprocess + seeded DB + the real
-  service-probe against it, counting exactly one DOWN and one UP digest
-  at a local ntfy sink. The live coordinator keeps running its current
-  code until its next restart (no manual service restarts); the drill is
-  the evidence, as with the GPU acceptance re-run.
+*(none — 2026-11-02: the worker-health item shipped this run, see Done.
+Pickable next: switch-l4t-gpu GPU baseline or personal-website house
+rules, both filed 2026-11-02 under Proposed.)*
 
 ## Done
+
+- **cluster — worker silence should page, not wait for a soak** — done
+  2026-11-02 (top item of the 11-02 devlog's radar list, on-box; picked
+  over the GPU-baseline and site house-rules items filed the same day).
+  Shipped in cluster-prototype `69ea744` + `2529f80` and pi-cicd
+  `881e597`:
+  - `GET /health` on the coordinator — bearer-authed like every route
+    (the coordinator binds 0.0.0.0; the API's stated contract stays
+    intact). `Store.health_snapshot()` reports every worker's
+    `last_seen_age_s` and per-worker `healthy` against the SAME
+    threshold `status_summary` uses for `workers_recent`
+    (max(60, lease×3)), `queue_depth` (queued + running units — claimed
+    units are stored as `running`), and an overall `healthy:false` with
+    named reasons: a worker silent past the threshold is named with its
+    age; queued work with nobody inside the threshold is named as
+    queue-deepening. Read-only: no claim, no write.
+  - pi-cicd service-probe learned `PROBE_HTTP_HEADER Name=Header: value`
+    so it can poll an authed endpoint; values ride the wire only —
+    malformed lines are reported by probe name alone, orphan entries are
+    dropped loudly, and the token is asserted absent from state.json and
+    the scoreboard. First caller: `PROBE_HTTP
+    cluster=http://127.0.0.1:8800/health` + the bearer header.
+  - **Acceptance, executed live as a drill** (`tests/drill_worker_health.py`,
+    13/13 PASS, exit 0): real coordinator subprocess (temp DB, loopback,
+    temp token), real service-probe, a local HTTP sink standing in for
+    ntfy. Both workers fresh → `/health` healthy:true, probe sweep green,
+    sink empty. switchlab aged 1 h → healthy:false with reasons
+    `worker switchlab silent 3600s (threshold 60s)`; exactly ONE DOWN
+    digest (`service-probe: 1 service DOWN` / `cluster DOWN: healthz
+    reports unhealthy`); a second sweep stayed silent (edge-triggered).
+    switchlab freshened → exactly ONE UP digest (`cluster back UP`),
+    never a second DOWN. The token never persisted anywhere.
+  - **Evidence:** cluster-prototype suite **53 passed** (5 new; the old
+    "1 skipped" no longer exists in this environment — recounted fresh,
+    not carried); pi-cicd suite **356 passed, 1 skipped** (4 new, plus
+    one pre-existing `http_probe` lambda updated to the new signature).
+    **CI green on the tips:** cluster-prototype runs 41460006894
+    (`69ea744`) and 41460676399 (`2529f80`); pi-cicd run 41460694806
+    (`881e597`) — all conclusion success.
+  - **Not claimed:** the live coordinator keeps its pre-`/health` code
+    until its next restart (no manual service restarts — the drill's
+    temp coordinator is the executed evidence, the same pattern as the
+    GPU acceptance re-run), and the two config lines are not added to
+    `/etc/service-probe.conf` (cron-mode gates /etc). The owner's wiring
+    is two lines, with the token read from the coordinator's own
+    `var/token`:
+    `PROBE_HTTP=cluster=http://127.0.0.1:8800/health` and
+    `PROBE_HTTP_HEADER=cluster=Authorization: Bearer <token>` — documented
+    in service-probe's docstring. The day both land, the standing
+    5-minute sweep pages on real worker silence — exactly what the drill
+    executed end to end. Repos:
+    <https://github.com/pkia/cluster-prototype>,
+    <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — give the remote half a registry with something in it** —
   done 2026-11-01 (the 10-09 devlog's **S**, on-box; picked over the
@@ -2874,6 +2915,18 @@ Append-only, one line per run — including failures and no-ops.
   external search. ≈30 tool calls (overrun: the /etc approval gate
   blocked two write spellings before the staged-file fallback — lesson
   filed).
+
+- 2026-11-02 — shipped **cluster: worker silence pages** (cluster-prototype
+  `69ea744`+`2529f80`, pi-cicd `881e597`; CI green ×3): GET /health with
+  per-worker last-seen age + queue depth at the status_summary threshold;
+  service-probe learns PROBE_HTTP_HEADER (token wire-only); live drill
+  13/13 PASS — one DOWN digest, edge-triggered silence, one UP digest,
+  token never persisted. Suites: cluster 53 passed, pi-cicd 356 passed
+  1 skipped. Sync: added the 11-02 devlog's three items (this + GPU
+  baseline + site house rules; the other two stay Proposed); no external
+  search needed (3 fresh rows). LESSONS line: count against the schema's
+  real status vocabulary ('claimed' units are stored 'running'). ≈30 tool
+  calls.
 
 ## Notes
 

@@ -4,6 +4,15 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-02 — **Count against the schema's real status vocabulary, not
+  the intuitive name.** The queue-depth test failed its first run because
+  claimed units are stored as status `'running'` in `units.status` —
+  'claimed' exists only in method names and in my head. When a count or
+  a filter rests on a stored status, dump the actual vocabulary first
+  (seed a row through the real code path, `SELECT status, COUNT(*)`), and
+  leave the mapping in a comment where the constant is built. Cost: one
+  red test cycle.
+
 - 2026-11-02 — **Scope check comes before the pick.** The owner locked
   the radar to the current Pi 5 deployment's repos (cluster-prototype,
   switch-l4t-gpu, pi-cicd, personal-website, radar; old-deployment
