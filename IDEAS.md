@@ -13,21 +13,9 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **cluster — feed the graphs, not just the probes** *(S; on-box; new in
-  posts/2026-11-03.html)* — yesterday's /health made worker silence
-  readable by a prober, but the box's Prometheus backbone still cannot
-  see it: queue depth and worker age exist only at the moment someone
-  looks. Next: a read-only `GET /metrics` on the coordinator in
-  Prometheus text format — queue depth, per-worker last-seen seconds,
-  unit counters — derived from the same store reads /health uses, plus
-  a `cluster` scrape job staged in pi-cicd's prometheus.yml (install.sh
-  already ships that file; the token rides `credentials_file`, never
-  inline). **Acceptance: GET /metrics is bearer-authed like every
-  route, its output passes `promtool check metrics`, and from a seeded
-  store its queue depth, per-worker ages and unit counters equal the
-  numbers /health reports for the same state; scraping twice leaves the
-  store unchanged; the staged scrape job passes `promtool check config`
-  naming the token file, with no token value anywhere in the repo.**
+- **cluster — feed the graphs, not just the probes** —
+  **SHIPPED 2026-11-03, see Done** (cluster-prototype `5c52715`,
+  pi-cicd `38c65ce`; CI green on both).
 
 - **cluster — worker silence should page, not wait for a soak** —
   **SHIPPED 2026-11-02, see Done** (cluster-prototype `69ea744` +
@@ -227,19 +215,71 @@ rest now build on it:
 
 ## In progress
 
-- **cluster — feed the graphs, not just the probes** — picked
-  2026-11-03 (top item of the 11-03 devlog; extends the freshly shipped
-  /health with the Prometheus half the devlog named next). Plan:
-  `cluster/metrics.py` (pure Prometheus-text renderer over the same
-  store reads /health uses), `GET /metrics` route (bearer-authed like
-  every route), `tests/test_metrics.py` + a live drill through
-  `promtool check metrics`, and the `cluster` scrape job staged in
-  pi-cicd's prometheus.yml + docs (token via credentials_file; /etc
-  stays the owner's). Acceptance in Proposed above. Next step: write
-  the renderer + route and their tests.
-
+*(none — 2026-11-03: the /metrics item shipped this run, see Done.
+Pickable next: switch-l4t-gpu GPU baseline or personal-website house
+rules, both filed 2026-11-02 under Proposed.)*
 
 ## Done
+
+- **cluster — feed the graphs, not just the probes** — done 2026-11-03
+  (top item of the 11-03 devlog's radar list, on-box; picked over the
+  11-02 GPU-baseline and site house-rules items because it finishes the
+  loop the fresh /health work opened, with the repo context still
+  warm). Shipped in cluster-prototype `5c52715` + pi-cicd `38c65ce`:
+  - `cluster/metrics.py` — `GET /metrics` on the coordinator, Prometheus
+    text format 0.0.4, Content-Type `text/plain; version=0.0.4`. The
+    snapshot is derived: every number comes from the SAME store reads
+    /health uses (`health_snapshot` + `status_summary`), so the
+    endpoints cannot disagree — `cluster_queue_depth`,
+    `cluster_units`/`cluster_jobs` by status, `cluster_workers_recent`,
+    `cluster_stale_after_seconds` (the max(60, lease×3) threshold), and
+    per worker `cluster_worker_last_seen_seconds`,
+    `cluster_worker_healthy` (0/1, /health's verdict),
+    `cluster_worker_units_done_total`. Bearer-authed like every route;
+    label values escaped; read-only asserted — table snapshots
+    (units/jobs/workers/events) byte-identical across scrapes, in tests
+    and in the drill.
+  - pi-cicd ships the scrape half: job `cluster` →
+    `127.0.0.1:8800/metrics` with the token read at scrape time from
+    `/etc/cluster-metrics.token` (`authorization.credentials_file` —
+    never an inline value; a test asserts no `credentials:` and no
+    secret-looking hex anywhere in the yml). **Found en route, and it
+    shaped the design: promtool (and Prometheus) validate referenced
+    credential files at config load**, so a yml naming a missing file
+    takes the whole metrics stack down at its next load — not just the
+    new target. install.sh therefore guards the order: install the
+    coordinator's own `var/token` (root:prometheus 0640) first, copy
+    the yml second, skip the copy with a loud note when no token
+    exists, reload after. The guarded pass is the owner's (install.sh,
+    like every other unit); /etc untouched by this run.
+  - **Acceptance, executed:** suite **60 passed, 1 skipped** (7 new in
+    `tests/test_metrics.py`: auth, grammar parse, values equal /health
+    and /status for the same seeded state, read-only, empty-store
+    exposition, label escaping, float formatting); live drill
+    `tests/drill_metrics.py` **10/10 PASS** — real coordinator
+    subprocess (temp DB/token/loopback), real HTTP scrape,
+    **`promtool check metrics` accepts the body clean**, queue depth
+    equal to /health's, unit counters equal /status's, per-worker
+    ages/healthy/units_done match, aged-worker renders healthy=0, two
+    scrapes leave every table identical. pi-cicd suite **359 passed,
+    1 skipped** (3 new prometheus-config tests); `promtool check
+    config` passes on the shipped yml with the token path substituted
+    by a real file — the missing piece live is exactly the owner's
+    token install. **CI green on both tips:** cluster-prototype run
+    41651795944 (`5c52715`), pi-cicd run 41651791432 (`38c65ce`).
+    Negative-controlled by execution: the four endpoint tests fail
+    against the pre-change api.py; the three new pi-cicd tests fail
+    against the pre-change yml.
+  - **Not claimed:** the live coordinator serves /metrics only from its
+    next restart (same pattern as /health — no manual service
+    restarts); the scrape job reaches /etc only on the owner's
+    install.sh pass, and until the coordinator restarts the target
+    will show DOWN (404), loudly — the truthful state. The token file
+    is the coordinator's master credential (the API has no per-route
+    tokens), so making it group-readable to prometheus is the owner's
+    call, spelled in docs/prometheus.md. Repos:
+    <https://github.com/pkia/cluster-prototype>,
+    <https://github.com/pkia/pi-cicd>.
 
 - **cluster — worker silence should page, not wait for a soak** — done
   2026-11-02 (top item of the 11-02 devlog's radar list, on-box; picked
@@ -2941,6 +2981,22 @@ Append-only, one line per run — including failures and no-ops.
   search needed (3 fresh rows). LESSONS line: count against the schema's
   real status vocabulary ('claimed' units are stored 'running'). ≈30 tool
   calls.
+
+- 2026-11-03 — shipped **cluster: feed the graphs, not just the probes**
+  (cluster-prototype `5c52715`, pi-cicd `38c65ce`; CI green on both):
+  GET /metrics in Prometheus text format derived from the same store
+  reads /health uses (queue depth, unit/job counters, per-worker
+  last-seen seconds and healthy verdicts), bearer-authed and
+  read-only; the `cluster` scrape job staged in pi-cicd's
+  prometheus.yml with the token via credentials_file and install.sh
+  guarding the order (token first — promtool/Prometheus validate
+  credential files at config load, so yml-before-token would take the
+  whole metrics stack down). Drill 10/10 PASS incl. promtool check
+  metrics clean; suites 60+1s / 359+1s; NC red pre-change both repos.
+  Sync: added the 11-03 devlog's one new item (this one; the other two
+  were the 11-02 rows); no external search (3 pickable). No LESSONS
+  line — the credential-load gotcha is documented in
+  docs/prometheus.md where its readers are. ≈30 tool calls.
 
 ## Notes
 
