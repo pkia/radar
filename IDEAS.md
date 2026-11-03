@@ -13,19 +13,25 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **cluster — worker silence should page, not wait for a soak** *(S;
-  on-box; new in posts/2026-11-02.html)* — the chaos soaks prove the
-  cluster recovers from faults, but only because a harness was watching;
-  day to day, a worker that goes quiet just makes the queue deeper while
-  the coordinator stays green. The database already holds everything
-  needed — worker heartbeats (`workers.last_seen`), claim timestamps,
-  unit statuses. Next: a read-only health snapshot on the dispatch API
-  (per-worker last-seen age, queue depth, `healthy:false` past the
-  threshold) so pi-cicd's service-probe can poll it like every other
-  service and alert on DOWN. **Acceptance: with both workers live the
-  snapshot reports healthy and the probe passes; a worker aged past the
-  threshold flips `healthy:false` naming the worker and its age; a probe
-  entry against it fires exactly one alert and one recovery.**
+- **cluster — feed the graphs, not just the probes** *(S; on-box; new in
+  posts/2026-11-03.html)* — yesterday's /health made worker silence
+  readable by a prober, but the box's Prometheus backbone still cannot
+  see it: queue depth and worker age exist only at the moment someone
+  looks. Next: a read-only `GET /metrics` on the coordinator in
+  Prometheus text format — queue depth, per-worker last-seen seconds,
+  unit counters — derived from the same store reads /health uses, plus
+  a `cluster` scrape job staged in pi-cicd's prometheus.yml (install.sh
+  already ships that file; the token rides `credentials_file`, never
+  inline). **Acceptance: GET /metrics is bearer-authed like every
+  route, its output passes `promtool check metrics`, and from a seeded
+  store its queue depth, per-worker ages and unit counters equal the
+  numbers /health reports for the same state; scraping twice leaves the
+  store unchanged; the staged scrape job passes `promtool check config`
+  naming the token file, with no token value anywhere in the repo.**
+
+- **cluster — worker silence should page, not wait for a soak** —
+  **SHIPPED 2026-11-02, see Done** (cluster-prototype `69ea744` +
+  `2529f80`, pi-cicd `881e597`).
 
 - **switch-l4t-gpu — give the GPU numbers a baseline to defend** *(S;
   on-box; new in posts/2026-11-02.html)* — the measured peaks — the FMA
@@ -221,9 +227,17 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-02: the worker-health item shipped this run, see Done.
-Pickable next: switch-l4t-gpu GPU baseline or personal-website house
-rules, both filed 2026-11-02 under Proposed.)*
+- **cluster — feed the graphs, not just the probes** — picked
+  2026-11-03 (top item of the 11-03 devlog; extends the freshly shipped
+  /health with the Prometheus half the devlog named next). Plan:
+  `cluster/metrics.py` (pure Prometheus-text renderer over the same
+  store reads /health uses), `GET /metrics` route (bearer-authed like
+  every route), `tests/test_metrics.py` + a live drill through
+  `promtool check metrics`, and the `cluster` scrape job staged in
+  pi-cicd's prometheus.yml + docs (token via credentials_file; /etc
+  stays the owner's). Acceptance in Proposed above. Next step: write
+  the renderer + route and their tests.
+
 
 ## Done
 
