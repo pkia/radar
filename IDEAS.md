@@ -21,6 +21,27 @@ found by web research and keep their source URL.
   **SHIPPED 2026-11-02, see Done** (cluster-prototype `69ea744` +
   `2529f80`, pi-cicd `881e597`).
 
+- **pi-cicd — give the cluster numbers a console page** *(S; on-box; new
+  in posts/2026-11-04.html)* — Grafana from apt was verified false on
+  this box months ago, but Prometheus ships its own console templates
+  and the skeletons are already installed and unused. Once the cluster
+  target is up, one console page rendering queue depth and per-worker
+  ages turns the new /metrics exposition into something the kiosk can
+  glance at. Next: a cluster console fed by the same PromQL the graphs
+  will use, styled by the existing templates. **Acceptance: the page
+  renders real numbers from a running scrape; an empty store renders
+  its empty state without erroring.**
+
+- **switch-l4t-gpu — stop tracking bytecode** *(S; on-box; repo evidence
+  2026-11-04)* — `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
+  files tracked, and one already shows as modified on an untouched tree
+  (`M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`), so
+  compiled bytecode rides commits and dirties `git status` on every
+  local run. Next: `.gitignore` the `__pycache__` dirs, `git rm --cached`
+  the tracked files, no source or CI change. **Acceptance: no `.pyc` in
+  `git ls-files`; after importing the modules `git status` stays clean;
+  CI green on the push.**
+
 - **switch-l4t-gpu — give the GPU numbers a baseline to defend** *(S;
   on-box; new in posts/2026-11-02.html)* — the measured peaks — the FMA
   ceiling, the SGEMM rates, the memory bandwidth — live in docs and
@@ -215,9 +236,18 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-03: the /metrics item shipped this run, see Done.
-Pickable next: switch-l4t-gpu GPU baseline or personal-website house
-rules, both filed 2026-11-02 under Proposed.)*
+- **personal-website — make the site's house rules executable** — picked
+  2026-11-04 (on-box S; the board's named pickable, smallest and fully
+  verifiable this session). Plan: `tools/check_site.py` (stdlib only) —
+  asset references resolve, feed 1:1 with posts, sitemap posts 1:1 and
+  every listed page resolvable, index newest-first, uniform `?v=`
+  cache-busters, no network addresses in any page — pytest fixture
+  trees for every planted fault, a CI step, then push. Measured en
+  route: feed 66/66 1:1; sitemap 66 posts + 7 top-level pages; index 66
+  cards newest-first; no private-address hits; **cache-buster drift is
+  real (404.html at `?v=10`, the rest of the site at `?v=11`) — bumped
+  as part of the change so the tree passes its own gate.** Resume: this
+  repo, master, no code written yet.
 
 ## Done
 
