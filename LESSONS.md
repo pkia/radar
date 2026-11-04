@@ -4,6 +4,27 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-04 — **A link checker must resolve the way the server does.**
+  The site-checker's first live run reported 647 faults and ~640 were
+  checker bugs: `is_file()` on the literal path flags every nav link,
+  because `/`, `/blog/` and relative `blog/` are directory URLs that
+  the server resolves to that directory's index.html. Model the
+  production resolver (map directory URLs → index.html) before calling
+  anything a fault — same class as counting against the schema's real
+  status vocabulary. The four faults that survived triage were all
+  real (a dangling mp3/png committed one directory above their page,
+  live-404 for a week; a stale cache-buster), and the triage itself —
+  per-gate, named file:line — is what made the checker bugs separable
+  from the site bugs in one pass.
+
+- 2026-11-04 — `execute_code` is blocked for unattended cron runs
+  (arbitrary-code approval gate, no user to approve); measurement
+  scripts in a cron run go through `terminal` with a `python3`
+  heredoc instead. And `gh run list` needs the repo's real GitHub
+  slug — this site repo is `pkia/pkia.github.io` while its checkout
+  directory is `personal-website`; the wrong slug 404s and looks
+  like "no CI".
+
 - 2026-11-02 — **Count against the schema's real status vocabulary, not
   the intuitive name.** The queue-depth test failed its first run because
   claimed units are stored as status `'running'` in `units.status` —

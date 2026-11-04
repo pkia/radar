@@ -236,20 +236,62 @@ rest now build on it:
 
 ## In progress
 
-- **personal-website — make the site's house rules executable** — picked
-  2026-11-04 (on-box S; the board's named pickable, smallest and fully
-  verifiable this session). Plan: `tools/check_site.py` (stdlib only) —
-  asset references resolve, feed 1:1 with posts, sitemap posts 1:1 and
-  every listed page resolvable, index newest-first, uniform `?v=`
-  cache-busters, no network addresses in any page — pytest fixture
-  trees for every planted fault, a CI step, then push. Measured en
-  route: feed 66/66 1:1; sitemap 66 posts + 7 top-level pages; index 66
-  cards newest-first; no private-address hits; **cache-buster drift is
-  real (404.html at `?v=10`, the rest of the site at `?v=11`) — bumped
-  as part of the change so the tree passes its own gate.** Resume: this
-  repo, master, no code written yet.
+*(none — 2026-11-04: the house-rules item shipped this run, see Done.
+Pickable next: switch-l4t-gpu GPU baseline, the 11-04 pi-cicd cluster
+console page, or the switch-l4t-gpu bytecode row — all under Proposed.)*
 
 ## Done
+
+- **personal-website — make the site's house rules executable** — done
+  2026-11-04 (on-box **S**, the board's named pickable; chosen over the
+  GPU baseline because every half of it verifies on this box in one
+  session). Shipped in pkia.github.io `08b4572` (checker + tests + CI
+  gate + 404 buster fix) and `3e275ca` (the media fix the gate forced):
+  - `tools/check_site.py` — stdlib, read-only (source asserted free of
+    write/remove/subprocess), exit-code contract: **assets** — every
+    local src/href resolves the way Pages serves them, directory URLs
+    (`/`, `/blog/`, relative `blog/`) mapping to that directory's
+    index.html; **feed** — 1:1 with blog/posts (link or guid, exactly
+    once each, stale items named); **sitemap** — every post once and
+    only locs that resolve to files (the 7 non-post locs are deliberate
+    and now verified to exist); **index** — newest-first with every
+    post carded exactly once; **cache-busters** — styles.css/script.js
+    carry the same ?v= on every page (and always a buster); **addresses**
+    — no private/link-local/CGNAT IPv4, no local IPv6, no .ts.net
+    hostnames in any page (AGENTS.md's "never publish network
+    addresses"). Every fault names file:line; the OK line carries
+    measured counts (74 pages, 66 posts, feed 66 items, sitemap 73
+    locs, index 66 cards, 1039 asset refs, busters v=11).
+  - **The first live run caught two real defects, both fixed in this
+    change:** sat-audio's mp3 + spectrogram were committed one
+    directory above the page that references them — Pages 404'd both
+    since 10-27 (verified live before and after: 404 → **200
+    audio/mp3 360,532 B** and **200 image/png 280,293 B** after the
+    deploy; the move is `3e275ca`, no content touched); and 404.html
+    carried `?v=10` against the site's v=11 (bumped; live 404.html
+    serves v=11). Negative-controlled by execution: the pre-fix run
+    named exactly those four faults — two sat-audio refs, two 404.html
+    busters — and nothing else after the fixes.
+  - `tests/test_check_site.py` — **20 passed**: each gate proven by
+    planting its fault into a fixture site and driving the real CLI
+    (dangling absolute + relative asset, feed missing/stale/duplicate
+    item, sitemap stale/missing/duplicate loc, out-of-order index card
+    at its exact line, missing card, buster drift, buster absent,
+    private IP, .ts.net hostname, undated post filename, public-IP
+    control stays clean, read-only source); plus the real-tree pass
+    test. ci.yml gains a **Site house rules** step on push — **CI
+    green on the tip** (run 41846232270, `08b4572`); ruff fatal rules
+    and compileall clean locally. LESSONS: a link checker must resolve
+    like the server, and the repo's GitHub slug is pkia/pkia.github.io
+    while the checkout directory is `personal-website`.
+  - **Not claimed:** the address gate scans HTML pages only — feed.xml
+    item text and robots.txt are not scanned (an address could ride in
+    a feed description; not gated, noted here). The gate flags
+    addresses, not project/worker names in prose — the site's own
+    established practice (15 posts say "raspberrypi" as a product
+    name) decided that scope, and the acceptance's fault list is
+    covered by IP/host patterns. Repo:
+    <https://github.com/pkia/pkia.github.io>.
 
 - **cluster — feed the graphs, not just the probes** — done 2026-11-03
   (top item of the 11-03 devlog's radar list, on-box; picked over the
@@ -3027,6 +3069,22 @@ Append-only, one line per run — including failures and no-ops.
   were the 11-02 rows); no external search (3 pickable). No LESSONS
   line — the credential-load gotcha is documented in
   docs/prometheus.md where its readers are. ≈30 tool calls.
+
+- 2026-11-04 — shipped **personal-website: the house rules, executable**
+  (pkia.github.io `08b4572` + `3e275ca`; CI green run 41846232270):
+  tools/check_site.py (stdlib, read-only) gates assets / feed / sitemap
+  / index / cache-busters / addresses, every fault naming file:line;
+  20 fixture tests drive the real CLI, the real tree passes, and the
+  first live run caught two real defects (sat-audio's mp3+png committed
+  one directory above their page — live 404s since 10-27, now 200;
+  404.html cache-busters at v=10 vs the site's v=11, bumped). 20
+  passed; ruff fatal + compileall clean. Sync: added the 11-04 devlog's
+  one new item (pi-cicd cluster console page) plus one repo-evidence
+  row (switch-l4t-gpu tracks two .pyc files); no external search (3
+  pickable after the additions). LESSONS: a link checker must resolve
+  the way the server does — directory URLs map to index.html; and
+  this repo's GitHub slug is pkia/pkia.github.io, not the checkout's
+  directory name. ≈25 tool calls.
 
 ## Notes
 
