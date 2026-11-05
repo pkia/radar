@@ -21,16 +21,19 @@ found by web research and keep their source URL.
   **SHIPPED 2026-11-02, see Done** (cluster-prototype `69ea744` +
   `2529f80`, pi-cicd `881e597`).
 
-- **pi-cicd — give the cluster numbers a console page** *(S; on-box; new
-  in posts/2026-11-04.html)* — Grafana from apt was verified false on
-  this box months ago, but Prometheus ships its own console templates
-  and the skeletons are already installed and unused. Once the cluster
-  target is up, one console page rendering queue depth and per-worker
-  ages turns the new /metrics exposition into something the kiosk can
-  glance at. Next: a cluster console fed by the same PromQL the graphs
-  will use, styled by the existing templates. **Acceptance: the page
-  renders real numbers from a running scrape; an empty store renders
-  its empty state without erroring.**
+- **personal-website — teach the address gate to read the feed** *(S;
+  on-box; new in posts/2026-11-05.html)* — the house-rules checker's own
+  not-claimed note is the next fault class: an address can no longer ride
+  in a page, but feed.xml item descriptions and robots.txt are not
+  scanned, so one could still ship in a feed line. Next: extend
+  `tools/check_site.py`'s address gate over the feed's item text and
+  robots.txt. **Acceptance: an address planted in a feed description and
+  one in robots.txt each fail naming file and line; the current tree
+  stays clean; the site's own public-origin URLs are not faults.**
+
+- **pi-cicd — give the cluster numbers a console page** — **picked
+  2026-11-05, moved to In progress.** *(S; on-box; new in
+  posts/2026-11-04.html)*
 
 - **switch-l4t-gpu — stop tracking bytecode** *(S; on-box; repo evidence
   2026-11-04)* — `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
@@ -54,16 +57,9 @@ found by web research and keep their source URL.
   (mocked or clock-capped) exits 1 naming the metric; the checker is
   read-only on hardware state — no clock or model changes, ever.**
 
-- **personal-website — make the site's house rules executable** *(S;
-  on-box; new in posts/2026-11-02.html)* — this repo's rules are
-  enforced by remembering them: every asset reference resolves, feed and
-  sitemap match the posts directory one-to-one, the blog index stays
-  newest-first, and no network address ever ships in a post. Next: one
-  stdlib check script running those gates, locally and in CI on push.
-  **Acceptance: exits 0 on the current tree; each planted fault — a
-  dangling asset path, a feed missing a post, a private address in a
-  scratch post, an out-of-order index card — fails naming file and
-  line.**
+- **personal-website — make the site's house rules executable** —
+  **SHIPPED 2026-11-04, see Done** (pkia.github.io `08b4572` + `3e275ca`;
+  CI green).
 
 - **cluster — make the GPU a first-class task type** *(S/M; on-box; new
   in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
@@ -236,9 +232,22 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-04: the house-rules item shipped this run, see Done.
-Pickable next: switch-l4t-gpu GPU baseline, the 11-04 pi-cicd cluster
-console page, or the switch-l4t-gpu bytecode row — all under Proposed.)*
+- **pi-cicd — give the cluster numbers a console page** — picked
+  2026-11-05 (14:00 run; continuation of the 11-03 /metrics ship with
+  the repo context still warm). Grafana from apt was verified false on
+  this box months ago, but Prometheus ships its own console templates
+  and the skeletons are already installed and unused. Once the cluster
+  target is up, one console page rendering queue depth and per-worker
+  ages turns the new /metrics exposition into something the kiosk can
+  glance at. Next: a cluster console fed by the same PromQL the graphs
+  will use, styled by the existing templates. **Acceptance: the page
+  renders real numbers from a running scrape; an empty store renders
+  its empty state without erroring.**
+
+*(previous: none — 2026-11-04: the house-rules item shipped that run,
+see Done. Still pickable after this: switch-l4t-gpu GPU baseline, the
+switch-l4t-gpu bytecode row, or the 11-05 personal-website feed-gate
+row — all under Proposed.)*
 
 ## Done
 
