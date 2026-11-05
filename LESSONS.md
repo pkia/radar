@@ -4,6 +4,22 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-05 — **Consoles are a flags change, not just a file.** The
+  Debian prometheus ships its console skeletons as examples under
+  `/usr/share/doc/prometheus/examples/` with
+  `/etc/prometheus/{consoles,console_libraries}` empty — and this box's
+  unit ran with no console flags at all, so `/consoles` 404'd. Serving
+  a page needs three moving parts: the `.html` in the templates dir,
+  the two `.lib` files in the libraries dir (the page's
+  `{{ template "head" }}` silently requires them — install.sh copies
+  and guards them), and the `--web.console.*` flags via drop-in, where
+  a later drop-in file's ExecStart REPLACES an earlier one rather than
+  merging (pin the repeated union in a test). A reload cannot pick up
+  flags; the unit must restart. Template nit that cost one red cycle:
+  the drilldown's suffix/format strings go INSIDE the call —
+  `(args "expr" "s" "printf.1f")` — after the paren the template action
+  misparses and Prometheus 500s the whole page.
+
 - 2026-11-04 — **A link checker must resolve the way the server does.**
   The site-checker's first live run reported 647 faults and ~640 were
   checker bugs: `is_file()` on the literal path flags every nav link,

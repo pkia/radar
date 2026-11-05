@@ -31,9 +31,8 @@ found by web research and keep their source URL.
   one in robots.txt each fail naming file and line; the current tree
   stays clean; the site's own public-origin URLs are not faults.**
 
-- **pi-cicd — give the cluster numbers a console page** — **picked
-  2026-11-05, moved to In progress.** *(S; on-box; new in
-  posts/2026-11-04.html)*
+- **pi-cicd — give the cluster numbers a console page** —
+  **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
 - **switch-l4t-gpu — stop tracking bytecode** *(S; on-box; repo evidence
   2026-11-04)* — `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
@@ -232,24 +231,67 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — give the cluster numbers a console page** — picked
-  2026-11-05 (14:00 run; continuation of the 11-03 /metrics ship with
-  the repo context still warm). Grafana from apt was verified false on
-  this box months ago, but Prometheus ships its own console templates
-  and the skeletons are already installed and unused. Once the cluster
-  target is up, one console page rendering queue depth and per-worker
-  ages turns the new /metrics exposition into something the kiosk can
-  glance at. Next: a cluster console fed by the same PromQL the graphs
-  will use, styled by the existing templates. **Acceptance: the page
-  renders real numbers from a running scrape; an empty store renders
-  its empty state without erroring.**
-
-*(previous: none — 2026-11-04: the house-rules item shipped that run,
-see Done. Still pickable after this: switch-l4t-gpu GPU baseline, the
-switch-l4t-gpu bytecode row, or the 11-05 personal-website feed-gate
-row — all under Proposed.)*
+*(none — 2026-11-05: the cluster console page shipped this run, see
+Done. Pickable next: the 11-05 personal-website feed-gate row, the
+switch-l4t-gpu GPU baseline, or the switch-l4t-gpu bytecode row — all
+under Proposed.)*
 
 ## Done
+
+- **pi-cicd — give the cluster numbers a console page** — done
+  2026-11-05 (the 11-04 devlog's **S**, on-box; picked over the GPU
+  baseline and bytecode rows because it finishes the 11-03 /metrics
+  loop with the repo context still warm, and every half of its
+  acceptance verifies on this box in one session). Shipped in pi-cicd
+  `545cf04`:
+  - `prometheus/consoles/cluster.html` — served by the running
+    Prometheus at `/consoles/cluster.html` once the flags drop-in
+    lands: queue depth (number + PromConsole graph), unit/job counts by
+    status (the store's real vocabulary — units queued/running/
+    succeeded/dead, jobs complete/failed), and per-worker
+    last-seen/healthy/units-done, all queried server-side at render
+    time from the same exposition /health derives from, so the page
+    cannot disagree with /health. A worker past the stale threshold
+    gets a warning banner, not just a 0 in a cell; styled by the
+    package's own prom.lib/menu.lib — the Debian skeletons the devlog
+    called "installed and unused", which this ship finally uses.
+  - `prometheus/prometheus-consoles.conf` — the other half the devlog
+    could not have seen from the board: the live Prometheus runs with
+    **no console flags at all** (`/consoles` 404s), so serving needs a
+    systemd drop-in adding `--web.console.templates`/`.libraries`. A
+    drop-in's ExecStart replaces rather than merges, so the file
+    repeats bind-local.conf's flags and a test pins that union.
+    install.sh copies page + libs (guarded on the package examples
+    dir) + drop-in and **try-restarts** the unit — a reload cannot pick
+    up new flags. /etc and the restart stay the owner's install.sh
+    pass, as with every unit.
+  - **Acceptance, executed:** suite **368 passed, 1 skipped** (9 new in
+    `tests/test_prometheus_console.py`): 7 structural (metric names,
+    empty state by construction, no private addresses, drop-in flag
+    union, install.sh wiring, docs) plus 2 drills running the **real
+    prometheus binary** against a canned /metrics stand-in: a running
+    scrape renders the real numbers (queue `<strong>7</strong>`, status
+    rows in the real vocabulary, switchlab `yes` / raspberrypi
+    `<strong>NO</strong>` with the silent-workers banner at 3700 s vs
+    the 180 s threshold, stale-after 180.0), and an empty store (target
+    refusing — today's live condition) renders **200 plus the named
+    empty state** naming the owner's two steps, with no worker rows.
+    Negative-controlled by execution: the pre-fix template (drilldown
+    args outside the `args` call) 500'd both drills before the
+    one-line fix — the page is parsed as rendered, not assumed. **CI
+    green on the tip** (run 42043699702, `545cf04`; runners without
+    prometheus skip the drills, the 7 structural tests carry the gate).
+  - **Not claimed:** the live console does not serve yet — the live
+    Prometheus keeps its flagless start until the owner's install.sh
+    pass (copy + restart), so `/consoles/cluster.html` 404s on :9090
+    for now, the truthful state. Real numbers on the live page also
+    wait on the 11-03 token install (`/etc/cluster-metrics.token`) and
+    the coordinator's `/metrics` restart — the empty state names
+    exactly those steps, and the empty-store drill verifies that
+    rendering. The time-series graph is drawn client-side by the
+    package's own JS; the drills verify the server-rendered numbers,
+    not the SVG (no browser in CI). Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **personal-website — make the site's house rules executable** — done
   2026-11-04 (on-box **S**, the board's named pickable; chosen over the
@@ -3094,6 +3136,21 @@ Append-only, one line per run — including failures and no-ops.
   the way the server does — directory URLs map to index.html; and
   this repo's GitHub slug is pkia/pkia.github.io, not the checkout's
   directory name. ≈25 tool calls.
+
+- 2026-11-05 — shipped **pi-cicd: the cluster console page** (`545cf04`):
+  `/consoles/cluster.html` — queue depth, status tables in the store's
+  real vocabulary, per-worker ages/healthy/units-done with a warning
+  banner for silent workers, styled by the package's own prom.lib/
+  menu.lib — plus the flags drop-in (the live daemon had no console
+  flags at all) and the guarded install.sh copy + try-restart. Suite
+  **368 passed, 1 skipped** (9 new; 2 drills run the real prometheus
+  binary: real-numbers render and the empty store's 200 + named empty
+  state); CI green (run 42043699702). Sync: added the 11-05 devlog's
+  one new item (address gate reads the feed) and stamped the
+  house-rules row SHIPPED; no external search (3 pickable remained).
+  Live arming (page+libs+drop-in to /etc, daemon restart) is the
+  owner's install.sh pass. LESSONS: consoles are a flags change, not
+  just a file. ≈30 tool calls.
 
 ## Notes
 
