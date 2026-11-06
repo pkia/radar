@@ -21,15 +21,9 @@ found by web research and keep their source URL.
   **SHIPPED 2026-11-02, see Done** (cluster-prototype `69ea744` +
   `2529f80`, pi-cicd `881e597`).
 
-- **personal-website — teach the address gate to read the feed** *(S;
-  on-box; new in posts/2026-11-05.html)* — the house-rules checker's own
-  not-claimed note is the next fault class: an address can no longer ride
-  in a page, but feed.xml item descriptions and robots.txt are not
-  scanned, so one could still ship in a feed line. Next: extend
-  `tools/check_site.py`'s address gate over the feed's item text and
-  robots.txt. **Acceptance: an address planted in a feed description and
-  one in robots.txt each fail naming file and line; the current tree
-  stays clean; the site's own public-origin URLs are not faults.**
+- **personal-website — teach the address gate to read the feed** —
+  **SHIPPED 2026-11-06, see Done** (pkia.github.io `fe392a1`;
+  CI green, run 42230843104).
 
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
@@ -231,17 +225,48 @@ rest now build on it:
 
 ## In progress
 
-- **personal-website — teach the address gate to read the feed** *(S;
-  on-box; picked 2026-11-06 over the GPU-baseline and bytecode rows —
-  newest row, closes a published-surface gap, and every half of its
-  acceptance verifies on this box in one session; the GPU baseline waits
-  for hardware runs, the bytecode row for a gpu-llm CI pass.)* Next:
-  extend `tools/check_site.py`'s address gate over feed.xml item text
-  and robots.txt. **Acceptance: an address planted in a feed description
-  and one in robots.txt each fail naming file and line; the current tree
-  stays clean; the site's own public-origin URLs are not faults.**
+*(none — 2026-11-06: the feed-gate row shipped this run, see Done.
+Pickable next: the two switch-l4t-gpu rows — the GPU baseline and the
+bytecode stop-tracking — both under Proposed.)*
 
 ## Done
+
+- **personal-website — teach the address gate to read the feed** — done
+  2026-11-06 (the 11-05 devlog's **S**, on-box; picked over the GPU
+  baseline and bytecode rows because every half of its acceptance
+  verifies on this box in one session, while the GPU baseline waits
+  for hardware runs). Shipped in pkia.github.io `fe392a1`:
+  - `tools/check_site.py`'s **addresses** gate now covers every
+    published text file, not just pages: feed.xml item text,
+    sitemap.xml, robots.txt, and the CSS/JS assets — same
+    ADDR_PATTERNS (private/link-local/CGNAT IPv4, local IPv6, .ts.net
+    hostnames), every fault still naming file and line. The site's own
+    public-origin URLs in those files (feed links/guids, descriptions,
+    robots.txt's Sitemap line) are not faults — proven by a control
+    test, not assumed.
+  - **Acceptance, executed:** suite **25 passed** (5 new in
+    `tests/test_check_site.py`): an address planted in a feed
+    description fails naming `feed.xml` and its exact line; a .ts.net
+    hostname in a description fails the same way; an address planted
+    in robots.txt fails naming line 3; an address in a stylesheet
+    url() fails naming styles.css:1; and a feed description citing
+    https://pkia.github.io/blog/ beside the fixture robots.txt's
+    public sitemap URL stays clean (exit 0). Negative-controlled by
+    execution: against the pre-change checker (git stash) the four
+    planted-fault tests fail; the public-origin control passes
+    vacuously there (the old checker never reads the feed).
+  - **Live:** the real tree passes — `OK — 76 pages, 68 posts, feed
+    68 items, sitemap 75 locs, index 68 cards, 1069 asset refs,
+    busters v=11, no network addresses in 81 files`, exit 0. **CI
+    green on the tip** (run 42230843104, `fe392a1`). No content
+    change — the feed, robots.txt and assets the site serves today
+    were already clean (measured before the change: zero pattern hits
+    across every scanned file).
+  - **Not claimed:** file kinds outside the scanned set (svg, json,
+    ico) are not scanned — the board row's fault class (feed item
+    text, robots.txt) is covered, and css/js came along because a
+    url() can carry an address the same way. Repo:
+    <https://github.com/pkia/pkia.github.io>.
 
 - **pi-cicd — give the cluster numbers a console page** — done
   2026-11-05 (the 11-04 devlog's **S**, on-box; picked over the GPU
@@ -3156,6 +3181,18 @@ Append-only, one line per run — including failures and no-ops.
   Live arming (page+libs+drop-in to /etc, daemon restart) is the
   owner's install.sh pass. LESSONS: consoles are a flags change, not
   just a file. ≈30 tool calls.
+
+- 2026-11-06 — shipped **personal-website: the address gate reads the
+  feed** (`fe392a1`): check_site.py's addresses gate now scans every
+  published text file — feed.xml item text, sitemap.xml, robots.txt,
+  css/js — same patterns, every fault naming file and line;
+  public-origin URLs proven not faults by a control test. Suite
+  **25 passed** (5 new), negative-controlled against the pre-change
+  checker (the 4 planted faults fail there); real tree clean across
+  81 scanned files; CI green (run 42230843104). Sync: the 11-06
+  devlog restated the same three rows — no new items; no external
+  search (3 pickable remained). Next pickables: the two
+  switch-l4t-gpu rows. ≈20 tool calls.
 
 ## Notes
 
