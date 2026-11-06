@@ -231,10 +231,15 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-05: the cluster console page shipped this run, see
-Done. Pickable next: the 11-05 personal-website feed-gate row, the
-switch-l4t-gpu GPU baseline, or the switch-l4t-gpu bytecode row — all
-under Proposed.)*
+- **personal-website — teach the address gate to read the feed** *(S;
+  on-box; picked 2026-11-06 over the GPU-baseline and bytecode rows —
+  newest row, closes a published-surface gap, and every half of its
+  acceptance verifies on this box in one session; the GPU baseline waits
+  for hardware runs, the bytecode row for a gpu-llm CI pass.)* Next:
+  extend `tools/check_site.py`'s address gate over feed.xml item text
+  and robots.txt. **Acceptance: an address planted in a feed description
+  and one in robots.txt each fail naming file and line; the current tree
+  stays clean; the site's own public-origin URLs are not faults.**
 
 ## Done
 
