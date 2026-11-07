@@ -28,7 +28,18 @@ found by web research and keep their source URL.
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
-- **switch-l4t-gpu — stop tracking bytecode** *(S; on-box; repo evidence
+- **personal-website — cover the served text the gate still skips** *(S;
+  on-box; new in posts/2026-11-07.html)* — this week's gate work carries
+  its own residue: the address scan now spans pages, feed, sitemap,
+  robots and the CSS/JS, but a served SVG — the favicon is one — is
+  still outside it, and an address rides in SVG markup the same way it
+  rode in a feed line. Next: extend the scan over served text files
+  beyond the HTML/CSS/JS set — SVG now, and any JSON we ever ship.
+  **Acceptance: an address planted in an SVG `<desc>` fails naming file
+  and line; the current tree stays clean; CI green.**
+
+- **switch-l4t-gpu — stop tracking bytecode** — **picked 2026-11-07,
+  moved to In progress.** *(S; on-box; repo evidence
   2026-11-04)* — `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
   files tracked, and one already shows as modified on an untouched tree
   (`M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`), so
@@ -225,9 +236,22 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-06: the feed-gate row shipped this run, see Done.
-Pickable next: the two switch-l4t-gpu rows — the GPU baseline and the
-bytecode stop-tracking — both under Proposed.)*
+- **switch-l4t-gpu — stop tracking bytecode** *(S; on-box; repo evidence
+  2026-11-04)* — picked 2026-11-07: the oldest open row, and every half
+  of its acceptance verifies on this box in one session — no hardware
+  needed — while the GPU baseline row still wants real kernel runs.
+  `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
+  files tracked, and one already shows as modified on an untouched tree
+  (`M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`), so
+  compiled bytecode rides commits and dirties `git status` on every
+  local run. Next: `.gitignore` the `__pycache__` dirs, `git rm
+  --cached` the tracked files, no source or CI change. **Acceptance: no
+  `.pyc` in `git ls-files`; after importing the modules `git status`
+  stays clean; CI green on the push.**
+
+*(previous: none — 2026-11-06: the feed-gate row shipped that run, see
+Done. Still pickable after this: the switch-l4t-gpu GPU baseline row or
+the 11-07 personal-website served-text row — both under Proposed.)*
 
 ## Done
 
