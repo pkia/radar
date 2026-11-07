@@ -38,16 +38,9 @@ found by web research and keep their source URL.
   **Acceptance: an address planted in an SVG `<desc>` fails naming file
   and line; the current tree stays clean; CI green.**
 
-- **switch-l4t-gpu — stop tracking bytecode** — **picked 2026-11-07,
-  moved to In progress.** *(S; on-box; repo evidence
-  2026-11-04)* — `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
-  files tracked, and one already shows as modified on an untouched tree
-  (`M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`), so
-  compiled bytecode rides commits and dirties `git status` on every
-  local run. Next: `.gitignore` the `__pycache__` dirs, `git rm --cached`
-  the tracked files, no source or CI change. **Acceptance: no `.pyc` in
-  `git ls-files`; after importing the modules `git status` stays clean;
-  CI green on the push.**
+- **switch-l4t-gpu — stop tracking bytecode** —
+  **SHIPPED 2026-11-07, see Done** (switch-l4t-gpu `f416b56`; CI green,
+  run 42379848040).
 
 - **switch-l4t-gpu — give the GPU numbers a baseline to defend** *(S;
   on-box; new in posts/2026-11-02.html)* — the measured peaks — the FMA
@@ -236,24 +229,38 @@ rest now build on it:
 
 ## In progress
 
-- **switch-l4t-gpu — stop tracking bytecode** *(S; on-box; repo evidence
-  2026-11-04)* — picked 2026-11-07: the oldest open row, and every half
-  of its acceptance verifies on this box in one session — no hardware
-  needed — while the GPU baseline row still wants real kernel runs.
-  `git ls-files` shows two `gpu-llm/tools/__pycache__/*.pyc`
-  files tracked, and one already shows as modified on an untouched tree
-  (`M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`), so
-  compiled bytecode rides commits and dirties `git status` on every
-  local run. Next: `.gitignore` the `__pycache__` dirs, `git rm
-  --cached` the tracked files, no source or CI change. **Acceptance: no
-  `.pyc` in `git ls-files`; after importing the modules `git status`
-  stays clean; CI green on the push.**
-
-*(previous: none — 2026-11-06: the feed-gate row shipped that run, see
-Done. Still pickable after this: the switch-l4t-gpu GPU baseline row or
-the 11-07 personal-website served-text row — both under Proposed.)*
+*(none — 2026-11-07: the bytecode row shipped this run, see Done.
+Pickable next: the switch-l4t-gpu GPU-baseline row or the 11-07
+personal-website served-text/SVG row — both under Proposed.)*
 
 ## Done
+
+- **switch-l4t-gpu — stop tracking bytecode** — done 2026-11-07 (the
+  board's oldest open row — repo evidence filed 2026-11-04 and carried
+  through three picks of other work; picked because every half of its
+  acceptance verifies on this box in one session with no hardware,
+  while the GPU baseline row still wants real kernel runs). Shipped in
+  switch-l4t-gpu `f416b56`:
+  - `.gitignore` gains `__pycache__/` and `*.pyc`; the two tracked
+    `gpu-llm/tools/__pycache__/*.pyc` files left the index via
+    `git rm --cached` (working-tree copies stay, now ignored). No
+    source or CI change.
+  - **Acceptance, executed:** `git ls-files` carries **zero** `.pyc`;
+    `git status` came back empty after the commit, stayed empty after
+    importing the modules again and after a full `python3 -m compileall
+    .` (both regenerate bytecode into the now-ignored dir); ruff fatal
+    rules (E9,F63,F7,F82) pass locally; **CI green on the tip** (run
+    42379848040, `f416b56`, 10 s). The run-start state is the negative
+    control by itself: `M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`
+    sat on an untouched tree — the same import path now leaves status
+    empty.
+  - **Not claimed:** `referee_qwen` cannot fully import on the Pi — it
+    reads `weights/qwen/pretok.regex` at import time and the weights
+    live on the Switch; pre-existing module behaviour, untouched here
+    (its bytecode still recompiles into the ignored dir, which is
+    exactly the path that used to dirty the tree). `gpt2_bpe` imports
+    fully on this box. Repo:
+    <https://github.com/pkia/switch-l4t-gpu>.
 
 - **personal-website — teach the address gate to read the feed** — done
   2026-11-06 (the 11-05 devlog's **S**, on-box; picked over the GPU
@@ -3217,6 +3224,21 @@ Append-only, one line per run — including failures and no-ops.
   devlog restated the same three rows — no new items; no external
   search (3 pickable remained). Next pickables: the two
   switch-l4t-gpu rows. ≈20 tool calls.
+
+- 2026-11-07 — shipped **switch-l4t-gpu: stop tracking bytecode**
+  (`f416b56`; CI green run 42379848040): `.gitignore` gains
+  `__pycache__/` + `*.pyc`, the two tracked gpu-llm/tools bytecode
+  files dropped from the index — no source or CI change. Acceptance
+  executed: zero .pyc in git ls-files; status empty after commit,
+  after re-importing the modules and after a full compileall; ruff
+  fatal rules clean. En route, measured: referee_qwen cannot fully
+  import on the Pi (reads weights/qwen/pretok.regex at import time;
+  weights live on the Switch) — pre-existing, noted in the Done row.
+  Sync: added the 11-07 devlog's one new item (personal-website
+  served-text/SVG scan); CI sweep of the four owned repos all green
+  on their tips; no external search (3 pickable after the addition).
+  Next pickables: the GPU-baseline row and the served-text row.
+  ≈15 tool calls.
 
 ## Notes
 
