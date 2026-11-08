@@ -39,15 +39,8 @@ found by web research and keep their source URL.
   CI green on the tip.**
 
 - **personal-website — cover the served text the gate still skips** —
-  **PICKED 2026-11-08, see In progress.** *(S; on-box; new in
-  posts/2026-11-07.html)* — this week's gate work carries its own
-  residue: the address scan now spans pages, feed, sitemap, robots and
-  the CSS/JS, but a served SVG — the favicon is one — is still outside
-  it, and an address rides in SVG markup the same way it rode in a feed
-  line. Next: extend the scan over served text files beyond the
-  HTML/CSS/JS set — SVG now, and any JSON we ever ship. **Acceptance:
-  an address planted in an SVG `<desc>` fails naming file and line; the
-  current tree stays clean; CI green.**
+  **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
+  run 42488051512).
 
 - **switch-l4t-gpu — stop tracking bytecode** —
   **SHIPPED 2026-11-07, see Done** (switch-l4t-gpu `f416b56`; CI green,
@@ -240,15 +233,47 @@ rest now build on it:
 
 ## In progress
 
-- **personal-website — cover the served text the gate still skips** —
-  picked 2026-11-08. Repo checkout `/home/ev/personal-website`
-  (pkia/pkia.github.io, main); target: `tools/check_site.py`'s
-  **addresses** gate — extend the scan to the served text files beyond
-  HTML/CSS/JS (SVG, JSON); tests in `tests/test_check_site.py`; then
-  suite + live-tree run, push, CI. Resume pointer: start from a clean
-  tree, acceptance as in the Proposed row.
+*(none — 2026-11-08: the served-text/SVG row shipped this run, see
+Done. Pickable next: the switch-l4t-gpu GPU-baseline row or the radar
+lint-board-in-CI row — both under Proposed.)*
 
 ## Done
+
+- **personal-website — cover the served text the gate still skips** —
+  done 2026-11-08 (the 11-07 devlog's **S**, the residue the 11-06
+  ship filed against itself; picked over the GPU-baseline row because
+  every half of its acceptance verifies on this box in one session
+  with no hardware). Shipped in pkia.github.io `2a4639b`:
+  - `tools/check_site.py`'s **addresses** gate now scans served SVG
+    and JSON beside pages, feed, sitemap, robots.txt and the CSS/JS —
+    the favicon is an SVG, and SVG markup (`<desc>`, `<title>`)
+    carries text exactly the way a feed line does; same ADDR_PATTERNS
+    (private/link-local/CGNAT IPv4, local IPv6, .ts.net hostnames),
+    every fault still naming file and line.
+  - **Acceptance, executed:** suite **29 passed** (4 new in
+    `tests/test_check_site.py`): an address planted in an SVG
+    `<desc>` fails naming `favicon.svg:2`; a .ts.net hostname in SVG
+    faults naming the label and the host; an address in JSON names
+    `manifest.json:3`; and the site's own public origin in SVG/JSON
+    stays clean (exit 0). Negative-controlled by execution: against
+    the pre-change checker (git stash) all three planted-fault tests
+    fail; the public-URL control passes vacuously there (the old
+    checker never reads svg/json). The real favicon.svg's membership
+    in the scan set is proven, not inferred: planting `192.168.0.25`
+    in its `<desc>` on a copy of the real tree fails naming
+    `favicon.svg:8`, exit 1. **Live tree clean:** `OK — 78 pages, 70
+    posts, feed 70 items, sitemap 77 locs, index 70 cards, 1099 asset
+    refs, busters v=11, no network addresses in 84 files`, exit 0 —
+    the svg joined the scan set (81 files at the 11-06 ship; two new
+    posts since + favicon.svg). **CI green on the tip** (run
+    42488051512, `2a4639b`); the Pages deploy followed (run
+    42488051100, success). No content change — the SVG the site
+    serves today was already clean.
+  - **Not claimed:** JSON is covered prospectively (the repo ships
+    none today; the extension waits for the manifest/data file the
+    site may eventually serve); other served-text kinds (ico, xml
+    beyond feed/sitemap) stay outside the scan, per the row's scope.
+    Repo: <https://github.com/pkia/pkia.github.io>.
 
 - **switch-l4t-gpu — stop tracking bytecode** — done 2026-11-07 (the
   board's oldest open row — repo evidence filed 2026-11-04 and carried
@@ -3254,6 +3279,21 @@ Append-only, one line per run — including failures and no-ops.
   on their tips; no external search (3 pickable after the addition).
   Next pickables: the GPU-baseline row and the served-text row.
   ≈15 tool calls.
+
+- 2026-11-08 — shipped **personal-website: the address gate reads
+  served SVG and JSON** (`2a4639b`; CI green run 42488051512, Pages
+  deploy 42488051100 success): the scan set is now served text —
+  pages, feed, sitemap, robots.txt, CSS/JS, SVG, JSON — the favicon
+  the first real SVG under it. Acceptance executed: 29 tests pass
+  (4 new), the three planted-fault tests fail against the pre-change
+  checker (git stash NC), and the real favicon.svg proven in-scan by
+  a planted fault on a tree copy (`FAIL favicon.svg:8`). Live tree
+  clean at 84 files; ruff fatal rules + compileall green. Sync: added
+  the 11-08 devlog's one new item (radar: lint the board in CI);
+  repo evidence added nothing (clean trees, zero TODO/FIXME clusters
+  across the owned checkouts); no external search (3 pickable after
+  the addition). Next pickables: GPU-baseline row, radar lint row.
+  ≈16 tool calls.
 
 ## Notes
 
