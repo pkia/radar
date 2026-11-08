@@ -28,15 +28,26 @@ found by web research and keep their source URL.
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
-- **personal-website — cover the served text the gate still skips** *(S;
-  on-box; new in posts/2026-11-07.html)* — this week's gate work carries
-  its own residue: the address scan now spans pages, feed, sitemap,
-  robots and the CSS/JS, but a served SVG — the favicon is one — is
-  still outside it, and an address rides in SVG markup the same way it
-  rode in a feed line. Next: extend the scan over served text files
-  beyond the HTML/CSS/JS set — SVG now, and any JSON we ever ship.
-  **Acceptance: an address planted in an SVG `<desc>` fails naming file
-  and line; the current tree stays clean; CI green.**
+- **radar — lint the board in CI** *(S; on-box; new in
+  posts/2026-11-08.html)* — the board is the loop's single source of
+  truth, but a malformed row — a missing effort tag, a missing
+  acceptance clause — only fails when a human notices. Next: a checker
+  that parses IDEAS.md's sections, requires every actionable Proposed
+  row to carry an effort tag and an acceptance clause, and fails naming
+  the row. **Acceptance: a planted malformed row fails the checker
+  naming the row and the missing part; the current board passes clean;
+  CI green on the tip.**
+
+- **personal-website — cover the served text the gate still skips** —
+  **PICKED 2026-11-08, see In progress.** *(S; on-box; new in
+  posts/2026-11-07.html)* — this week's gate work carries its own
+  residue: the address scan now spans pages, feed, sitemap, robots and
+  the CSS/JS, but a served SVG — the favicon is one — is still outside
+  it, and an address rides in SVG markup the same way it rode in a feed
+  line. Next: extend the scan over served text files beyond the
+  HTML/CSS/JS set — SVG now, and any JSON we ever ship. **Acceptance:
+  an address planted in an SVG `<desc>` fails naming file and line; the
+  current tree stays clean; CI green.**
 
 - **switch-l4t-gpu — stop tracking bytecode** —
   **SHIPPED 2026-11-07, see Done** (switch-l4t-gpu `f416b56`; CI green,
@@ -229,9 +240,13 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-07: the bytecode row shipped this run, see Done.
-Pickable next: the switch-l4t-gpu GPU-baseline row or the 11-07
-personal-website served-text/SVG row — both under Proposed.)*
+- **personal-website — cover the served text the gate still skips** —
+  picked 2026-11-08. Repo checkout `/home/ev/personal-website`
+  (pkia/pkia.github.io, main); target: `tools/check_site.py`'s
+  **addresses** gate — extend the scan to the served text files beyond
+  HTML/CSS/JS (SVG, JSON); tests in `tests/test_check_site.py`; then
+  suite + live-tree run, push, CI. Resume pointer: start from a clean
+  tree, acceptance as in the Proposed row.
 
 ## Done
 
