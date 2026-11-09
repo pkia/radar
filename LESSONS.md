@@ -4,6 +4,25 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-09 — **A workflow that triggers on a branch the repo never
+  pushes to has never run.** radar's ci.yml said `branches: [main]`
+  while the default branch is master — `gh run list` for the repo
+  came back empty, and "CI green on the tip" would have been
+  unmeasurable, not true. The empty run list is the signal: before
+  citing CI as evidence, check the repo has ever-run CI at all
+  (`gh run list --limit 1`), and read the trigger's branch filter
+  against the default branch (`gh repo view --json
+  defaultBranchRef`), not against the local checkout.
+
+- 2026-11-09 — **The board's line wrapping is part of its schema.**
+  The ledger pointer "shipped same day, see
+  Done." wraps mid-phrase across lines; a single-space regex missed
+  it and faulted a legitimately historical row on the first live
+  run. Pattern-match the row's *joined* text with `\s+` between
+  phrase words — same class as counting against the real status
+  vocabulary: match the text as the board actually wraps it, not as
+  it reads aloud.
+
 - 2026-11-05 — **Consoles are a flags change, not just a file.** The
   Debian prometheus ships its console skeletons as examples under
   `/usr/share/doc/prometheus/examples/` with

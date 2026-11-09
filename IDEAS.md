@@ -235,22 +235,57 @@ rest now build on it:
 
 ## In progress
 
-- **radar — lint the board in CI** — picked 2026-11-09, in progress
-  this run (the carried **S** both devlogs name — 11-08 and 11-09;
-  picked over the GPU-baseline row because every half of its
-  acceptance verifies on this box in one session with no hardware,
-  and over the new link-rot row because the loop's own ledger is the
-  cheaper, higher-leverage gate). Next: `tools/check_board.py` parses
-  IDEAS.md's sections, requires every actionable Proposed row to
-  carry an effort tag and an acceptance clause, fails naming the row
-  and the missing part, never edits the board; wired into this repo's
-  CI. Found at pick time: the workflow triggers on `main` only while
-  the default branch is `master`, so radar CI has never run — the
-  branch filter is part of this ship. **Acceptance: a planted
-  malformed row fails the checker naming the row and the missing
-  part; the current board passes clean; CI green on the tip.**
+*(none — 2026-11-09: the board-lint row shipped this run, see Done.
+Pickable next: the switch-l4t-gpu GPU-baseline row or the new
+personal-website link-rot row — both under Proposed.)*
 
 ## Done
+
+- **radar — lint the board in CI** — done 2026-11-09 (the carried
+  **S** both the 11-08 and 11-09 devlogs name; picked over the
+  GPU-baseline row because every half of its acceptance verifies on
+  this box in one session with no hardware). Shipped in radar
+  `fc52854`:
+  - `tools/check_board.py` — stdlib, read-only: parses IDEAS.md's
+    sections and faults every **actionable** Proposed row missing an
+    effort tag (`**S**`/`**M**`/`**L**` or the board's `*(S;` meta
+    spelling) or an acceptance clause (`**Acceptance:`) — each fault
+    naming file:line, the row title and the missing part; exit 0
+    clean, 1 faults, 2 structural (unreadable file, no Proposed
+    section). Ledger rows are exempt: a `**SHIPPED**`/`**SKIPPED**`/
+    `**RECORDED DONE**` stamp or a see-Done/run-log/Notes outcome
+    pointer makes a row history — reported in the OK line's count,
+    never faulted; the checker reads Done and Skipped, it does not
+    judge or edit them.
+  - `.github/workflows/ci.yml` gains the Board lint step — and the
+    real find of the run: **the workflow triggered on `main` only
+    while the default branch is `master`, so radar CI had never run
+    a single time** (`gh run list` for pkia/radar came back empty at
+    pick time). Branch filter now `[main, master]`; this ship's push
+    is the repo's first CI run.
+  - **Acceptance, executed:** suite **15 passed** (13 new in
+    `tests/test_check_board.py`): a planted malformed row fails
+    naming the row and each missing part, with the row's own line
+    number; the real board passes clean — `OK — board lint: 2
+    actionable Proposed row(s) checked, 24 ledger row(s) exempt`
+    (the two open rows: GPU-baseline, link-rot — matching the manual
+    count); read-only proven twice (source asserted free of
+    write/remove/subprocess calls; a run over a copy leaves the
+    bytes identical); ledger exemptions proven including the wrapped
+    `see\n  Done.` spelling that faulted the first live run (fixed:
+    the pointer regex matches the board's joined-text wrapping with
+    `\s+`); both effort-tag spellings accepted; CI wiring pinned by
+    test. **CI green on the tip** (run 42631950667, `fc52854`,
+    success, 15 s) — the Board lint step executed on the runner with
+    the same OK line, beside the full suite (15 passed there too).
+    Ruff fatal rules clean. Also fault-probed live on a board copy:
+    the planted row produced both fault lines and exit 1.
+  - **Not claimed:** the checker lints structure (tags + acceptance
+    clause), not prose quality; it cannot make a future run write a
+    well-formed row — it can only refuse to let a malformed one pass
+    CI. In-progress rows carry no required fields yet (adding a
+    resume-pointer rule is a possible follow-on, not in this row's
+    acceptance). Repo: <https://github.com/pkia/radar>.
 
 - **personal-website — cover the served text the gate still skips** —
   done 2026-11-08 (the 11-07 devlog's **S**, the residue the 11-06
@@ -3292,6 +3327,26 @@ Append-only, one line per run — including failures and no-ops.
   on their tips; no external search (3 pickable after the addition).
   Next pickables: the GPU-baseline row and the served-text row.
   ≈15 tool calls.
+
+- 2026-11-09 — shipped **radar: lint the board in CI** (`fc52854`;
+  CI green run 42631950667 — **the repo's first CI run ever**):
+  `tools/check_board.py` faults actionable Proposed rows missing an
+  effort tag or an acceptance clause, naming file:line, row and
+  part, and the Board lint step now runs in ci.yml. Found at pick
+  time: the workflow triggered on `main` only while the default
+  branch is `master`, so radar CI had never run — branch filter
+  fixed in the same ship. Acceptance executed: 15 tests pass (13
+  new), planted faults name row+part, real board clean (2
+  actionable / 24 ledger, matching the manual count), read-only
+  asserted twice, ruff clean; the wrapped `see\n  Done.` ledger
+  pointer faulted the first live run and is now matched across the
+  board's line wrapping (LESSONS). Sync: added the 11-09 devlog's
+  one new item (personal-website link-rot CI row); repo evidence
+  added nothing (clean trees, zero TODO/FIXME clusters across the
+  owned checkouts); no external search (3 pickable after the
+  addition). Next pickables: the GPU-baseline row and the new
+  link-rot row. ≈35 tool calls (one red test cycle: four fixture
+  arithmetic bugs in the tests, none in the checker).
 
 - 2026-11-08 — shipped **personal-website: the address gate reads
   served SVG and JSON** (`2a4639b`; CI green run 42488051512, Pages
