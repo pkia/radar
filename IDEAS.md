@@ -28,15 +28,17 @@ found by web research and keep their source URL.
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
-- **radar — lint the board in CI** *(S; on-box; new in
-  posts/2026-11-08.html)* — the board is the loop's single source of
-  truth, but a malformed row — a missing effort tag, a missing
-  acceptance clause — only fails when a human notices. Next: a checker
-  that parses IDEAS.md's sections, requires every actionable Proposed
-  row to carry an effort tag and an acceptance clause, and fails naming
-  the row. **Acceptance: a planted malformed row fails the checker
-  naming the row and the missing part; the current board passes clean;
-  CI green on the tip.**
+- **personal-website — make link rot fail CI** *(S; on-box; new in
+  posts/2026-11-09.html)* — the house-rules checker proves structure,
+  cache-busters and addresses, but nothing proves the links still
+  land: rename one post and every card pointing at it breaks
+  silently. Next: extend the checker to resolve every internal href
+  and in-page anchor across pages, posts and project tours, and give
+  external links a timed check that reports URL and status without
+  failing the run on a single flaky timeout. **Acceptance: a planted
+  broken internal href and a planted missing anchor both fail naming
+  file, line and target; the current tree passes; network-less runs
+  skip the external pass loudly, never silently.**
 
 - **personal-website — cover the served text the gate still skips** —
   **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
@@ -233,9 +235,20 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-08: the served-text/SVG row shipped this run, see
-Done. Pickable next: the switch-l4t-gpu GPU-baseline row or the radar
-lint-board-in-CI row — both under Proposed.)*
+- **radar — lint the board in CI** — picked 2026-11-09, in progress
+  this run (the carried **S** both devlogs name — 11-08 and 11-09;
+  picked over the GPU-baseline row because every half of its
+  acceptance verifies on this box in one session with no hardware,
+  and over the new link-rot row because the loop's own ledger is the
+  cheaper, higher-leverage gate). Next: `tools/check_board.py` parses
+  IDEAS.md's sections, requires every actionable Proposed row to
+  carry an effort tag and an acceptance clause, fails naming the row
+  and the missing part, never edits the board; wired into this repo's
+  CI. Found at pick time: the workflow triggers on `main` only while
+  the default branch is `master`, so radar CI has never run — the
+  branch filter is part of this ship. **Acceptance: a planted
+  malformed row fails the checker naming the row and the missing
+  part; the current board passes clean; CI green on the tip.**
 
 ## Done
 
