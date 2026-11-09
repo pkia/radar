@@ -40,6 +40,18 @@ found by web research and keep their source URL.
   file, line and target; the current tree passes; network-less runs
   skip the external pass loudly, never silently.**
 
+- **radar — stop tracking bytecode** *(S; on-box; repo evidence,
+  found 2026-11-09)* — this repo tracks
+  `engine/__pycache__/__init__.cpython-313.pyc`, so every local
+  pytest run leaves `M engine/__pycache__/…` in `git status` — the
+  same defect switch-l4t-gpu shipped away on 2026-11-07 (`f416b56`).
+  Next: `.gitignore` gains `__pycache__/` and `*.pyc`, the tracked
+  file leaves the index via `git rm --cached` (the working-tree copy
+  stays, now ignored), no source or CI change. **Acceptance:
+  `git ls-files` carries zero `.pyc`; `git status` comes back empty
+  after a full pytest run and after a `python3 -m compileall .`; CI
+  green on the tip.**
+
 - **personal-website — cover the served text the gate still skips** —
   **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
   run 42488051512).
@@ -3342,11 +3354,13 @@ Append-only, one line per run — including failures and no-ops.
   pointer faulted the first live run and is now matched across the
   board's line wrapping (LESSONS). Sync: added the 11-09 devlog's
   one new item (personal-website link-rot CI row); repo evidence
-  added nothing (clean trees, zero TODO/FIXME clusters across the
-  owned checkouts); no external search (3 pickable after the
-  addition). Next pickables: the GPU-baseline row and the new
-  link-rot row. ≈35 tool calls (one red test cycle: four fixture
-  arithmetic bugs in the tests, none in the checker).
+  found one item en route (radar itself tracks
+  `engine/__pycache__` bytecode — every local pytest run dirties
+  the tree), added as its own Proposed row; no external search (3
+  pickable after the additions). Next pickables: the GPU-baseline
+  row, the link-rot row, the bytecode row. ≈35 tool calls (one red
+  test cycle: four fixture arithmetic bugs in the tests, none in
+  the checker).
 
 - 2026-11-08 — shipped **personal-website: the address gate reads
   served SVG and JSON** (`2a4639b`; CI green run 42488051512, Pages
