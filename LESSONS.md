@@ -4,6 +4,52 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-05 — **Consoles are a flags change, not just a file.** The
+  Debian prometheus ships its console skeletons as examples under
+  `/usr/share/doc/prometheus/examples/` with
+  `/etc/prometheus/{consoles,console_libraries}` empty — and this box's
+  unit ran with no console flags at all, so `/consoles` 404'd. Serving
+  a page needs three moving parts: the `.html` in the templates dir,
+  the two `.lib` files in the libraries dir (the page's
+  `{{ template "head" }}` silently requires them — install.sh copies
+  and guards them), and the `--web.console.*` flags via drop-in, where
+  a later drop-in file's ExecStart REPLACES an earlier one rather than
+  merging (pin the repeated union in a test). A reload cannot pick up
+  flags; the unit must restart. Template nit that cost one red cycle:
+  the drilldown's suffix/format strings go INSIDE the call —
+  `(args "expr" "s" "printf.1f")` — after the paren the template action
+  misparses and Prometheus 500s the whole page.
+
+- 2026-11-04 — **A link checker must resolve the way the server does.**
+  The site-checker's first live run reported 647 faults and ~640 were
+  checker bugs: `is_file()` on the literal path flags every nav link,
+  because `/`, `/blog/` and relative `blog/` are directory URLs that
+  the server resolves to that directory's index.html. Model the
+  production resolver (map directory URLs → index.html) before calling
+  anything a fault — same class as counting against the schema's real
+  status vocabulary. The four faults that survived triage were all
+  real (a dangling mp3/png committed one directory above their page,
+  live-404 for a week; a stale cache-buster), and the triage itself —
+  per-gate, named file:line — is what made the checker bugs separable
+  from the site bugs in one pass.
+
+- 2026-11-04 — `execute_code` is blocked for unattended cron runs
+  (arbitrary-code approval gate, no user to approve); measurement
+  scripts in a cron run go through `terminal` with a `python3`
+  heredoc instead. And `gh run list` needs the repo's real GitHub
+  slug — this site repo is `pkia/pkia.github.io` while its checkout
+  directory is `personal-website`; the wrong slug 404s and looks
+  like "no CI".
+
+- 2026-11-02 — **Count against the schema's real status vocabulary, not
+  the intuitive name.** The queue-depth test failed its first run because
+  claimed units are stored as status `'running'` in `units.status` —
+  'claimed' exists only in method names and in my head. When a count or
+  a filter rests on a stored status, dump the actual vocabulary first
+  (seed a row through the real code path, `SELECT status, COUNT(*)`), and
+  leave the mapping in a comment where the constant is built. Cost: one
+  red test cycle.
+
 - 2026-11-02 — **Scope check comes before the pick.** The owner locked
   the radar to the current Pi 5 deployment's repos (cluster-prototype,
   switch-l4t-gpu, pi-cicd, personal-website, radar; old-deployment

@@ -13,6 +13,57 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **cluster — feed the graphs, not just the probes** —
+  **SHIPPED 2026-11-03, see Done** (cluster-prototype `5c52715`,
+  pi-cicd `38c65ce`; CI green on both).
+
+- **cluster — worker silence should page, not wait for a soak** —
+  **SHIPPED 2026-11-02, see Done** (cluster-prototype `69ea744` +
+  `2529f80`, pi-cicd `881e597`).
+
+- **personal-website — teach the address gate to read the feed** —
+  **SHIPPED 2026-11-06, see Done** (pkia.github.io `fe392a1`;
+  CI green, run 42230843104).
+
+- **pi-cicd — give the cluster numbers a console page** —
+  **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
+
+- **personal-website — make link rot fail CI** *(S; on-box; new in
+  posts/2026-11-09.html)* — the house-rules checker proves structure,
+  cache-busters and addresses, but nothing proves the links still
+  land: rename one post and every card pointing at it breaks
+  silently. Next: extend the checker to resolve every internal href
+  and in-page anchor across pages, posts and project tours, and give
+  external links a timed check that reports URL and status without
+  failing the run on a single flaky timeout. **Acceptance: a planted
+  broken internal href and a planted missing anchor both fail naming
+  file, line and target; the current tree passes; network-less runs
+  skip the external pass loudly, never silently.**
+
+- **personal-website — cover the served text the gate still skips** —
+  **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
+  run 42488051512).
+
+- **switch-l4t-gpu — stop tracking bytecode** —
+  **SHIPPED 2026-11-07, see Done** (switch-l4t-gpu `f416b56`; CI green,
+  run 42379848040).
+
+- **switch-l4t-gpu — give the GPU numbers a baseline to defend** *(S;
+  on-box; new in posts/2026-11-02.html)* — the measured peaks — the FMA
+  ceiling, the SGEMM rates, the memory bandwidth — live in docs and
+  devlog posts, so drift is currently detected by a human remembering.
+  Next: a committed baseline JSON beside a checker that reruns the
+  standard kernels, compares within a band, and exits nonzero naming the
+  drifted metric and both numbers — the cheap tripwire for thermal
+  throttle, an nvpmodel surprise, or a bad build. **Acceptance: an
+  in-band run exits 0 and archives its measured JSON; a degraded run
+  (mocked or clock-capped) exits 1 naming the metric; the checker is
+  read-only on hardware state — no clock or model changes, ever.**
+
+- **personal-website — make the site's house rules executable** —
+  **SHIPPED 2026-11-04, see Done** (pkia.github.io `08b4572` + `3e275ca`;
+  CI green).
+
 - **cluster — make the GPU a first-class task type** *(S/M; on-box; new
   in posts/2026-10-27.html)* — switch-l4t-gpu's `deploy/cluster`
   contract (`gpu_workload --json`, `done` sentinel, per-kernel verdicts)
@@ -184,13 +235,341 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-01: the remote-registry item shipped this run, see Done.
-2026-11-02: the previously "pickable next" items — the twitter probe
-vantage and Train attribution — are out of scope per the owner's
-deployment directive (see Notes); every remaining Proposed row is
-already recorded as shipped/skipped in place.)*
+- **radar — lint the board in CI** — picked 2026-11-09, in progress
+  this run (the carried **S** both devlogs name — 11-08 and 11-09;
+  picked over the GPU-baseline row because every half of its
+  acceptance verifies on this box in one session with no hardware,
+  and over the new link-rot row because the loop's own ledger is the
+  cheaper, higher-leverage gate). Next: `tools/check_board.py` parses
+  IDEAS.md's sections, requires every actionable Proposed row to
+  carry an effort tag and an acceptance clause, fails naming the row
+  and the missing part, never edits the board; wired into this repo's
+  CI. Found at pick time: the workflow triggers on `main` only while
+  the default branch is `master`, so radar CI has never run — the
+  branch filter is part of this ship. **Acceptance: a planted
+  malformed row fails the checker naming the row and the missing
+  part; the current board passes clean; CI green on the tip.**
 
 ## Done
+
+- **personal-website — cover the served text the gate still skips** —
+  done 2026-11-08 (the 11-07 devlog's **S**, the residue the 11-06
+  ship filed against itself; picked over the GPU-baseline row because
+  every half of its acceptance verifies on this box in one session
+  with no hardware). Shipped in pkia.github.io `2a4639b`:
+  - `tools/check_site.py`'s **addresses** gate now scans served SVG
+    and JSON beside pages, feed, sitemap, robots.txt and the CSS/JS —
+    the favicon is an SVG, and SVG markup (`<desc>`, `<title>`)
+    carries text exactly the way a feed line does; same ADDR_PATTERNS
+    (private/link-local/CGNAT IPv4, local IPv6, .ts.net hostnames),
+    every fault still naming file and line.
+  - **Acceptance, executed:** suite **29 passed** (4 new in
+    `tests/test_check_site.py`): an address planted in an SVG
+    `<desc>` fails naming `favicon.svg:2`; a .ts.net hostname in SVG
+    faults naming the label and the host; an address in JSON names
+    `manifest.json:3`; and the site's own public origin in SVG/JSON
+    stays clean (exit 0). Negative-controlled by execution: against
+    the pre-change checker (git stash) all three planted-fault tests
+    fail; the public-URL control passes vacuously there (the old
+    checker never reads svg/json). The real favicon.svg's membership
+    in the scan set is proven, not inferred: planting `192.168.0.25`
+    in its `<desc>` on a copy of the real tree fails naming
+    `favicon.svg:8`, exit 1. **Live tree clean:** `OK — 78 pages, 70
+    posts, feed 70 items, sitemap 77 locs, index 70 cards, 1099 asset
+    refs, busters v=11, no network addresses in 84 files`, exit 0 —
+    the svg joined the scan set (81 files at the 11-06 ship; two new
+    posts since + favicon.svg). **CI green on the tip** (run
+    42488051512, `2a4639b`); the Pages deploy followed (run
+    42488051100, success). No content change — the SVG the site
+    serves today was already clean.
+  - **Not claimed:** JSON is covered prospectively (the repo ships
+    none today; the extension waits for the manifest/data file the
+    site may eventually serve); other served-text kinds (ico, xml
+    beyond feed/sitemap) stay outside the scan, per the row's scope.
+    Repo: <https://github.com/pkia/pkia.github.io>.
+
+- **switch-l4t-gpu — stop tracking bytecode** — done 2026-11-07 (the
+  board's oldest open row — repo evidence filed 2026-11-04 and carried
+  through three picks of other work; picked because every half of its
+  acceptance verifies on this box in one session with no hardware,
+  while the GPU baseline row still wants real kernel runs). Shipped in
+  switch-l4t-gpu `f416b56`:
+  - `.gitignore` gains `__pycache__/` and `*.pyc`; the two tracked
+    `gpu-llm/tools/__pycache__/*.pyc` files left the index via
+    `git rm --cached` (working-tree copies stay, now ignored). No
+    source or CI change.
+  - **Acceptance, executed:** `git ls-files` carries **zero** `.pyc`;
+    `git status` came back empty after the commit, stayed empty after
+    importing the modules again and after a full `python3 -m compileall
+    .` (both regenerate bytecode into the now-ignored dir); ruff fatal
+    rules (E9,F63,F7,F82) pass locally; **CI green on the tip** (run
+    42379848040, `f416b56`, 10 s). The run-start state is the negative
+    control by itself: `M gpu-llm/tools/__pycache__/referee_qwen.cpython-313.pyc`
+    sat on an untouched tree — the same import path now leaves status
+    empty.
+  - **Not claimed:** `referee_qwen` cannot fully import on the Pi — it
+    reads `weights/qwen/pretok.regex` at import time and the weights
+    live on the Switch; pre-existing module behaviour, untouched here
+    (its bytecode still recompiles into the ignored dir, which is
+    exactly the path that used to dirty the tree). `gpt2_bpe` imports
+    fully on this box. Repo:
+    <https://github.com/pkia/switch-l4t-gpu>.
+
+- **personal-website — teach the address gate to read the feed** — done
+  2026-11-06 (the 11-05 devlog's **S**, on-box; picked over the GPU
+  baseline and bytecode rows because every half of its acceptance
+  verifies on this box in one session, while the GPU baseline waits
+  for hardware runs). Shipped in pkia.github.io `fe392a1`:
+  - `tools/check_site.py`'s **addresses** gate now covers every
+    published text file, not just pages: feed.xml item text,
+    sitemap.xml, robots.txt, and the CSS/JS assets — same
+    ADDR_PATTERNS (private/link-local/CGNAT IPv4, local IPv6, .ts.net
+    hostnames), every fault still naming file and line. The site's own
+    public-origin URLs in those files (feed links/guids, descriptions,
+    robots.txt's Sitemap line) are not faults — proven by a control
+    test, not assumed.
+  - **Acceptance, executed:** suite **25 passed** (5 new in
+    `tests/test_check_site.py`): an address planted in a feed
+    description fails naming `feed.xml` and its exact line; a .ts.net
+    hostname in a description fails the same way; an address planted
+    in robots.txt fails naming line 3; an address in a stylesheet
+    url() fails naming styles.css:1; and a feed description citing
+    https://pkia.github.io/blog/ beside the fixture robots.txt's
+    public sitemap URL stays clean (exit 0). Negative-controlled by
+    execution: against the pre-change checker (git stash) the four
+    planted-fault tests fail; the public-origin control passes
+    vacuously there (the old checker never reads the feed).
+  - **Live:** the real tree passes — `OK — 76 pages, 68 posts, feed
+    68 items, sitemap 75 locs, index 68 cards, 1069 asset refs,
+    busters v=11, no network addresses in 81 files`, exit 0. **CI
+    green on the tip** (run 42230843104, `fe392a1`). No content
+    change — the feed, robots.txt and assets the site serves today
+    were already clean (measured before the change: zero pattern hits
+    across every scanned file).
+  - **Not claimed:** file kinds outside the scanned set (svg, json,
+    ico) are not scanned — the board row's fault class (feed item
+    text, robots.txt) is covered, and css/js came along because a
+    url() can carry an address the same way. Repo:
+    <https://github.com/pkia/pkia.github.io>.
+
+- **pi-cicd — give the cluster numbers a console page** — done
+  2026-11-05 (the 11-04 devlog's **S**, on-box; picked over the GPU
+  baseline and bytecode rows because it finishes the 11-03 /metrics
+  loop with the repo context still warm, and every half of its
+  acceptance verifies on this box in one session). Shipped in pi-cicd
+  `545cf04`:
+  - `prometheus/consoles/cluster.html` — served by the running
+    Prometheus at `/consoles/cluster.html` once the flags drop-in
+    lands: queue depth (number + PromConsole graph), unit/job counts by
+    status (the store's real vocabulary — units queued/running/
+    succeeded/dead, jobs complete/failed), and per-worker
+    last-seen/healthy/units-done, all queried server-side at render
+    time from the same exposition /health derives from, so the page
+    cannot disagree with /health. A worker past the stale threshold
+    gets a warning banner, not just a 0 in a cell; styled by the
+    package's own prom.lib/menu.lib — the Debian skeletons the devlog
+    called "installed and unused", which this ship finally uses.
+  - `prometheus/prometheus-consoles.conf` — the other half the devlog
+    could not have seen from the board: the live Prometheus runs with
+    **no console flags at all** (`/consoles` 404s), so serving needs a
+    systemd drop-in adding `--web.console.templates`/`.libraries`. A
+    drop-in's ExecStart replaces rather than merges, so the file
+    repeats bind-local.conf's flags and a test pins that union.
+    install.sh copies page + libs (guarded on the package examples
+    dir) + drop-in and **try-restarts** the unit — a reload cannot pick
+    up new flags. /etc and the restart stay the owner's install.sh
+    pass, as with every unit.
+  - **Acceptance, executed:** suite **368 passed, 1 skipped** (9 new in
+    `tests/test_prometheus_console.py`): 7 structural (metric names,
+    empty state by construction, no private addresses, drop-in flag
+    union, install.sh wiring, docs) plus 2 drills running the **real
+    prometheus binary** against a canned /metrics stand-in: a running
+    scrape renders the real numbers (queue `<strong>7</strong>`, status
+    rows in the real vocabulary, switchlab `yes` / raspberrypi
+    `<strong>NO</strong>` with the silent-workers banner at 3700 s vs
+    the 180 s threshold, stale-after 180.0), and an empty store (target
+    refusing — today's live condition) renders **200 plus the named
+    empty state** naming the owner's two steps, with no worker rows.
+    Negative-controlled by execution: the pre-fix template (drilldown
+    args outside the `args` call) 500'd both drills before the
+    one-line fix — the page is parsed as rendered, not assumed. **CI
+    green on the tip** (run 42043699702, `545cf04`; runners without
+    prometheus skip the drills, the 7 structural tests carry the gate).
+  - **Not claimed:** the live console does not serve yet — the live
+    Prometheus keeps its flagless start until the owner's install.sh
+    pass (copy + restart), so `/consoles/cluster.html` 404s on :9090
+    for now, the truthful state. Real numbers on the live page also
+    wait on the 11-03 token install (`/etc/cluster-metrics.token`) and
+    the coordinator's `/metrics` restart — the empty state names
+    exactly those steps, and the empty-store drill verifies that
+    rendering. The time-series graph is drawn client-side by the
+    package's own JS; the drills verify the server-rendered numbers,
+    not the SVG (no browser in CI). Repo:
+    <https://github.com/pkia/pi-cicd>.
+
+- **personal-website — make the site's house rules executable** — done
+  2026-11-04 (on-box **S**, the board's named pickable; chosen over the
+  GPU baseline because every half of it verifies on this box in one
+  session). Shipped in pkia.github.io `08b4572` (checker + tests + CI
+  gate + 404 buster fix) and `3e275ca` (the media fix the gate forced):
+  - `tools/check_site.py` — stdlib, read-only (source asserted free of
+    write/remove/subprocess), exit-code contract: **assets** — every
+    local src/href resolves the way Pages serves them, directory URLs
+    (`/`, `/blog/`, relative `blog/`) mapping to that directory's
+    index.html; **feed** — 1:1 with blog/posts (link or guid, exactly
+    once each, stale items named); **sitemap** — every post once and
+    only locs that resolve to files (the 7 non-post locs are deliberate
+    and now verified to exist); **index** — newest-first with every
+    post carded exactly once; **cache-busters** — styles.css/script.js
+    carry the same ?v= on every page (and always a buster); **addresses**
+    — no private/link-local/CGNAT IPv4, no local IPv6, no .ts.net
+    hostnames in any page (AGENTS.md's "never publish network
+    addresses"). Every fault names file:line; the OK line carries
+    measured counts (74 pages, 66 posts, feed 66 items, sitemap 73
+    locs, index 66 cards, 1039 asset refs, busters v=11).
+  - **The first live run caught two real defects, both fixed in this
+    change:** sat-audio's mp3 + spectrogram were committed one
+    directory above the page that references them — Pages 404'd both
+    since 10-27 (verified live before and after: 404 → **200
+    audio/mp3 360,532 B** and **200 image/png 280,293 B** after the
+    deploy; the move is `3e275ca`, no content touched); and 404.html
+    carried `?v=10` against the site's v=11 (bumped; live 404.html
+    serves v=11). Negative-controlled by execution: the pre-fix run
+    named exactly those four faults — two sat-audio refs, two 404.html
+    busters — and nothing else after the fixes.
+  - `tests/test_check_site.py` — **20 passed**: each gate proven by
+    planting its fault into a fixture site and driving the real CLI
+    (dangling absolute + relative asset, feed missing/stale/duplicate
+    item, sitemap stale/missing/duplicate loc, out-of-order index card
+    at its exact line, missing card, buster drift, buster absent,
+    private IP, .ts.net hostname, undated post filename, public-IP
+    control stays clean, read-only source); plus the real-tree pass
+    test. ci.yml gains a **Site house rules** step on push — **CI
+    green on the tip** (run 41846232270, `08b4572`); ruff fatal rules
+    and compileall clean locally. LESSONS: a link checker must resolve
+    like the server, and the repo's GitHub slug is pkia/pkia.github.io
+    while the checkout directory is `personal-website`.
+  - **Not claimed:** the address gate scans HTML pages only — feed.xml
+    item text and robots.txt are not scanned (an address could ride in
+    a feed description; not gated, noted here). The gate flags
+    addresses, not project/worker names in prose — the site's own
+    established practice (15 posts say "raspberrypi" as a product
+    name) decided that scope, and the acceptance's fault list is
+    covered by IP/host patterns. Repo:
+    <https://github.com/pkia/pkia.github.io>.
+
+- **cluster — feed the graphs, not just the probes** — done 2026-11-03
+  (top item of the 11-03 devlog's radar list, on-box; picked over the
+  11-02 GPU-baseline and site house-rules items because it finishes the
+  loop the fresh /health work opened, with the repo context still
+  warm). Shipped in cluster-prototype `5c52715` + pi-cicd `38c65ce`:
+  - `cluster/metrics.py` — `GET /metrics` on the coordinator, Prometheus
+    text format 0.0.4, Content-Type `text/plain; version=0.0.4`. The
+    snapshot is derived: every number comes from the SAME store reads
+    /health uses (`health_snapshot` + `status_summary`), so the
+    endpoints cannot disagree — `cluster_queue_depth`,
+    `cluster_units`/`cluster_jobs` by status, `cluster_workers_recent`,
+    `cluster_stale_after_seconds` (the max(60, lease×3) threshold), and
+    per worker `cluster_worker_last_seen_seconds`,
+    `cluster_worker_healthy` (0/1, /health's verdict),
+    `cluster_worker_units_done_total`. Bearer-authed like every route;
+    label values escaped; read-only asserted — table snapshots
+    (units/jobs/workers/events) byte-identical across scrapes, in tests
+    and in the drill.
+  - pi-cicd ships the scrape half: job `cluster` →
+    `127.0.0.1:8800/metrics` with the token read at scrape time from
+    `/etc/cluster-metrics.token` (`authorization.credentials_file` —
+    never an inline value; a test asserts no `credentials:` and no
+    secret-looking hex anywhere in the yml). **Found en route, and it
+    shaped the design: promtool (and Prometheus) validate referenced
+    credential files at config load**, so a yml naming a missing file
+    takes the whole metrics stack down at its next load — not just the
+    new target. install.sh therefore guards the order: install the
+    coordinator's own `var/token` (root:prometheus 0640) first, copy
+    the yml second, skip the copy with a loud note when no token
+    exists, reload after. The guarded pass is the owner's (install.sh,
+    like every other unit); /etc untouched by this run.
+  - **Acceptance, executed:** suite **60 passed, 1 skipped** (7 new in
+    `tests/test_metrics.py`: auth, grammar parse, values equal /health
+    and /status for the same seeded state, read-only, empty-store
+    exposition, label escaping, float formatting); live drill
+    `tests/drill_metrics.py` **10/10 PASS** — real coordinator
+    subprocess (temp DB/token/loopback), real HTTP scrape,
+    **`promtool check metrics` accepts the body clean**, queue depth
+    equal to /health's, unit counters equal /status's, per-worker
+    ages/healthy/units_done match, aged-worker renders healthy=0, two
+    scrapes leave every table identical. pi-cicd suite **359 passed,
+    1 skipped** (3 new prometheus-config tests); `promtool check
+    config` passes on the shipped yml with the token path substituted
+    by a real file — the missing piece live is exactly the owner's
+    token install. **CI green on both tips:** cluster-prototype run
+    41651795944 (`5c52715`), pi-cicd run 41651791432 (`38c65ce`).
+    Negative-controlled by execution: the four endpoint tests fail
+    against the pre-change api.py; the three new pi-cicd tests fail
+    against the pre-change yml.
+  - **Not claimed:** the live coordinator serves /metrics only from its
+    next restart (same pattern as /health — no manual service
+    restarts); the scrape job reaches /etc only on the owner's
+    install.sh pass, and until the coordinator restarts the target
+    will show DOWN (404), loudly — the truthful state. The token file
+    is the coordinator's master credential (the API has no per-route
+    tokens), so making it group-readable to prometheus is the owner's
+    call, spelled in docs/prometheus.md. Repos:
+    <https://github.com/pkia/cluster-prototype>,
+    <https://github.com/pkia/pi-cicd>.
+
+- **cluster — worker silence should page, not wait for a soak** — done
+  2026-11-02 (top item of the 11-02 devlog's radar list, on-box; picked
+  over the GPU-baseline and site house-rules items filed the same day).
+  Shipped in cluster-prototype `69ea744` + `2529f80` and pi-cicd
+  `881e597`:
+  - `GET /health` on the coordinator — bearer-authed like every route
+    (the coordinator binds 0.0.0.0; the API's stated contract stays
+    intact). `Store.health_snapshot()` reports every worker's
+    `last_seen_age_s` and per-worker `healthy` against the SAME
+    threshold `status_summary` uses for `workers_recent`
+    (max(60, lease×3)), `queue_depth` (queued + running units — claimed
+    units are stored as `running`), and an overall `healthy:false` with
+    named reasons: a worker silent past the threshold is named with its
+    age; queued work with nobody inside the threshold is named as
+    queue-deepening. Read-only: no claim, no write.
+  - pi-cicd service-probe learned `PROBE_HTTP_HEADER Name=Header: value`
+    so it can poll an authed endpoint; values ride the wire only —
+    malformed lines are reported by probe name alone, orphan entries are
+    dropped loudly, and the token is asserted absent from state.json and
+    the scoreboard. First caller: `PROBE_HTTP
+    cluster=http://127.0.0.1:8800/health` + the bearer header.
+  - **Acceptance, executed live as a drill** (`tests/drill_worker_health.py`,
+    13/13 PASS, exit 0): real coordinator subprocess (temp DB, loopback,
+    temp token), real service-probe, a local HTTP sink standing in for
+    ntfy. Both workers fresh → `/health` healthy:true, probe sweep green,
+    sink empty. switchlab aged 1 h → healthy:false with reasons
+    `worker switchlab silent 3600s (threshold 60s)`; exactly ONE DOWN
+    digest (`service-probe: 1 service DOWN` / `cluster DOWN: healthz
+    reports unhealthy`); a second sweep stayed silent (edge-triggered).
+    switchlab freshened → exactly ONE UP digest (`cluster back UP`),
+    never a second DOWN. The token never persisted anywhere.
+  - **Evidence:** cluster-prototype suite **53 passed** (5 new; the old
+    "1 skipped" no longer exists in this environment — recounted fresh,
+    not carried); pi-cicd suite **356 passed, 1 skipped** (4 new, plus
+    one pre-existing `http_probe` lambda updated to the new signature).
+    **CI green on the tips:** cluster-prototype runs 41460006894
+    (`69ea744`) and 41460676399 (`2529f80`); pi-cicd run 41460694806
+    (`881e597`) — all conclusion success.
+  - **Not claimed:** the live coordinator keeps its pre-`/health` code
+    until its next restart (no manual service restarts — the drill's
+    temp coordinator is the executed evidence, the same pattern as the
+    GPU acceptance re-run), and the two config lines are not added to
+    `/etc/service-probe.conf` (cron-mode gates /etc). The owner's wiring
+    is two lines, with the token read from the coordinator's own
+    `var/token`:
+    `PROBE_HTTP=cluster=http://127.0.0.1:8800/health` and
+    `PROBE_HTTP_HEADER=cluster=Authorization: Bearer <token>` — documented
+    in service-probe's docstring. The day both land, the standing
+    5-minute sweep pages on real worker silence — exactly what the drill
+    executed end to end. Repos:
+    <https://github.com/pkia/cluster-prototype>,
+    <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — give the remote half a registry with something in it** —
   done 2026-11-01 (the 10-09 devlog's **S**, on-box; picked over the
@@ -2827,6 +3206,107 @@ Append-only, one line per run — including failures and no-ops.
   external search. ≈30 tool calls (overrun: the /etc approval gate
   blocked two write spellings before the staged-file fallback — lesson
   filed).
+
+- 2026-11-02 — shipped **cluster: worker silence pages** (cluster-prototype
+  `69ea744`+`2529f80`, pi-cicd `881e597`; CI green ×3): GET /health with
+  per-worker last-seen age + queue depth at the status_summary threshold;
+  service-probe learns PROBE_HTTP_HEADER (token wire-only); live drill
+  13/13 PASS — one DOWN digest, edge-triggered silence, one UP digest,
+  token never persisted. Suites: cluster 53 passed, pi-cicd 356 passed
+  1 skipped. Sync: added the 11-02 devlog's three items (this + GPU
+  baseline + site house rules; the other two stay Proposed); no external
+  search needed (3 fresh rows). LESSONS line: count against the schema's
+  real status vocabulary ('claimed' units are stored 'running'). ≈30 tool
+  calls.
+
+- 2026-11-03 — shipped **cluster: feed the graphs, not just the probes**
+  (cluster-prototype `5c52715`, pi-cicd `38c65ce`; CI green on both):
+  GET /metrics in Prometheus text format derived from the same store
+  reads /health uses (queue depth, unit/job counters, per-worker
+  last-seen seconds and healthy verdicts), bearer-authed and
+  read-only; the `cluster` scrape job staged in pi-cicd's
+  prometheus.yml with the token via credentials_file and install.sh
+  guarding the order (token first — promtool/Prometheus validate
+  credential files at config load, so yml-before-token would take the
+  whole metrics stack down). Drill 10/10 PASS incl. promtool check
+  metrics clean; suites 60+1s / 359+1s; NC red pre-change both repos.
+  Sync: added the 11-03 devlog's one new item (this one; the other two
+  were the 11-02 rows); no external search (3 pickable). No LESSONS
+  line — the credential-load gotcha is documented in
+  docs/prometheus.md where its readers are. ≈30 tool calls.
+
+- 2026-11-04 — shipped **personal-website: the house rules, executable**
+  (pkia.github.io `08b4572` + `3e275ca`; CI green run 41846232270):
+  tools/check_site.py (stdlib, read-only) gates assets / feed / sitemap
+  / index / cache-busters / addresses, every fault naming file:line;
+  20 fixture tests drive the real CLI, the real tree passes, and the
+  first live run caught two real defects (sat-audio's mp3+png committed
+  one directory above their page — live 404s since 10-27, now 200;
+  404.html cache-busters at v=10 vs the site's v=11, bumped). 20
+  passed; ruff fatal + compileall clean. Sync: added the 11-04 devlog's
+  one new item (pi-cicd cluster console page) plus one repo-evidence
+  row (switch-l4t-gpu tracks two .pyc files); no external search (3
+  pickable after the additions). LESSONS: a link checker must resolve
+  the way the server does — directory URLs map to index.html; and
+  this repo's GitHub slug is pkia/pkia.github.io, not the checkout's
+  directory name. ≈25 tool calls.
+
+- 2026-11-05 — shipped **pi-cicd: the cluster console page** (`545cf04`):
+  `/consoles/cluster.html` — queue depth, status tables in the store's
+  real vocabulary, per-worker ages/healthy/units-done with a warning
+  banner for silent workers, styled by the package's own prom.lib/
+  menu.lib — plus the flags drop-in (the live daemon had no console
+  flags at all) and the guarded install.sh copy + try-restart. Suite
+  **368 passed, 1 skipped** (9 new; 2 drills run the real prometheus
+  binary: real-numbers render and the empty store's 200 + named empty
+  state); CI green (run 42043699702). Sync: added the 11-05 devlog's
+  one new item (address gate reads the feed) and stamped the
+  house-rules row SHIPPED; no external search (3 pickable remained).
+  Live arming (page+libs+drop-in to /etc, daemon restart) is the
+  owner's install.sh pass. LESSONS: consoles are a flags change, not
+  just a file. ≈30 tool calls.
+
+- 2026-11-06 — shipped **personal-website: the address gate reads the
+  feed** (`fe392a1`): check_site.py's addresses gate now scans every
+  published text file — feed.xml item text, sitemap.xml, robots.txt,
+  css/js — same patterns, every fault naming file and line;
+  public-origin URLs proven not faults by a control test. Suite
+  **25 passed** (5 new), negative-controlled against the pre-change
+  checker (the 4 planted faults fail there); real tree clean across
+  81 scanned files; CI green (run 42230843104). Sync: the 11-06
+  devlog restated the same three rows — no new items; no external
+  search (3 pickable remained). Next pickables: the two
+  switch-l4t-gpu rows. ≈20 tool calls.
+
+- 2026-11-07 — shipped **switch-l4t-gpu: stop tracking bytecode**
+  (`f416b56`; CI green run 42379848040): `.gitignore` gains
+  `__pycache__/` + `*.pyc`, the two tracked gpu-llm/tools bytecode
+  files dropped from the index — no source or CI change. Acceptance
+  executed: zero .pyc in git ls-files; status empty after commit,
+  after re-importing the modules and after a full compileall; ruff
+  fatal rules clean. En route, measured: referee_qwen cannot fully
+  import on the Pi (reads weights/qwen/pretok.regex at import time;
+  weights live on the Switch) — pre-existing, noted in the Done row.
+  Sync: added the 11-07 devlog's one new item (personal-website
+  served-text/SVG scan); CI sweep of the four owned repos all green
+  on their tips; no external search (3 pickable after the addition).
+  Next pickables: the GPU-baseline row and the served-text row.
+  ≈15 tool calls.
+
+- 2026-11-08 — shipped **personal-website: the address gate reads
+  served SVG and JSON** (`2a4639b`; CI green run 42488051512, Pages
+  deploy 42488051100 success): the scan set is now served text —
+  pages, feed, sitemap, robots.txt, CSS/JS, SVG, JSON — the favicon
+  the first real SVG under it. Acceptance executed: 29 tests pass
+  (4 new), the three planted-fault tests fail against the pre-change
+  checker (git stash NC), and the real favicon.svg proven in-scan by
+  a planted fault on a tree copy (`FAIL favicon.svg:8`). Live tree
+  clean at 84 files; ruff fatal rules + compileall green. Sync: added
+  the 11-08 devlog's one new item (radar: lint the board in CI);
+  repo evidence added nothing (clean trees, zero TODO/FIXME clusters
+  across the owned checkouts); no external search (3 pickable after
+  the addition). Next pickables: GPU-baseline row, radar lint row.
+  ≈16 tool calls.
 
 ## Notes
 
