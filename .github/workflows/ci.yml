@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 
 jobs:
@@ -14,6 +14,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
+      - name: Board lint
+        run: python tools/check_board.py IDEAS.md
 
       - name: Install dependencies
         run: |
