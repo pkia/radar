@@ -28,18 +28,6 @@ found by web research and keep their source URL.
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
-- **personal-website — make link rot fail CI** *(S; on-box; new in
-  posts/2026-11-09.html)* — the house-rules checker proves structure,
-  cache-busters and addresses, but nothing proves the links still
-  land: rename one post and every card pointing at it breaks
-  silently. Next: extend the checker to resolve every internal href
-  and in-page anchor across pages, posts and project tours, and give
-  external links a timed check that reports URL and status without
-  failing the run on a single flaky timeout. **Acceptance: a planted
-  broken internal href and a planted missing anchor both fail naming
-  file, line and target; the current tree passes; network-less runs
-  skip the external pass loudly, never silently.**
-
 - **radar — stop tracking bytecode** *(S; on-box; repo evidence,
   found 2026-11-09)* — this repo tracks
   `engine/__pycache__/__init__.cpython-313.pyc`, so every local
@@ -247,11 +235,66 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-09: the board-lint row shipped this run, see Done.
-Pickable next: the switch-l4t-gpu GPU-baseline row or the new
-personal-website link-rot row — both under Proposed.)*
+*(none — 2026-11-10: the link-rot row shipped this run, see Done.
+Pickable next: the switch-l4t-gpu GPU-baseline row or the radar
+stop-tracking-bytecode row — both under Proposed.)*
 
 ## Done
+
+- **personal-website — make link rot fail CI** — done 2026-11-10 (the
+  board's link-rot **S**, carried from the 11-09 devlog; picked over
+  the GPU-baseline row because every half of its acceptance verifies
+  on this box in one session with no hardware). Shipped in
+  pkia.github.io `9790499` (gate + tests) and `b6a9b0f` (the content
+  fix the gate's first live run caught):
+  - `tools/check_site.py` gains the **links** gate: every `<a href>`
+    must land. Internal links resolve the way Pages serves them —
+    relative, `/absolute`, and now also the site's own origin-absolute
+    `https://pkia.github.io/...` spellings, which the assets gate
+    always skipped as "external" (every post self-links its guid URL
+    that way, so the class was wide open) — and every `#fragment` an
+    internal link carries, including same-page links, must name a real
+    anchor (`id=`, or `<a name=>`) in its target file. The assets gate
+    keeps every non-`<a>` reference unchanged.
+  - The **external pass**: one timed GET per unique http(s) link
+    outside the origin (redirects followed, one retry on network
+    errors, fetched in parallel via `http.client`), report-only by
+    design — URL and status are named, but no third-party answer can
+    fail the run, so one flaky timeout never turns CI red; a run with
+    no network skips it loudly (refused probe → named SKIPPED line on
+    stdout AND stderr, zero link fetches). Knobs:
+    `CHECK_SITE_PROBE_URL`, `CHECK_SITE_TIMEOUT`.
+  - **Acceptance, executed:** suite **39 passed** (10 new): the four
+    planted faults (dangling internal href; missing cross-post anchor;
+    missing same-page anchor; broken origin-absolute link) fail
+    against the pre-change checker (git stash NC: 6 selected tests
+    failed) and pass against the new one, each naming file:line and
+    target; the external pass exercised hermetically against a
+    loopback HTTP server — a broken link reported
+    (`external: …/gone -> 404`) while the run stays green (exit 0), a
+    3 s endpoint at timeout=1 retried twice (the server saw both
+    attempts) and still green, a refused probe (`localhost:1`) skips
+    loudly with zero link fetches, unique URLs fetched once, and the
+    OK line carries the counts. **Live tree clean:** `OK — 80 pages,
+    72 posts, … links 849 internal / 229 external`, 16 flagged, all
+    report-only (WAF 403s, rate-limit 429s, private-repo 404s). **CI
+    green on the tip** (run 42832892119, `b6a9b0f`, success — the
+    runner's own Site house rules step did the real external pass:
+    `links 849 internal / 228 external`, 16 flagged); the Pages deploy
+    followed (run 42832890087).
+  - **The gate's first live run caught real rot** — what the row
+    predicted: two posts (09-13, 09-14) credited personal-website work
+    with links to `github.com/pkia/personal-website`, a repo that does
+    not exist; the site's repo is `pkia/pkia.github.io`. Both href and
+    visible link text fixed (`b6a9b0f`); the dead URL left the
+    external set (229 → 228 unique).
+  - **Not claimed:** external answers stay reports — the gate is
+    internal rot only, per the row (a private repo's anonymous 404, a
+    WAF 403 or a rate-limited 429 must not decide CI); anchor checking
+    covers `id`/`a[name]` in served HTML, not JS-generated ids; the
+    probe (the site's own origin) proves network reachability, not the
+    external hosts' health. Repo:
+    <https://github.com/pkia/pkia.github.io>.
 
 - **radar — lint the board in CI** — done 2026-11-09 (the carried
   **S** both the 11-08 and 11-09 devlogs name; picked over the
@@ -3376,6 +3419,20 @@ Append-only, one line per run — including failures and no-ops.
   across the owned checkouts); no external search (3 pickable after
   the addition). Next pickables: GPU-baseline row, radar lint row.
   ≈16 tool calls.
+
+- 2026-11-10 — shipped **personal-website: make link rot fail CI**
+  (`9790499` + `b6a9b0f`; CI green run 42832892119, Pages deploy
+  42832890087): the links gate (every internal href lands — including
+  origin-absolute spellings the assets gate skipped — and every
+  #fragment names a real anchor) plus a report-only timed external
+  pass (one GET per unique URL, loud SKIPPED when network-less). 39
+  tests pass (10 new; stash NC: all 6 selected fail pre-change); live
+  tree 849 internal / 229 external clean; CI green on the tip. The
+  first live run caught real rot: two posts linked the nonexistent
+  pkia/personal-website slug — fixed to pkia/pkia.github.io. Sync:
+  the 11-10 devlog carried no new rows (all three items already under
+  Proposed); repo evidence added nothing; no external search (3
+  pickable). ≈17 tool calls.
 
 ## Notes
 

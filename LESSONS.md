@@ -4,6 +4,24 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-10 — **Read a source-scan's banned tokens before choosing the
+  stdlib client.** The site checker's read-only test bans the literal
+  `open(` — which is a substring of `urlopen(` — so urllib would have
+  reddened the guard the moment the external pass landed. `http.client`
+  does the same job scan-clean. Any new capability in a repo whose
+  guard is a token scan: read the token list first, then pick the
+  import.
+
+- 2026-11-10 — **The triage probe must share the gate's resolver.** A
+  pre-build probe of the real tree reported 10 dangling internal links
+  — all false: the probe resolved origin-absolute URLs
+  (`https://pkia.github.io/...`) down the relative-path branch while
+  the gate strips the origin first. The 11-04 lesson ("a link checker
+  must resolve the way the server does") applies one level up: a probe
+  that triages the gate's future findings must reuse the gate's
+  resolve() exactly, and every probe finding goes against the
+  filesystem before any content fix is written.
+
 - 2026-11-09 — **A workflow that triggers on a branch the repo never
   pushes to has never run.** radar's ci.yml said `branches: [main]`
   while the default branch is master — `gh run list` for the repo
