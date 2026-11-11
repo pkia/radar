@@ -28,17 +28,14 @@ found by web research and keep their source URL.
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
-- **radar — stop tracking bytecode** *(S; on-box; repo evidence,
-  found 2026-11-09)* — this repo tracks
-  `engine/__pycache__/__init__.cpython-313.pyc`, so every local
-  pytest run leaves `M engine/__pycache__/…` in `git status` — the
-  same defect switch-l4t-gpu shipped away on 2026-11-07 (`f416b56`).
-  Next: `.gitignore` gains `__pycache__/` and `*.pyc`, the tracked
-  file leaves the index via `git rm --cached` (the working-tree copy
-  stays, now ignored), no source or CI change. **Acceptance:
-  `git ls-files` carries zero `.pyc`; `git status` comes back empty
-  after a full pytest run and after a `python3 -m compileall .`; CI
-  green on the tip.**
+- **personal-website — surface the external-link report** *(S; on-box;
+  new in posts/2026-11-11.html)* — yesterday's links gate made the
+  external pass report-only by design, so its findings live in CI
+  logs nobody opens. Next: write the pass's flagged URLs to the job
+  summary so a dead link surfaces at a glance without failing the
+  gate. **Acceptance: a planted dead external URL appears in the run
+  summary naming URL and status; a clean run reports zero findings;
+  the gate's exit code is unchanged either way.**
 
 - **personal-website — cover the served text the gate still skips** —
   **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
@@ -235,9 +232,16 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-10: the link-rot row shipped this run, see Done.
-Pickable next: the switch-l4t-gpu GPU-baseline row or the radar
-stop-tracking-bytecode row — both under Proposed.)*
+- **radar — stop tracking bytecode** *(S; on-box; picked 2026-11-11)*
+  — premise corrected at pick time: `.gitignore` has carried
+  `__pycache__/` + `*.pyc` since 09-18 (`59863a6`), so the whole
+  defect is one already-tracked file,
+  `engine/__pycache__/__init__.cpython-313.pyc`, which gitignore
+  cannot untrack on its own. Next: `git rm --cached` it (the
+  working-tree copy stays, now ignored), no source or CI change.
+  **Acceptance: `git ls-files` carries zero `.pyc`; `git status`
+  comes back empty after a full pytest run and after a
+  `python3 -m compileall .`; CI green on the tip.**
 
 ## Done
 
