@@ -232,18 +232,33 @@ rest now build on it:
 
 ## In progress
 
-- **radar — stop tracking bytecode** *(S; on-box; picked 2026-11-11)*
-  — premise corrected at pick time: `.gitignore` has carried
-  `__pycache__/` + `*.pyc` since 09-18 (`59863a6`), so the whole
-  defect is one already-tracked file,
-  `engine/__pycache__/__init__.cpython-313.pyc`, which gitignore
-  cannot untrack on its own. Next: `git rm --cached` it (the
-  working-tree copy stays, now ignored), no source or CI change.
-  **Acceptance: `git ls-files` carries zero `.pyc`; `git status`
-  comes back empty after a full pytest run and after a
-  `python3 -m compileall .`; CI green on the tip.**
+*(none — 2026-11-11: the bytecode row shipped this run, see Done.
+Pickable next: the switch-l4t-gpu GPU-baseline row or the
+personal-website surface-external-link-report row — both under
+Proposed.)*
 
 ## Done
+
+- **radar — stop tracking bytecode** — done 2026-11-11 (the 11-09
+  repo-evidence **S**, picked over the GPU-baseline row as the
+  smallest fully-verifiable-on-this-box win). Shipped in radar
+  `37d92f4`:
+  - The whole fix is `git rm --cached
+    engine/__pycache__/__init__.cpython-313.pyc` — the `.gitignore`
+    rules the row asked for have existed since 09-18 (`59863a6`
+    created the file with `__pycache__/` + `*.pyc`); the index copy
+    was the last holdout because gitignore never untracks tracked
+    files. No source, test or CI change.
+  - **Negative control, executed both ways:** pre-fix, one
+    `touch engine/__init__.py && python3 -c "import engine"` left
+    `M engine/__pycache__/__init__.cpython-313.pyc` in status (the
+    documented dirtiness, reproduced); post-fix, the same bytecode
+    regeneration leaves `git status` empty.
+  - **Acceptance, executed:** `git ls-files` carries zero `.pyc`;
+    full pytest **15 passed**, then `python3 -m compileall .` rc 0,
+    tree clean after both; the working-tree pyc stays on disk,
+    now ignored (`git check-ignore` names `.gitignore:1`). **CI
+    green on the tip** (run 43034869692, `37d92f4`, success).
 
 - **personal-website — make link rot fail CI** — done 2026-11-10 (the
   board's link-rot **S**, carried from the 11-09 devlog; picked over
@@ -3437,6 +3452,17 @@ Append-only, one line per run — including failures and no-ops.
   the 11-10 devlog carried no new rows (all three items already under
   Proposed); repo evidence added nothing; no external search (3
   pickable). ≈17 tool calls.
+
+- 2026-11-11 — implementer run: synced the 11-11 devlog (1 new:
+  personal-website surface-the-external-link-report row; the other two
+  rows already on the board). Picked **radar: stop tracking bytecode**
+  and shipped `37d92f4` — premise corrected at pick time (gitignore
+  rules landed 09-18; the real defect was the single tracked pyc, so
+  the fix is one `git rm --cached`). Evidence: NC dirty pre-fix /
+  clean post-fix, 15 passed + compileall rc 0 with an empty status,
+  CI green (run 43034869692). Repo evidence sweep: trees clean, and
+  switch-l4t-gpu lives at `~/switch-l4t-gpu-clone` (renamed checkout,
+  same repo — GPU-baseline row stays actionable). ≈12 tool calls.
 
 ## Notes
 
