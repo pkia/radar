@@ -242,21 +242,67 @@ rest now build on it:
 
 ## In progress
 
-- **radar — lint the ledger's pointers** *(S; on-box; new in
-  posts/2026-11-12.html; picked 2026-11-12 over the pi-cicd feed
-  tripwire because every half of its acceptance verifies in one
-  session and it extends the checker this repo already ships)* —
-  Monday's board lint gave IDEAS.md its first CI; what it does not
-  read yet is the ledger's cross-references: a "SHIPPED …, see Done"
-  marker can point at a row that isn't there, and a commit named in
-  Done can fail to resolve. Next: extend `tools/check_board.py` to
-  verify every SHIPPED marker lands on a real Done row (same title)
-  and every commit reference resolves in the history of the repo it
-  names. **Acceptance: the current board passes clean; three planted
-  violations each fail naming the row and the broken pointer.**
-  *(resume pointer: pick state only — no code written yet.)*
+*(none — 2026-11-12: the ledger-pointer row shipped this run, see Done.
+Pickable next: the pi-cicd feed-tripwire row (new today), the
+switch-l4t-gpu GPU-baseline row, or the personal-website
+surface-external-link-report row — all under Proposed.)*
 
 ## Done
+
+- **radar — lint the ledger's pointers** — done 2026-11-12 (the 11-12
+  devlog's **S**, on-box; picked over the pi-cicd feed tripwire because
+  every half of its acceptance verifies in one session and it extends
+  the checker this repo already ships). Shipped in radar `99a60ff`:
+  - `tools/check_board.py` gains two **ledger pointer** checks beside
+    the row-shape lint it shipped Monday. A `**SHIPPED**` stamp must
+    land on a Done row carrying the same title — titles compared with
+    bold, backticks and punctuation normalised away, so the board's
+    wrapping does not matter; a stamp pointing at a row that is not
+    there faults naming file:line, the row and the missing twin. Only
+    the explicit stamp is held to it: the board's older plain-prose
+    pointers ("shipped same day, see Done") name an outcome without
+    promising a same-title row, and faulting history is not a gate.
+  - Every backticked commit ref (7–40 lowercase hex, at least one
+    digit — a run id is 11 digits and never backticked) must resolve
+    with `git cat-file -e <sha>^{commit}` in the history of the repo
+    its row names. Binding is the board's own convention: the title's
+    project prefix (`radar — …`, `personal-website — …`, `cluster — …`)
+    maps to a repo name, and only repos handed on `--repo NAME=PATH`
+    are checked. `radar` defaults to this checkout — which is all a CI
+    checkout has — so a ref bound to an unseen repo is *counted
+    unverified*, never faulted; a gate that faults on what it cannot
+    see would be red on every runner forever.
+  - **Acceptance, executed:** suite **24 passed** (9 new in
+    `tests/test_check_board.py`): the three planted violations each
+    fail naming the row and the broken pointer — a ghost SHIPPED stamp
+    with no Done twin; a Done row that exists under a *near-miss*
+    title; a cited 0abc123 absent from a fixture repo's history
+    (which also proves resolution is real: the same row with that
+    repo's actual sha resolves and the OK line counts 2 resolved);
+    plus the controls — a ref bound to an unsupplied repo stays
+    unverified, binding follows the title prefix rather than the file,
+    and a run leaves the fixture repo's HEAD, worktree and directory
+    listing byte-identical. Negative-controlled by execution: against
+    the pre-change checker (`git stash` on the tool, under
+    `timeout -s KILL`) the **7 new pointer tests fail**; the two CI/
+    harness tests pass there vacuously. **Live fault probe on a copy of
+    the real board:** three planted pointers (a ghost stamp, a renamed
+    SHIPPED row, a bogus radar sha) produced three named faults and
+    exit 1, while the real board stays `OK — … 9 SHIPPED marker(s)
+    matched to Done, 5 commit ref(s) resolved in radar, 138 unverified
+    (repo not supplied)`, exit 0. **CI green on the tip** (run
+    43234426015, `99a60ff`, 14 s) — and the runner's own lint step
+    printed the same 5 resolved refs, which is the half a depth-1
+    checkout would have faulted.
+  - **Not claimed:** the checker still cannot judge prose, and it
+    checks only refs whose repo it was handed — the 138 unverified refs
+    (pi-cicd, cluster-prototype, pkia.github.io …) are named as
+    unverified on every run, not proven. Passing more checkouts
+    (`--repo pi-cicd=PATH` …) widens it locally, but CI cannot see
+    those repos and the gate is designed not to pretend it can. IN
+    PROGRESS rows are still unchecked for required fields — the
+    resume-pointer rule remains a possible follow-on. Repo:
+    <https://github.com/pkia/radar>.
 
 - **radar — stop tracking bytecode** — done 2026-11-11 (the 11-09
   repo-evidence **S**, picked over the GPU-baseline row as the
@@ -3482,6 +3528,23 @@ Append-only, one line per run — including failures and no-ops.
   CI green (run 43034869692). Repo evidence sweep: trees clean, and
   switch-l4t-gpu lives at `~/switch-l4t-gpu-clone` (renamed checkout,
   same repo — GPU-baseline row stays actionable). ≈12 tool calls.
+
+- 2026-11-12 — implementer run: synced the 11-12 devlog (2 new: the
+  pi-cicd feed-freshness tripwire and this run's pick, the radar
+  ledger-pointer lint). Picked **radar: lint the ledger's pointers** and
+  shipped `99a60ff` — `tools/check_board.py` now faults a `**SHIPPED**`
+  stamp with no same-title Done row and any commit ref that does not
+  resolve in the history of the repo its row's title prefix names
+  (`--repo NAME=PATH`; radar by default, others counted unverified);
+  ci.yml checks out with `fetch-depth: 0` so the refs resolve on a
+  runner. Evidence: 24 passed (9 new), the 7 new pointer tests fail
+  against the pre-change checker under `timeout -s KILL`, live fault
+  probe on a board copy produced 3 named faults + exit 1 while the real
+  board is clean, CI green (run 43234426015, and the runner's own lint
+  step resolved 5 refs). En route the gate faulted the first draft of
+  its own Done row for citing a planted bogus sha — fixed by
+  un-backticking the example. Repo evidence sweep: every owned tree
+  clean, all listed CI runs green. ≈18 tool calls.
 
 ## Notes
 

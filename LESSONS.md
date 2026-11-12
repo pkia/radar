@@ -4,6 +4,27 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-12 — **When a capability needs the token a read-only guard
+  bans, narrow the guard to a proof of scope — do not delete it.** The
+  board checker's read-only test asserted the source contains no
+  `subprocess` at all; resolving commit refs needs git. Dropping the
+  token would have left "read-only" as prose. The replacement proves
+  the property instead: exactly one `subprocess.run` call site, its
+  argv starts `["git", "-C"`, its verb is `cat-file` and no write verb
+  appears, and a behavioural twin runs it against a fixture repo and
+  asserts HEAD, worktree and directory listing are unchanged. Any guard
+  that becomes false by design gets a narrower true one in the same
+  change, or the next run quietly loses the property.
+
+- 2026-11-12 — **A history-dependent gate needs the history in the
+  checkout.** The pointer lint resolves shas with `git cat-file`, but
+  `actions/checkout` is depth-1 by default, so the first CI run would
+  have faulted every ref with "not in history" while the local run was
+  green — a false-red that looks like a board defect. Pin
+  `fetch-depth: 0`, and read the runner's own OK line (it named the
+  same 5 resolved refs as the box) as the evidence the history was
+  really there, not just that the step exited 0.
+
 - 2026-11-10 — **Read a source-scan's banned tokens before choosing the
   stdlib client.** The site checker's read-only test bans the literal
   `open(` — which is a substring of `urlopen(` — so urllib would have
