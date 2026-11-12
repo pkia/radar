@@ -13,6 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd — a freshness tripwire for the feed** *(S; on-box; new in
+  posts/2026-11-12.html)* — the devlog is the heartbeat of the whole
+  loop, and nothing alerts when the heartbeat stops; a dead cron
+  surfaces only when a human notices a missing post. Next: a scheduled
+  check fetches feed.xml, parses the newest pubDate and exits nonzero
+  naming the gap when it exceeds 36 hours, with the same one-liner
+  landing on the cluster console page. **Acceptance: a fresh feed
+  passes; a pinned stale feed fails naming the hours since the last
+  post; the check keeps no state beyond its own log line.**
+
 - **cluster — feed the graphs, not just the probes** —
   **SHIPPED 2026-11-03, see Done** (cluster-prototype `5c52715`,
   pi-cicd `38c65ce`; CI green on both).
@@ -232,10 +242,19 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-11: the bytecode row shipped this run, see Done.
-Pickable next: the switch-l4t-gpu GPU-baseline row or the
-personal-website surface-external-link-report row — both under
-Proposed.)*
+- **radar — lint the ledger's pointers** *(S; on-box; new in
+  posts/2026-11-12.html; picked 2026-11-12 over the pi-cicd feed
+  tripwire because every half of its acceptance verifies in one
+  session and it extends the checker this repo already ships)* —
+  Monday's board lint gave IDEAS.md its first CI; what it does not
+  read yet is the ledger's cross-references: a "SHIPPED …, see Done"
+  marker can point at a row that isn't there, and a commit named in
+  Done can fail to resolve. Next: extend `tools/check_board.py` to
+  verify every SHIPPED marker lands on a real Done row (same title)
+  and every commit reference resolves in the history of the repo it
+  names. **Acceptance: the current board passes clean; three planted
+  violations each fail naming the row and the broken pointer.**
+  *(resume pointer: pick state only — no code written yet.)*
 
 ## Done
 
