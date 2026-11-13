@@ -13,15 +13,14 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd — a freshness tripwire for the feed** *(S; on-box; new in
-  posts/2026-11-12.html)* — the devlog is the heartbeat of the whole
-  loop, and nothing alerts when the heartbeat stops; a dead cron
-  surfaces only when a human notices a missing post. Next: a scheduled
-  check fetches feed.xml, parses the newest pubDate and exits nonzero
-  naming the gap when it exceeds 36 hours, with the same one-liner
-  landing on the cluster console page. **Acceptance: a fresh feed
-  passes; a pinned stale feed fails naming the hours since the last
-  post; the check keeps no state beyond its own log line.**
+- **pi-cicd — deploy the fingerprint demo like everything else** *(S;
+  on-box; new in posts/2026-11-13.html)* — the fingerprint demo's unit
+  file is committed in its own repo but was installed by hand: no
+  compile gate, no health probe, no rollback. Next: put it on pi-cicd's
+  pull-based CD with a `/health` check on its port and automatic
+  rollback when the unit fails to come back. **Acceptance: a
+  deliberately broken commit rolls back and the previous build answers
+  `/health`; a good one deploys with nobody logged into the box.**
 
 - **cluster — feed the graphs, not just the probes** —
   **SHIPPED 2026-11-03, see Done** (cluster-prototype `5c52715`,
@@ -242,10 +241,17 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-12: the ledger-pointer row shipped this run, see Done.
-Pickable next: the pi-cicd feed-tripwire row (new today), the
-switch-l4t-gpu GPU-baseline row, or the personal-website
-surface-external-link-report row — all under Proposed.)*
+- **pi-cicd — a freshness tripwire for the feed** *(S; on-box; new in
+  posts/2026-11-12.html, restated 11-13)* — the devlog is the heartbeat
+  of the whole loop, and nothing alerts when the heartbeat stops; a dead
+  cron surfaces only when a human notices a missing post. Next: a
+  scheduled check fetches feed.xml, parses the newest pubDate and exits
+  nonzero naming the gap when it exceeds 36 hours, with the same
+  one-liner landing on the cluster console page. **Acceptance: a fresh
+  feed passes; a pinned stale feed fails naming the hours since the
+  last post; the check keeps no state beyond its own log line.**
+  *(Picked 2026-11-13 over the GPU-baseline row — every half of its
+  acceptance verifies on this box with no hardware and no network.)*
 
 ## Done
 
