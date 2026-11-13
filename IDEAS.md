@@ -241,19 +241,73 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — a freshness tripwire for the feed** *(S; on-box; new in
-  posts/2026-11-12.html, restated 11-13)* — the devlog is the heartbeat
-  of the whole loop, and nothing alerts when the heartbeat stops; a dead
-  cron surfaces only when a human notices a missing post. Next: a
-  scheduled check fetches feed.xml, parses the newest pubDate and exits
-  nonzero naming the gap when it exceeds 36 hours, with the same
-  one-liner landing on the cluster console page. **Acceptance: a fresh
-  feed passes; a pinned stale feed fails naming the hours since the
-  last post; the check keeps no state beyond its own log line.**
-  *(Picked 2026-11-13 over the GPU-baseline row — every half of its
-  acceptance verifies on this box with no hardware and no network.)*
+*(none — 2026-11-13: the feed-freshness tripwire shipped this run, see
+Done. Pickable next: the switch-l4t-gpu GPU-baseline row, the
+personal-website surface-external-link-report row, or the newly filed
+pi-cicd fingerprint-demo deploy row — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — a freshness tripwire for the feed** — done 2026-11-13 (the
+  11-12 devlog's **S**, restated 11-13; picked over the GPU-baseline row
+  because every half of its acceptance verifies on this box with no
+  hardware and no third party — a copy of the real feed plus a pinned
+  clock makes the stale case real, not mocked). Shipped in pi-cicd
+  `d9bfb1a`:
+  - `feed-fresh` — one GET of the published feed, one line, one exit
+    code. It reads the newest **item's** date (RSS `pubDate`, Atom
+    `published`/`updated` as fallback) and never the feed's
+    `lastBuildDate`: a generator can rebuild a feed around a dead post,
+    which is exactly the failure the check exists to catch. Contract:
+    **0** fresh (OK line carries the measured age), **1** STALE (names
+    the hours since the last post and the limit), **2** unmeasurable
+    (unfetchable, unparseable, or no dated item — a feed nobody can
+    date is never a pass). `--now` pins the evaluation instant,
+    `--file`/`--url` pick the source, `--json` owns stdout alone.
+  - **Stateless, as the row asked:** no state file, no cache, no dedupe
+    — every run writes nothing, so a stale state file cannot silence the
+    verdict. Proven twice, by execution: a source scan for every write
+    verb and a writing-mode `open`, and a run that leaves the fixture
+    tree byte-identical (names, mtimes, bytes).
+  - Wiring: `systemd/feed-fresh.{service,timer}` (hourly, `User=ev`,
+    absolute paths — a system unit resolves `%h` from the manager, the
+    09-26 trap), `install.sh` links the tool and installs the units,
+    `docs/units.md` row + `docs/layers.md` section (both indexes are
+    tested), `tests/test_install_sh.py`'s TOOLS list, and a CI
+    byte-compile step.
+  - **Acceptance, executed:** suite **18 new tests** in
+    `tests/test_feed_fresh.py`, full suite **386 passed, 1 skipped**.
+    The acceptance pair is driven through the real CLI in a subprocess:
+    a fresh feed exits 0 with `OK … 6.0 h old`; a pinned stale feed
+    (61.5 h) exits 1 with `STALE … 61.5 h old, limit 36 h` on stderr.
+    Each stale fixture carries a **fresh `lastBuildDate`**, so a
+    checker reading the build stamp passes them and the tests fail —
+    the negative control is the fixture's own shape. **Live drill on a
+    copy of the real feed:** with every `pubDate` shifted four days
+    back and `lastBuildDate` left at today's value, the tool exits 1
+    naming `104.2 h old, limit 36 h`; with the items untouched and the
+    build stamp aged five days it exits 0 naming `8.2 h old`. The live
+    feed itself: `feed-fresh: OK — newest post 2026-11-13T07:00:00+01:00,
+    8.2 h old (limit 36 h)`, exit 0. `systemd-analyze verify` accepts
+    both unit files (rc 0). **CI green on the tip** (run 43440765165,
+    `d9bfb1a`, success — the runner ran 383 passed, 4 skipped; the three
+    extra skips are the Prometheus drill tests, which skip on runners
+    without the binary, and the byte-compile step for feed-fresh ran).
+  - **Not claimed — and why:** the units are **not installed** (the
+    `/etc` copy is cron-mode gated, as on every unit ship), so the live
+    hourly firing and a real failed-unit page wait on the owner's
+    `sudo ~/pi-cicd/install.sh`; the tool itself is on PATH already
+    (`~/.local/bin/feed-fresh`, the same symlink install.sh makes).
+    **No ntfy paging:** a stale feed fails the unit, and the daily
+    pi-doctor audit's `sys:failed-unit` finding is what names it — up
+    to a day later, not the hour; an immediate page would need
+    edge-state this row's "keeps no state" acceptance forbids. The
+    devlog's "same one-liner on the cluster console page" half is **not
+    built**: that page is rendered server-side from Prometheus
+    queries, and landing a freshness number there needs a textfile
+    collector the box does not have — filed as the honest remainder
+    rather than faked with a static line. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **radar — lint the ledger's pointers** — done 2026-11-12 (the 11-12
   devlog's **S**, on-box; picked over the pi-cicd feed tripwire because
@@ -3551,6 +3605,26 @@ Append-only, one line per run — including failures and no-ops.
   its own Done row for citing a planted bogus sha — fixed by
   un-backticking the example. Repo evidence sweep: every owned tree
   clean, all listed CI runs green. ≈18 tool calls.
+
+- 2026-11-13 — implementer run: synced the 11-13 devlog (1 new: pi-cicd
+  deploy the fingerprint demo on pull-based CD — filed Proposed). Picked
+  **pi-cicd: a freshness tripwire for the feed** (the 11-12 **S**,
+  restated 11-13) over the GPU-baseline row: every half of its
+  acceptance verifies on this box with no hardware. Shipped `d9bfb1a` —
+  `feed-fresh` reads the newest ITEM date of the published feed (never
+  `lastBuildDate`), exits 0 fresh / 1 STALE naming the hours and the
+  limit / 2 unmeasurable, and writes nothing at all (stateless by the
+  row's own acceptance); hourly unit + timer, install.sh, both doc
+  indexes and a CI byte-compile step wired. Evidence: 18 new tests,
+  full suite 386 passed 1 skipped; live on the real feed rc 0 (`8.2 h
+  old`), and on a copy with pubDates shifted four days but the build
+  stamp left fresh rc 1 naming `104.2 h old` — the build-stamp control
+  in the other direction also ran (fresh items, 5-day-old build stamp,
+  rc 0); `systemd-analyze verify` rc 0 on both units. CI green (run
+  43440765165, 383 passed / 4 skipped on the runner). Units not
+  installed — `/etc` is cron-gated; owner step is
+  `sudo ~/pi-cicd/install.sh`. Console-page half not built (needs a
+  Prometheus textfile collector). ≈24 tool calls.
 
 ## Notes
 

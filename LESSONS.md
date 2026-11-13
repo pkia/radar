@@ -4,6 +4,23 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-13 — **A heartbeat check must read the thing that beats, not
+  its packaging.** A feed generator rewrites `lastBuildDate` every time
+  it renders, so a feed rebuilt around a three-day-old post still looks
+  alive; `feed-fresh` measures the newest **item's** `pubDate` (Atom
+  `published`/`updated` as fallback) and every stale fixture carries a
+  fresh build stamp, so a checker reading the stamp passes the tests'
+  own faults. General shape: when a gate measures "is X still
+  happening", name the timestamp that only advances when X happens, and
+  make the misleading one present-but-wrong in the fixtures.
+
+- 2026-11-13 — **`--json` that also prints the human line hides behind
+  the fault path.** The 10-12 lesson recurred here and the test missed
+  it: the JSON test only ran the STALE case, where the human line goes
+  to stderr, so `json.loads(stdout)` parsed fine while a *fresh* feed
+  printed JSON plus prose on stdout. Test machine output on the
+  **success** path too — the fault path's stream discipline can mask it.
+
 - 2026-11-12 — **When a capability needs the token a read-only guard
   bans, narrow the guard to a proof of scope — do not delete it.** The
   board checker's read-only test asserted the source contains no
