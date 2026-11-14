@@ -37,15 +37,6 @@ found by web research and keep their source URL.
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
 
-- **personal-website — surface the external-link report** *(S; on-box;
-  new in posts/2026-11-11.html)* — yesterday's links gate made the
-  external pass report-only by design, so its findings live in CI
-  logs nobody opens. Next: write the pass's flagged URLs to the job
-  summary so a dead link surfaces at a glance without failing the
-  gate. **Acceptance: a planted dead external URL appears in the run
-  summary naming URL and status; a clean run reports zero findings;
-  the gate's exit code is unchanged either way.**
-
 - **personal-website — cover the served text the gate still skips** —
   **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
   run 42488051512).
@@ -241,12 +232,79 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-13: the feed-freshness tripwire shipped this run, see
-Done. Pickable next: the switch-l4t-gpu GPU-baseline row, the
-personal-website surface-external-link-report row, or the newly filed
-pi-cicd fingerprint-demo deploy row — all under Proposed.)*
+*(none — 2026-11-14: the external-link report shipped this run, see
+Done. Pickable next: the pi-cicd fingerprint-demo deploy row or the
+switch-l4t-gpu GPU-baseline row — both under Proposed.)*
 
 ## Done
+
+- **personal-website — surface the external-link report** — done
+  2026-11-14 (the 11-11 **S**, restated in the 11-13 and 11-14 devlogs;
+  picked over the fingerprint-demo deploy row and the GPU-baseline row
+  because every clause of its acceptance verifies on this box in one
+  session, with no hardware and no owner install). Shipped in
+  pkia.github.io `548e32a`:
+  - `tools/check_site.py`'s external pass now also writes its findings
+    to the **run summary** — `$GITHUB_STEP_SUMMARY` by default (the
+    mechanism CI already exports to every step, so `ci.yml` needed only
+    a comment), or `--summary PATH` for a local drill — as markdown: a
+    header line with `N unique link(s), F flagged` and one table row
+    per flagged link naming URL and status.
+  - **One measurement, two readers:** `check_external` returns the
+    findings it prints, and the summary is rendered from that same
+    list, so the log and the page cannot disagree. Three states are
+    stated, never inferred: findings (table), zero findings ("no
+    findings: every external link answered"), and a **skipped pass
+    named as skipped** ("says nothing about the links") — a
+    network-less run can no longer look clean in the summary.
+  - **The gate's verdict is untouched:** the summary is written after
+    the fault path returns, a write failure is reported and swallowed,
+    and the summary path is **refused when it resolves inside the
+    checked tree** (a future `--summary .` cannot litter the site). The
+    block is *appended*, since CI's file already holds other steps'
+    output.
+  - **The read-only guard was narrowed, not deleted** (the 11-12
+    lesson): the source scan keeps every banned verb (`write_text`,
+    `unlink`, `os.remove`, `shutil`, `subprocess`, `open(` — so the
+    write uses `write_bytes`), adds *exactly one write call site* and
+    pins that its target is the summary path; a behavioural twin
+    asserts a run leaves the fixture tree byte-identical.
+  - **Acceptance, executed:** suite **48 passed** (9 new in
+    `tests/test_check_site.py`): the planted dead URL appears in the
+    summary as `| <url> | 404 |` while the live link beside it does
+    not; every flagged link gets a row and nothing else does; a clean
+    run reports `0 flagged` / "no findings" with no table; the exit
+    code is identical with and without a summary, and a faulting run
+    (1) never reaches the external pass so it writes none; the
+    `$GITHUB_STEP_SUMMARY` env is honoured and the block lands after
+    existing content; a network-less run writes the SKIPPED block and
+    not `0 flagged`; a path inside the tree is refused with the tree
+    unchanged; a broken summary target leaves rc 0. **Negative
+    controlled by execution:** against the pre-change checker (`git
+    stash` on the tool, under `timeout -s KILL`) **9 of the 10 selected
+    tests fail**; the tenth is the no-summary control, which the old
+    checker satisfies vacuously.
+  - **Live drill on a copy of the real tree with one planted dead
+    URL** (`https://github.com/pkia/does-not-exist-radar-drill`): exit
+    **0**, summary names it `404` beside the tree's real findings —
+    `241 unique link(s), 17 flagged`. Those 17 are genuine anonymous
+    answers, spot-checked rather than assumed: `gh repo view`
+    confirms `pkia/cluster-prototype` is **PRIVATE**, so its 404 is
+    correct, and the rest are WAF 403s / rate-limit 429s. **CI green
+    on the tip** (run 43603265343, `548e32a`); the runner's own Site
+    house rules step did the real pass — `240 unique link(s), 17
+    flagged` — and printed `findings written to the run summary
+    (/home/runner/work/_temp/_runner_file_commands/step_summary_…)`,
+    with the 9 new tests PASSED in that run.
+  - **Not claimed:** the *rendered* summary was not read back. The
+    job page needs a signed-in viewer (anonymous fetch says "Sign in to
+    view logs") and the REST check-run `output.summary` for the job
+    stays empty, so what is verified is the write into the runner's own
+    step-summary file plus the block's exact content from the drill —
+    not pixels on the page. The pass is still per-run: a link that dies
+    between runs is only reported when the gate next runs, and 403/429
+    third-party answers stay reports by design (the row's own
+    constraint). Repo: <https://github.com/pkia/pkia.github.io>.
 
 - **pi-cicd — a freshness tripwire for the feed** — done 2026-11-13 (the
   11-12 devlog's **S**, restated 11-13; picked over the GPU-baseline row
@@ -3605,6 +3663,27 @@ Append-only, one line per run — including failures and no-ops.
   its own Done row for citing a planted bogus sha — fixed by
   un-backticking the example. Repo evidence sweep: every owned tree
   clean, all listed CI runs green. ≈18 tool calls.
+
+- 2026-11-14 — implementer run: synced the 11-14 devlog (no new rows —
+  its three items are the fingerprint-demo deploy, the GPU baseline and
+  the external-link report, all already on the board; Proposed holds 3
+  actionable rows, so no external search). Picked
+  **personal-website: surface the external-link report** (the 11-11
+  **S**) over the other two: every clause of its acceptance verifies on
+  this box in one session, while the deploy row needs the owner's CD
+  install and the GPU row needs the Switch powered. Shipped `548e32a` —
+  the external pass appends its findings to `$GITHUB_STEP_SUMMARY`
+  (or `--summary PATH`) as a URL/status table, with zero-findings and
+  skipped-pass states stated explicitly, a path inside the tree
+  refused, and failures swallowed so the exit code never moves; the
+  read-only guard narrowed to exactly-one-write-call-site plus a
+  byte-identical-tree twin. Evidence: 48 passed (9 new), NC 9 of 10
+  fail against the pre-change tool, live drill on a real-tree copy with
+  a planted dead URL (exit 0, named 404, 241 unique / 17 flagged, and
+  the private-repo 404 spot-checked as correct), CI green (run
+  43603265343) with the runner's own step writing the summary file.
+  Not claimed: the rendered page needs a signed-in viewer. ≈22 tool
+  calls.
 
 - 2026-11-13 — implementer run: synced the 11-13 devlog (1 new: pi-cicd
   deploy the fingerprint demo on pull-based CD — filed Proposed). Picked

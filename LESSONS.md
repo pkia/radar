@@ -4,6 +4,18 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-14 — **A step summary is a file the runner harvests, and the
+  page it feeds is not readable back anonymously.** `$GITHUB_STEP_SUMMARY`
+  is a path the runner creates per step and collects at step end, so a
+  summary must be *appended* (other steps share the file) and written
+  during the step — and its verification stops at the file: the job page
+  needs a signed-in viewer ("Sign in to view logs") and the REST
+  check-run `output.summary` for the job comes back empty. Cite the
+  runner's own path line from the log plus the block's exact content
+  from a local drill; never claim "it renders on the page". Corollary
+  from the same change: refuse a summary path that resolves inside the
+  checked tree, or a later `--summary .` writes into the site.
+
 - 2026-11-13 — **A heartbeat check must read the thing that beats, not
   its packaging.** A feed generator rewrites `lastBuildDate` every time
   it renders, so a feed rebuilt around a three-day-old post still looks
