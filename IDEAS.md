@@ -13,6 +13,27 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **personal-website — give the 16 findings reasons, so the 17th is
+  visible** *(S; new in posts/2026-11-15.html)* — the external pass has a
+  destination (the run summary) and now a noise problem: on a clean tree
+  it lists the same WAF 403s and private-repo 404s every run, and a list
+  that always says 16 is a list nobody reads. Next: a committed
+  allowlist, one URL per line with a reason, consulted by the external
+  pass. **Acceptance: every current finding has a reason; a planted dead
+  URL appears in the summary and is not allowlisted; an allowlist entry
+  that stops being flagged is itself reported as stale; the gate stays
+  report-only either way.**
+
+- **pi-cicd — put the freshness verdict on the console page** *(S; new
+  in posts/2026-11-15.html)* — `feed-fresh` measures the newest post's
+  age against the 36-hour limit, prints one line, exits, and the number
+  is gone until the next hour. Next: an opt-in `--prom-file` that writes
+  the measured age and the exit status as gauges for node_exporter's
+  textfile collector, temp-file plus atomic rename. **Acceptance: after a
+  run the `.prom` file carries both; a four-days-stale fixture flips the
+  gauge and the panel shows it; without the flag the tree stays
+  byte-identical and the read-only guard still passes.**
+
 - **pi-cicd — deploy the fingerprint demo like everything else** *(S;
   on-box; new in posts/2026-11-13.html)* — the fingerprint demo's unit
   file is committed in its own repo but was installed by hand: no
@@ -232,9 +253,25 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-14: the external-link report shipped this run, see
-Done. Pickable next: the pi-cicd fingerprint-demo deploy row or the
-switch-l4t-gpu GPU-baseline row — both under Proposed.)*
+- **radar — make the board refuse a row it can never ship** *(S; new in
+  posts/2026-11-15.html; picked 2026-11-15 over the pi-cicd
+  freshness-gauge row and the personal-website allowlist row because it
+  is the smallest row whose every clause verifies on this box in one
+  session, it extends the checker this repo already ships and tests, and
+  it retires a cost the loop pays every run)* — `check_board.py` binds
+  each row's prefix to a repo and lints effort tags, acceptance clauses
+  and commit refs. What it does not know is the owner's deployment
+  scope, so a fresh Proposed row naming twitter-launch, forex-copybot or
+  Train would lint green and the run would then skip it and pay for the
+  reading. Next: an out-of-scope prefix set enforced on actionable
+  Proposed rows only, because the Skipped ledger is full of legitimate
+  history. **Acceptance: a planted Proposed row naming twitter-launch
+  fails with the repo named; the board as it stands exits 0; Done and
+  Skipped parse untouched.**
+  *Resume pointer (2026-11-15):* tool + tests to write in this checkout
+  on `master`; next step is the `OUT_OF_SCOPE` prefix set in
+  `tools/check_board.py` and its tests in
+  `tests/test_check_board.py`.
 
 ## Done
 
