@@ -401,3 +401,18 @@ still means "this row" after the next conversion. A scan/gate that pins a
 - 2026-10-06 — a test helper that monkeypatches a module-level loader silently undoes a patch the test just made: run_main() set mp.load_publisher to the recorder, overwriting the boom an earlier line had installed, so the failure-path assertion proved nothing until the test called mp.main() directly. Patch the module yourself when the assertion is about the patch.
 
 - 2026-10-27 — **a host-specific default leaks host files into hermetic tests on the dev box.** The pi-backup tests share one `write_config` helper, so adding `RECEIPTS_DIR` with a real-path default meant every existing tmp archive on this Pi would silently fold the live receipts in — breaking exact `nfiles` counts here while staying green on CI (where `/home/ev` doesn't exist), a Pi-only flake by construction. Pin the default *out* (`KEY=` empty) in the shared helper and give the default itself its own dedicated test; same shape as the 09-08 machine-private-state rule, one level down: it is not only test-*read* host state that bites, it is test-*input* defaults.
+
+- 2026-11-15 — **a scope rule belongs on the row's registered prefix, not
+  its prose, and a fixture edit must move both sides of a ledger pair.**
+  The board's out-of-scope lint judges `title_prefix()` — the same helper
+  the commit-ref binding already used — so a row is refused for the project
+  it is *filed under*, while an in-scope row may still discuss a retired one
+  in its body. Sharing the helper (rather than writing a second splitter) is
+  what keeps the new rule from drifting from the old one. Two fixture
+  traps cost a cycle each: the minimal board's own `good row` is actionable,
+  so counts in a new test are relative to the fixture + the planted rows;
+  and renaming a row's title in only one section makes the SHIPPED-twin
+  check fault the fixture itself — edit the stamp row and its Done twin
+  together. Also, when negative-controlling a tolerant checker, name which
+  new tests pass against the old code and why: here 2 of 7 pass because
+  the old checker never read scope at all, which is a control, not coverage.

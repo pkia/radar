@@ -253,27 +253,55 @@ rest now build on it:
 
 ## In progress
 
-- **radar — make the board refuse a row it can never ship** *(S; new in
-  posts/2026-11-15.html; picked 2026-11-15 over the pi-cicd
-  freshness-gauge row and the personal-website allowlist row because it
-  is the smallest row whose every clause verifies on this box in one
-  session, it extends the checker this repo already ships and tests, and
-  it retires a cost the loop pays every run)* — `check_board.py` binds
-  each row's prefix to a repo and lints effort tags, acceptance clauses
-  and commit refs. What it does not know is the owner's deployment
-  scope, so a fresh Proposed row naming twitter-launch, forex-copybot or
-  Train would lint green and the run would then skip it and pay for the
-  reading. Next: an out-of-scope prefix set enforced on actionable
-  Proposed rows only, because the Skipped ledger is full of legitimate
-  history. **Acceptance: a planted Proposed row naming twitter-launch
-  fails with the repo named; the board as it stands exits 0; Done and
-  Skipped parse untouched.**
-  *Resume pointer (2026-11-15):* tool + tests to write in this checkout
-  on `master`; next step is the `OUT_OF_SCOPE` prefix set in
-  `tools/check_board.py` and its tests in
-  `tests/test_check_board.py`.
+*(none — 2026-11-15: the board-scope lint shipped this run, see Done.
+Pickable next: the pi-cicd freshness-gauge row, the personal-website
+allowlist row, the pi-cicd fingerprint-demo deploy row or the
+switch-l4t-gpu GPU-baseline row — all under Proposed.)*
 
 ## Done
+
+- **radar — make the board refuse a row it can never ship** — done
+  2026-11-15 (the 11-15 devlog's **S**; picked over the pi-cicd
+  freshness-gauge and personal-website allowlist rows because its whole
+  acceptance verifies on this box in one session and it retires a cost
+  the loop pays every run). Shipped in radar `a350284`:
+  - `tools/check_board.py` gains `OUT_OF_SCOPE` — the old Pi
+    deployment's projects (twitter-launch, forex-copybot/copybot,
+    maritime-dashboard, project-hub, ais_analysis, camoufox-setup) plus
+    Train/cs2-train — and an **actionable** Proposed row whose title
+    prefix names one is a fault naming the project and the directive
+    date. Prefix, never prose: an in-scope row may still mention a
+    retired project in its body (control test).
+  - Ledger rows stay exempt — the Skipped and Done history names those
+    projects legitimately, so the board's own 26-row ledger is
+    untouched — and `title_prefix()` is now shared with `project_repo()`
+    so the scope rule cannot drift from the commit-ref binding it sits
+    beside. The OK line reports the count.
+  - **Acceptance, executed:** suite **31 passed** (7 new in
+    `tests/test_check_board.py`): a planted twitter-launch row fails
+    naming it at its own line as the row's only fault; all eight
+    retired prefixes (both copybot spellings, AIS, Train's colon
+    spelling) fault with their project named; the five in-scope
+    prefixes pass; a SKIPPED row and a SHIPPED-stamped row naming
+    twitter-launch/forex-copybot stay clean; a prose mention inside an
+    in-scope row stays clean; the real board exits 0 with
+    `0 out-of-scope Proposed row(s)`. Negative-controlled by execution
+    (`git stash` on the tool): **5 of the 7 fail** — and the two that
+    pass are the vacuous controls (prose, Skipped history) the old
+    checker satisfies without ever reading scope. **Live drill** on a
+    copy of the real board with one planted twitter-launch row:
+    `FAIL …:16 — row "twitter-launch — planted drill row" names
+    out-of-scope project twitter-launch`, exit 1, while the real board
+    exits 0. **CI green on the tip** (run 43722292383, `a350284`) — the
+    runner's own Board lint step printed the new OK line including
+    `0 out-of-scope Proposed row(s)`, and 31 tests passed there.
+  - **Not claimed:** the set is a hardcoded list — a newly retired
+    project must be added by hand, and lifting the directive means
+    editing this tool as well as AGENTS.md. It judges the title prefix
+    only, so a row titled "radar — …" that is really about a retired
+    project still lints green: the prefix is the board's convention and
+    the checker reads the board, not intent. Repo:
+    <https://github.com/pkia/radar>.
 
 - **personal-website — surface the external-link report** — done
   2026-11-14 (the 11-11 **S**, restated in the 11-13 and 11-14 devlogs;
@@ -3741,6 +3769,24 @@ Append-only, one line per run — including failures and no-ops.
   installed — `/etc` is cron-gated; owner step is
   `sudo ~/pi-cicd/install.sh`. Console-page half not built (needs a
   Prometheus textfile collector). ≈24 tool calls.
+
+- 2026-11-15 — shipped **radar: the board refuses a row it can never
+  ship** (the 11-15 devlog's **S**; synced the same post's three items —
+  this one, the pi-cicd `--prom-file` freshness gauge and the
+  personal-website external-findings allowlist — and picked this because
+  every clause of its acceptance verifies here in one session and it
+  stops the loop paying to read rows that can never ship). Shipped
+  `a350284`: `check_board.py` gains `OUT_OF_SCOPE` (old-deployment repos
+  + Train/cs2-train) enforced on **actionable Proposed rows only**, by
+  title prefix; ledger rows and in-scope prose are untouched; the OK
+  line reports the count. Evidence: 7 new tests, suite **31 passed**;
+  negative control by execution — 5 of the 7 fail against the pre-change
+  checker and the 2 that pass are its vacuous controls; live drill on a
+  board copy (planted twitter-launch row) exits 1 naming the project at
+  its own line while the real board exits 0; **CI green** (run
+  43722292383) with the runner's Board lint step printing
+  `0 out-of-scope Proposed row(s)`. Not claimed: the prefix list is
+  hardcoded and the rule reads the title, not intent. ≈19 tool calls.
 
 ## Notes
 
