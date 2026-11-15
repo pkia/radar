@@ -31,6 +31,15 @@ Ledger **pointers** are checked, though (added 2026-11-12):
   to any other repo is reported as unverified, never faulted, because
   the checker cannot see a repository it was not handed.
 
+Deployment scope is checked too (added 2026-11-15): the owner's directive
+of 2026-11-02 limits the loop to the current Pi 5 deployment. An
+**actionable** Proposed row naming a retired project — the old Pi
+deployment's repos or Train/cs2-train — can never ship, so it is a fault:
+without the rule such a row lints green, the run reads it, and then skips
+it. Ledger rows are exempt (the Skipped history names those projects
+legitimately), and only the title's project prefix is judged, never the
+prose.
+
 Read-only by construction: the board is opened for reading only and git
 is only ever asked ``cat-file`` (asserted by tests/test_check_board.py).
 
@@ -98,6 +107,24 @@ PROJECT_REPOS = {
     "cs2-train": "cs2-train",
 }
 
+# Owner deployment scope (AGENTS.md "Deployment scope", directive
+# 2026-11-02): the loop serves the current Pi 5 deployment only. A row
+# naming one of these prefixes can never ship, so an **actionable** row
+# carrying one is refused at lint time rather than discovered at pick time.
+# Values are the project name the fault reports. Ledger rows are exempt.
+OUT_OF_SCOPE = {
+    "twitter-launch": "twitter-launch",
+    "forex-copybot": "forex-copybot",
+    "copybot": "forex-copybot",
+    "maritime-dashboard": "maritime-dashboard",
+    "project-hub": "project-hub",
+    "ais_analysis": "ais_analysis",
+    "ais-analysis": "ais_analysis",
+    "camoufox-setup": "camoufox-setup",
+    "train": "Train (cs2-train)",
+    "cs2-train": "Train (cs2-train)",
+}
+
 
 def split_sections(text):
     """Yield (name, [row strings]) for every ``## `` section.
@@ -139,11 +166,15 @@ def normalise_title(text):
     return " ".join(text.split())
 
 
+def title_prefix(label):
+    """The project name a row's title starts with (lowercased)."""
+    head = re.split(r"\s+(?:—|–|-)\s+|:\s+", label.strip())[0]
+    return head.replace("*", "").replace("`", "").strip().lower()
+
+
 def project_repo(label):
     """The repo a row's commit refs belong to, from its title prefix."""
-    head = re.split(r"\s+(?:—|–|-)\s+|:\s+", label.strip())[0]
-    head = head.replace("*", "").replace("`", "").strip().lower()
-    return PROJECT_REPOS.get(head)
+    return PROJECT_REPOS.get(title_prefix(label))
 
 
 def resolve_commit(repo_path, sha):
@@ -188,6 +219,7 @@ def lint_board(text, repos=None):
         "shipped": 0,
         "refs_checked": 0,
         "refs_unverified": 0,
+        "out_of_scope": 0,
     }
     lines_all = text.splitlines()
     for name, rows in sections:
@@ -220,6 +252,17 @@ def lint_board(text, repos=None):
                 if not ACCEPTANCE.search(joined):
                     faults.append(
                         (start_line, label, "missing acceptance clause (**Acceptance:**)")
+                    )
+                retired = OUT_OF_SCOPE.get(title_prefix(label))
+                if retired:
+                    counts["out_of_scope"] += 1
+                    faults.append(
+                        (
+                            start_line,
+                            label,
+                            f"names out-of-scope project {retired} "
+                            "(owner deployment scope, 2026-11-02)",
+                        )
                     )
 
             # ledger pointer: a SHIPPED stamp must land on a Done row
@@ -313,7 +356,8 @@ def main(argv):
         f"checked, {counts['ledger']} ledger row(s) exempt, "
         f"{counts['shipped']} SHIPPED marker(s) matched to Done, "
         f"{counts['refs_checked']} commit ref(s) resolved in {checked_repos}, "
-        f"{counts['refs_unverified']} unverified (repo not supplied)"
+        f"{counts['refs_unverified']} unverified (repo not supplied), "
+        f"{counts['out_of_scope']} out-of-scope Proposed row(s)"
     )
     return 0
 

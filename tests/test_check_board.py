@@ -374,3 +374,123 @@ def test_ci_checkout_fetches_full_history():
     """Commit refs resolve only if CI has the history to resolve them."""
     ci = CI.read_text(encoding="utf-8")
     assert "fetch-depth: 0" in ci
+
+
+# --- deployment scope (2026-11-15) --------------------------------------
+#
+# Acceptance (board row, radar — make the board refuse a row it can never
+# ship): a planted Proposed row naming twitter-launch fails with the repo
+# named; the board as it stands exits 0; Done and Skipped parse untouched.
+
+OUT_OF_SCOPE_ROW = (
+    "- **twitter-launch — planted out-of-scope row** *(S; on-box)* — does "
+    "a thing. **Acceptance: it works.**\n"
+)
+
+
+def board_with_proposed_row(tmp_path, row):
+    text = MINIMAL_BOARD.replace("## Proposed\n", "## Proposed\n\n" + row, 1)
+    return write_board(tmp_path, text)
+
+
+def test_planted_out_of_scope_row_fails_naming_the_project(tmp_path):
+    """The acceptance row: a Proposed twitter-launch row is refused."""
+    board = board_with_proposed_row(tmp_path, OUT_OF_SCOPE_ROW)
+    proc = run_checker(board)
+    assert proc.returncode == 1, proc.stdout
+    assert 'row "twitter-launch — planted out-of-scope row"' in proc.stdout
+    assert "out-of-scope project twitter-launch" in proc.stdout
+    assert "owner deployment scope, 2026-11-02" in proc.stdout
+    # the row is otherwise well-formed: scope is the only fault
+    assert "1 fault(s)" in proc.stdout
+    assert "effort tag" not in proc.stdout
+    assert "acceptance clause" not in proc.stdout
+    assert f"{board}:5" in proc.stdout
+
+
+def test_every_retired_prefix_is_refused(tmp_path):
+    """Old-deployment repos and Train/cs2-train are all out of scope."""
+    cases = {
+        "forex-copybot": "forex-copybot",
+        "copybot": "forex-copybot",
+        "maritime-dashboard": "maritime-dashboard",
+        "project-hub": "project-hub",
+        "ais_analysis": "ais_analysis",
+        "camoufox-setup": "camoufox-setup",
+        "Train:": "Train (cs2-train)",
+        "cs2-train": "Train (cs2-train)",
+    }
+    for prefix, reported in cases.items():
+        separator = " " if prefix.endswith(":") else " — "
+        row = (
+            f"- **{prefix}{separator}planted {prefix} row** *(S; on-box)* — "
+            "does a thing. **Acceptance: it works.**\n"
+        )
+        board = board_with_proposed_row(tmp_path, row)
+        proc = run_checker(board)
+        assert proc.returncode == 1, f"{prefix}: {proc.stdout}"
+        assert f"out-of-scope project {reported}" in proc.stdout, prefix
+
+
+def test_in_scope_prefixes_still_pass(tmp_path):
+    """Control: every current-deployment project prefix stays clean."""
+    rows = "".join(
+        f"- **{prefix} — planted {prefix} row** *(S; on-box)* — does a "
+        "thing. **Acceptance: it works.**\n"
+        for prefix in ("radar", "personal-website", "cluster", "pi-cicd",
+                       "switch-l4t-gpu")
+    )
+    board = board_with_proposed_row(tmp_path, rows)
+    proc = run_checker(board)
+    assert proc.returncode == 0, proc.stdout
+    # the fixture's own good row is actionable too
+    assert "6 actionable" in proc.stdout
+    assert "0 out-of-scope" in proc.stdout
+
+
+def test_out_of_scope_ledger_rows_are_exempt(tmp_path):
+    """History naming a retired project is not a fault (Skipped/Done)."""
+    text = MINIMAL_BOARD.replace(
+        "- **skipped row** — **SKIPPED 2026-01-02: no longer wanted.**",
+        "- **twitter-launch — retired row** — **SKIPPED 2026-01-02: out of "
+        "scope (owner deployment directive); see Notes.**", 1)
+    text = text.replace(
+        "**ledger row** — **SHIPPED 2026-01-01, see Done**",
+        "**forex-copybot — retired stamped row** — **SHIPPED 2026-01-01, "
+        "see Done**", 1)
+    text = text.replace(
+        "- **ledger row** — done 2026-01-01 (shipped in `abc1234`; same title,",
+        "- **forex-copybot — retired stamped row** — done 2026-01-01 "
+        "(shipped in `abc1234`; same title,", 1)
+    board = write_board(tmp_path, text)
+    proc = run_checker(board)
+    assert proc.returncode == 0, proc.stdout
+    assert "0 out-of-scope" in proc.stdout
+
+
+def test_out_of_scope_check_reads_the_prefix_not_the_prose(tmp_path):
+    """An in-scope row may mention a retired project in its prose."""
+    row = (
+        "- **radar — planted prose row** *(S; on-box)* — unlike\n"
+        "  twitter-launch and forex-copybot, this repo is in scope.\n"
+        "  **Acceptance: it works.**\n"
+    )
+    board = board_with_proposed_row(tmp_path, row)
+    proc = run_checker(board)
+    assert proc.returncode == 0, proc.stdout
+
+
+def test_real_board_counts_zero_out_of_scope_rows():
+    """The board as it stands is fully inside the deployment scope."""
+    proc = run_checker(BOARD)
+    assert proc.returncode == 0, proc.stdout
+    assert "0 out-of-scope Proposed row(s)" in proc.stdout
+
+
+def test_real_board_skipped_section_is_not_judged(tmp_path):
+    """The real Skipped history names retired projects — still clean."""
+    text = BOARD.read_text(encoding="utf-8")
+    assert "**SKIPPED 2026-11-02: out of scope" in text  # the history is there
+    board = write_board(tmp_path, text)
+    proc = run_checker(board)
+    assert proc.returncode == 0, proc.stdout
