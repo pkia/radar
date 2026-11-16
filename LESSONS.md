@@ -4,6 +4,32 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-16 — **A negative control must not run the old code's root side
+  effects.** The installer's pre-change `install.sh` ignores `--check-tools`
+  and runs the whole install: `sudo cp` into `/etc/systemd/system`, unit
+  enables, `systemctl restart ntfy`. Stashing it and running the new tests
+  would have performed a real install on the live box, in a test. The
+  control that worked: copy the repo to a temp dir, put the old script
+  back *there*, and prepend a PATH dir whose `sudo` and `gh` are no-op
+  stubs — then the same tests run and their failure is the evidence. Same
+  family as the 10-29 soak lesson (a control executes the real code, so
+  scope what the real code can reach); the general rule: before
+  negative-controlling a script, list its privileged calls and neutralise
+  every one of them on PATH, or prove the control's blast radius is empty
+  afterwards.
+
+- 2026-11-16 — **A duplicated list is a defect even when both copies are
+  correct today.** `install.sh`'s eighteen `ln` lines, its separate chmod
+  list and the test's `TOOLS` array were three copies of one fact: adding
+  `dns-check` meant editing all three, and forgetting one turned a list
+  edit into a red build. Replace duplicates with one committed list *plus*
+  one written rule for what belongs in it — here "extensionless regular
+  file at the repo root starting with a shebang", which needs no ignore
+  list — and let the test execute the installer's own checker
+  (`--check-tools`) instead of restating the rule in Python. Two readers,
+  one implementation, and a planted fault (a stub script, a deleted
+  entry) fails both.
+
 - 2026-11-14 — **A step summary is a file the runner harvests, and the
   page it feeds is not readable back anonymously.** `$GITHUB_STEP_SUMMARY`
   is a path the runner creates per step and collects at step end, so a

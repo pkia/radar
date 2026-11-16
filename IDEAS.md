@@ -274,24 +274,57 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — one manifest for repo-root tools** *(S; new in
-  posts/2026-11-16.html; picked 2026-11-16 over the personal-website
-  allowlist row and the pi-cicd freshness-gauge row because it retires a
-  drift pair that has already cost a red build, and every clause of its
-  acceptance verifies on this box with no hardware and no owner install)*
-  — `install.sh` and `tests/test_install_sh.py` each carry their own list
-  of root tools, so a new tool has to be added to both and the two can
-  drift (the 11-16 red build was exactly that shape). Next: a committed
-  manifest read by both — the installer links from it, the test parses it
-  and additionally asserts that the repo root holds no tool missing from
-  it. **Acceptance: deleting an entry from the manifest fails both the
-  installer run and the test, naming the tool; a new stub script dropped
-  at the repo root fails the test until the manifest lists it; the current
-  tree passes unchanged.** Resume pointer: repo `~/pi-cicd`, branch
-  `master`, next step is `tools.manifest` + the installer's
-  `--check-tools` half + the rewritten test.
+*(none — 2026-11-16: the pi-cicd tools-manifest row shipped this run, see
+Done. Pickable next: the personal-website external-findings allowlist row,
+the pi-cicd freshness gauge on the console page, the pi-cicd fingerprint-demo
+deploy row, the switch-l4t-gpu GPU baseline, and the three 11-16 rows
+(offload live run, Currently panel; the manifest row is done) — all under
+Proposed.)*
 
 ## Done
+
+- **pi-cicd — one manifest for repo-root tools** — done 2026-11-16 (the
+  11-16 devlog's **S**; picked over the personal-website allowlist row and
+  the pi-cicd freshness-gauge row because it retires a drift pair that has
+  already cost a red build, and every clause of its acceptance verifies on
+  this box with no hardware and no owner install). Shipped in pi-cicd
+  `dcb1832`:
+  - `tools.manifest` — one bare name per line, `#` comments ignored — is
+    now the only list. `install.sh` links and chmods from it (one loop
+    replacing the 18 hand-written `ln` lines *and* a second, separately
+    drifting chmod list), and refuses to run when the repo root holds a
+    tool the manifest omits, naming it. `install.sh --check-tools` runs
+    that validation and exits before `mkdir`, so the test drives the
+    installer's own rule instead of restating it in Python.
+  - **The scan rule, written once:** a tool is an extensionless regular
+    file at the repo root whose first two bytes are `#!`. Libraries
+    (`.py`), `install.sh` (`.sh`) and the manifest itself fall outside
+    it, so the rule needs no hand-kept ignore list to rot beside the
+    tools — the class of defect this row exists to retire.
+  - **Acceptance, executed:** suite **394 passed, 1 skipped** (10 tests in
+    `tests/test_install_sh.py`, was 2). Deleting `feed-fresh` from a
+    copied manifest fails the installer run naming it, and the test half
+    sees the same disagreement; a mode-644 stub `drill-stub-tool` fails
+    the gate naming it and clears with one added manifest line; a manifest
+    entry with no file behind it and a duplicate entry each fail naming
+    it; `--check-tools` leaves the copied tree byte-identical
+    (path/size/mode/mtime) and creates nothing under `HOME`; the full
+    installer, with `sudo`/`gh` stubbed, links all 18 names into a temp
+    `~/.local/bin` as executable symlinks. **Negative-controlled by
+    execution:** against the pre-change installer **7 of the 10 fail**;
+    the three that pass are the data-side checks plus the linking test,
+    which the old hardcoded block satisfied because it happened to list
+    the same 18 names.
+  - **CI green on the tip** (run 43883559242, `dcb1832`): all ten install
+    tests PASSED on the runner — 391 passed / 4 skipped there, the three
+    extra skips being the Prometheus drills (no binary on runners).
+  - **Not claimed:** the live `~/.local/bin` was not re-linked — that only
+    happens on the owner's `sudo ~/pi-cicd/install.sh` pass, and it would
+    change nothing today (tree and manifest agree; the existing symlinks
+    already name the same files). The manifest is still a list a human
+    updates; what is now guaranteed is that forgetting shows up as a named
+    failure instead of a silently unlinked tool. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **radar — make the board refuse a row it can never ship** — done
   2026-11-15 (the 11-15 devlog's **S**; picked over the pi-cicd
@@ -3820,6 +3853,26 @@ Append-only, one line per run — including failures and no-ops.
   43722292383) with the runner's Board lint step printing
   `0 out-of-scope Proposed row(s)`. Not claimed: the prefix list is
   hardcoded and the rule reads the title, not intent. ≈19 tool calls.
+
+- 2026-11-16 — implementer run: synced the 11-16 devlog's radar list (3
+  new rows: cluster-prototype offload client against the real two boxes,
+  this pi-cicd tools manifest, personal-website Currently panel from the
+  board) and picked the manifest row — it retires a duplicate-list pair
+  whose drift already turned a list edit into a red build, and every
+  clause verifies here with no hardware and no owner install. Shipped
+  pi-cicd `dcb1832`: `tools.manifest` is the only list; install.sh links
+  and chmods from it and refuses a root tool it omits; `--check-tools`
+  validates and exits before touching anything, so the test drives the
+  installer's own rule. Evidence: 10 install tests (was 2), suite **394
+  passed, 1 skipped**; negative control by execution — 7 of 10 fail
+  against the pre-change installer, the 3 passes being data-side checks
+  and the linking test it satisfied by luck; **CI green** (run
+  43883559242) with all ten PASSED on the runner (391 passed / 4 skipped
+  there). Not claimed: the live `~/.local/bin` is only refreshed by the
+  owner's `sudo install.sh` pass. Observed and left alone: pi-cicd's
+  worktree carries uncommitted `docs/units.md` and an untracked
+  `docs/incidents/2026-11-16-dns-outage.md` from the earlier dns-check
+  work — not this run's to commit. ≈40 tool calls.
 
 ## Notes
 
