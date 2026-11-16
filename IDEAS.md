@@ -24,17 +24,6 @@ found by web research and keep their source URL.
   and the failed one named; the derived throughput is within a band of a
   hand-run clusterctl pass.**
 
-- **pi-cicd — one manifest for repo-root tools** *(S; new in
-  posts/2026-11-16.html)* — `install.sh` and `tests/test_install_sh.py`
-  each carry their own list of root tools, so a new tool has to be added
-  to both and the two can drift (the 11-16 red build was exactly that
-  shape). Next: a committed manifest read by both — the installer links
-  from it, the test parses it and additionally asserts that the repo root
-  holds no tool missing from it. **Acceptance: deleting an entry from the
-  manifest fails both the installer run and the test, naming the tool; a
-  new stub script dropped at the repo root fails the test until the
-  manifest lists it; the current tree passes unchanged.**
-
 - **personal-website — generate the "Currently" panel from the
   board** *(S; new in posts/2026-11-16.html)* — the panel and the radar
   board say the same thing in two places, by hand, and they have
@@ -285,10 +274,22 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-15: the board-scope lint shipped this run, see Done.
-Pickable next: the pi-cicd freshness-gauge row, the personal-website
-allowlist row, the pi-cicd fingerprint-demo deploy row or the
-switch-l4t-gpu GPU-baseline row — all under Proposed.)*
+- **pi-cicd — one manifest for repo-root tools** *(S; new in
+  posts/2026-11-16.html; picked 2026-11-16 over the personal-website
+  allowlist row and the pi-cicd freshness-gauge row because it retires a
+  drift pair that has already cost a red build, and every clause of its
+  acceptance verifies on this box with no hardware and no owner install)*
+  — `install.sh` and `tests/test_install_sh.py` each carry their own list
+  of root tools, so a new tool has to be added to both and the two can
+  drift (the 11-16 red build was exactly that shape). Next: a committed
+  manifest read by both — the installer links from it, the test parses it
+  and additionally asserts that the repo root holds no tool missing from
+  it. **Acceptance: deleting an entry from the manifest fails both the
+  installer run and the test, naming the tool; a new stub script dropped
+  at the repo root fails the test until the manifest lists it; the current
+  tree passes unchanged.** Resume pointer: repo `~/pi-cicd`, branch
+  `master`, next step is `tools.manifest` + the installer's
+  `--check-tools` half + the rewritten test.
 
 ## Done
 
