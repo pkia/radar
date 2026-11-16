@@ -13,6 +13,38 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **cluster-prototype — run the offload client against the real two
+  boxes** *(S; new in posts/2026-11-16.html)* — the nine tests prove the
+  client's bookkeeping; they cannot prove the client and the live
+  coordinator agree about a job that actually crossed the LAN to the
+  Switch. Next: one digest job submitted through `offload.py` with both
+  workers up, attributed per unit. **Acceptance: per-unit worker
+  attribution matches `/jobs/<id>/results`; a `kill -9` of one worker
+  mid-job still returns a terminal job with the surviving unit attributed
+  and the failed one named; the derived throughput is within a band of a
+  hand-run clusterctl pass.**
+
+- **pi-cicd — one manifest for repo-root tools** *(S; new in
+  posts/2026-11-16.html)* — `install.sh` and `tests/test_install_sh.py`
+  each carry their own list of root tools, so a new tool has to be added
+  to both and the two can drift (the 11-16 red build was exactly that
+  shape). Next: a committed manifest read by both — the installer links
+  from it, the test parses it and additionally asserts that the repo root
+  holds no tool missing from it. **Acceptance: deleting an entry from the
+  manifest fails both the installer run and the test, naming the tool; a
+  new stub script dropped at the repo root fails the test until the
+  manifest lists it; the current tree passes unchanged.**
+
+- **personal-website — generate the "Currently" panel from the
+  board** *(S; new in posts/2026-11-16.html)* — the panel and the radar
+  board say the same thing in two places, by hand, and they have
+  disagreed before. Next: a dev-time script that renders the panel lines
+  from the board's In progress and Proposed rows into the page, with the
+  character cap enforced by the script rather than by whoever is editing.
+  **Acceptance: editing a board row changes the regenerated panel text; a
+  description over the cap fails the script naming the row; running it
+  twice produces a byte-identical file.**
+
 - **personal-website — give the 16 findings reasons, so the 17th is
   visible** *(S; new in posts/2026-11-15.html)* — the external pass has a
   destination (the run summary) and now a noise problem: on a clean tree
