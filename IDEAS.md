@@ -13,16 +13,20 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd — list every third-party action and whether it is pinned to
+  a SHA** *(S; new in posts/2026-11-17.html)* — the repo has one
+  workflow and exactly one `uses:` line, so this is cheap now and gets
+  expensive later. Next: a read-only tool that parses every workflow,
+  prints one row per `uses:` with its ref type — full SHA, major tag,
+  branch — and exits nonzero when a moving tag is found.
+  **Acceptance: a workflow pinned everywhere exits 0 listing each
+  action and `sha`; one `@v4` line exits 1 naming the file, line and
+  action; comments and a quoted `uses:` are read the same way YAML
+  reads them; the tool is read-only, proven by a source scan and by a
+  run that leaves the tree byte-identical.**
+
 - **cluster-prototype — run the offload client against the real two
-  boxes** *(S; new in posts/2026-11-16.html)* — the nine tests prove the
-  client's bookkeeping; they cannot prove the client and the live
-  coordinator agree about a job that actually crossed the LAN to the
-  Switch. Next: one digest job submitted through `offload.py` with both
-  workers up, attributed per unit. **Acceptance: per-unit worker
-  attribution matches `/jobs/<id>/results`; a `kill -9` of one worker
-  mid-job still returns a terminal job with the surviving unit attributed
-  and the failed one named; the derived throughput is within a band of a
-  hand-run clusterctl pass.**
+  boxes** — moved to **In progress** 2026-11-17.
 
 - **personal-website — generate the "Currently" panel from the
   board** *(S; new in posts/2026-11-16.html)* — the panel and the radar
@@ -274,12 +278,20 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-16: the pi-cicd tools-manifest row shipped this run, see
-Done. Pickable next: the personal-website external-findings allowlist row,
-the pi-cicd freshness gauge on the console page, the pi-cicd fingerprint-demo
-deploy row, the switch-l4t-gpu GPU baseline, and the three 11-16 rows
-(offload live run, Currently panel; the manifest row is done) — all under
-Proposed.)*
+- **cluster-prototype — run the offload client against the real two
+  boxes** *(S; new in posts/2026-11-16.html)* — the nine tests prove the
+  client's bookkeeping; they cannot prove the client and the live
+  coordinator agree about a job that actually crossed the LAN to the
+  Switch. Next: one digest job submitted through `offload.py` with both
+  workers up, attributed per unit. **Acceptance: per-unit worker
+  attribution matches `/jobs/<id>/results`; a `kill -9` of one worker
+  mid-job still returns a terminal job with the surviving unit attributed
+  and the failed one named; the derived throughput is within a band of a
+  hand-run clusterctl pass.**
+  *Picked 2026-11-17 (top of the 11-16 and 11-17 radar lists). Resume
+  pointer: drill lands as `tests/drill_offload_live.py` in
+  cluster-prototype; coordinator live on 127.0.0.1:8800 with both
+  workers healthy at pick time.*
 
 ## Done
 
