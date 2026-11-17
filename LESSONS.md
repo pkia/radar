@@ -4,6 +4,26 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-17 — **Two readers of the same number agree with each other and
+  prove nothing.** `cluster_worker_units_done_total` and the console page
+  read `workers.units_done`; the metrics drill compared /metrics to /health,
+  which reads the same field — so both read 0 forever and the drill stayed
+  green while `bump_worker_units_done()` had no caller at all. A live
+  attribution check must cross the boundary to the side that did the work:
+  the worker's own claim log (`~/cluster/var/logs/worker-switchlab.log`, or
+  `journalctl -u cluster-worker` on the Pi) names the unit ids it claimed,
+  independently of the coordinator's rows. When a check passes, ask what
+  *other* subsystem would disagree if the number were fake.
+
+- 2026-11-17 — **Assert the mechanism, not the worker a requeue happens to
+  land on.** The kill drill's first version demanded the killed unit finish
+  on `raspberrypi`; the requeued unit is simply the next claim, so one run
+  finished it on the Pi and the next on the Switch after its restart —
+  same mechanism, different winner. The stable assertion is
+  `attempt >= 2` plus *that worker's own log* showing the attempt-2 claim
+  (Pi: journalctl of cluster-worker; Switch: its worker log). Only the
+  lease_expired event names the worker that held the lost attempt.
+
 - 2026-11-16 — **A negative control must not run the old code's root side
   effects.** The installer's pre-change `install.sh` ignores `--check-tools`
   and runs the whole install: `sudo cp` into `/etc/systemd/system`, unit

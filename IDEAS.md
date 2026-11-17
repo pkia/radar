@@ -275,22 +275,78 @@ rest now build on it:
 
 ## In progress
 
-- **cluster-prototype — run the offload client against the real two
-  boxes** *(S; new in posts/2026-11-16.html)* — the nine tests prove the
-  client's bookkeeping; they cannot prove the client and the live
-  coordinator agree about a job that actually crossed the LAN to the
-  Switch. Next: one digest job submitted through `offload.py` with both
-  workers up, attributed per unit. **Acceptance: per-unit worker
-  attribution matches `/jobs/<id>/results`; a `kill -9` of one worker
-  mid-job still returns a terminal job with the surviving unit attributed
-  and the failed one named; the derived throughput is within a band of a
-  hand-run clusterctl pass.**
-  *Picked 2026-11-17 (top of the 11-16 and 11-17 radar lists). Resume
-  pointer: drill lands as `tests/drill_offload_live.py` in
-  cluster-prototype; coordinator live on 127.0.0.1:8800 with both
-  workers healthy at pick time.*
+*(none — 2026-11-17: the offload live-run row shipped this run, see Done.
+Pickable next: the personal-website external-findings allowlist row, the
+pi-cicd freshness gauge on the console page, the pi-cicd fingerprint-demo
+deploy row, the switch-l4t-gpu GPU baseline, the pi-cicd SHA-pin audit
+row (new in the 11-17 devlog), and the personal-website Currently panel —
+all under Proposed.)*
 
 ## Done
+
+- **cluster-prototype — run the offload client against the real two
+  boxes** — done 2026-11-17 (top of both the 11-16 and 11-17 radar lists;
+  picked over the pi-cicd SHA-pin row because it is the only one that
+  proves a shipped-but-unproven feature end to end, and both boxes were
+  up and healthy at pick time). Shipped in cluster-prototype `1894a31`
+  (client names a lost lease), `5cc595e` (the counter the drill found
+  dead), `6eb122d` (`tests/drill_offload_live.py` + the
+  IMPLEMENTATION.md addendum):
+  - **The drill** (`tests/drill_offload_live.py`, 13 checks, live against
+    the production coordinator and both workers): A attribution — job
+    1892, 8×8 MiB through `offload.run`; every unit's
+    (index, status, worker, attempt) identical to `/jobs/<id>`'s own rows;
+    all 8 digests distinct and `/jobs/<id>/results` agrees with
+    `unit_rows`; the 3 units the client pins on `switchlab` are exactly
+    the 3 unit ids the Switch worker's **own log** says it claimed
+    (23720–23722). B throughput — the same params hand-run through
+    `clusterctl` (job 1893): client 32.3 MiB/s vs hand-run 33.3 MiB/s,
+    both derived from the coordinator's `created_at`/`finished_at` so the
+    comparison is one clock; band 0.5–2.0×. C kill — job 1894 (64×32 MiB,
+    2048 MiB): unit 0 seen running on `switchlab` at attempt 1, then
+    `pkill -9` on the Switch (rc 0, pid 65773); the job still reached
+    **complete in 65 s with 64/64 units verified**, the killed unit's lease
+    expired (`lease_expired` event, worker=switchlab, unit_id 23736,
+    "attempt=1 requeued"), it finished at **attempt 2 — on switchlab
+    again after its restart, proven by that worker's own claim log** — and
+    the worker came back healthy on its own (pid 65773 → 66248). **Both
+    branches were executed this session:** in run 1 (job 1888) the
+    requeued unit landed on `raspberrypi` instead; same mechanism, first
+    claim wins.
+  - **The failed one is named, not silently healed:** `offload` now carries
+    each unit's `attempt` (summary line + `--json`), `Job.requeued` lists
+    the units whose lease was lost, and the coordinator's event log names
+    the worker that held the lost attempt — which the coordinator's own
+    rows cannot, since `unit_rows` carries only the current attempt.
+  - **A real defect fell out of the acceptance:** `Store.bump_worker_units_done()`
+    had **no caller**, so every worker's `units_done` stayed 0 for the life
+    of the deployment while `/metrics` (`cluster_worker_units_done_total`)
+    and the 11-05 console page read it — two readers of one dead number,
+    invisible because the metrics drill compares /metrics against /health
+    and both read the same zero. `post_result` now bumps it on an accepted
+    success only (not retries, not fenced stale results).
+  - **Acceptance, executed:** suite **73 passed, 1 skipped** (12 in
+    `tests/test_offload.py`, was 9 — requeued unit named with its attempt,
+    `--json` carries per-unit attempt/worker, clean jobs name no requeue;
+    plus the new store counter test). **Negative-controlled by execution:**
+    against the pre-change `offload.py` the 3 new client tests fail
+    (`AttributeError: 'Unit' object has no attribute 'attempt'`), and
+    against `1894a31`'s `store.py` the counter test fails `0 != 3`.
+    **CI green on every tip:** `1894a31` (run 44101278120), `5cc595e`
+    (44103113020), and the final `6eb122d` (44104116251 — runner itself
+    printed 73 passed, 1 skipped and the fatal-rules lint clean).
+  - **Not claimed:** the **live coordinator still serves the pre-fix
+    store** (no manual service restart was performed, per the guardrail),
+    so the live `units_done` counter reads 0 until its next restart — the
+    drill's cross-check deliberately uses the workers' own claim logs
+    instead of that counter. The drill is **not in CI** (it needs the live
+    cluster and does a real SIGKILL); it is a manual acceptance run.
+    The throughput band is coarse by design (0.5–2.0×, spot values
+    within 3 % here), and each run hashes ~2 GiB and kills the Switch
+    worker once — a ~2-minute drill, not a cheap one. Also observed and
+    left alone: pi-cicd's worktree still carries the 11-16 uncommitted
+    `docs/units.md` + untracked `docs/incidents/` — not this run's to
+    commit. Repo: <https://github.com/pkia/cluster-prototype>.
 
 - **pi-cicd — one manifest for repo-root tools** — done 2026-11-16 (the
   11-16 devlog's **S**; picked over the personal-website allowlist row and
@@ -3882,6 +3938,33 @@ Append-only, one line per run — including failures and no-ops.
   worktree carries uncommitted `docs/units.md` and an untracked
   `docs/incidents/2026-11-16-dns-outage.md` from the earlier dns-check
   work — not this run's to commit. ≈40 tool calls.
+
+- 2026-11-17 — implementer run: synced the 11-17 devlog's radar list (one
+  genuinely new row, pi-cicd's SHA-pin audit of every `uses:` line; the
+  other two were already on the board) and picked the cluster-prototype
+  offload live-run row — the top item of both the 11-16 and 11-17 lists,
+  and the only candidate that proves shipped-but-unproven code end to end;
+  both boxes were healthy at pick time. Shipped cluster-prototype
+  `1894a31` (offload names a lost lease: per-unit attempt in the summary
+  and `--json`), `5cc595e` (the `units_done` counter the drill found dead —
+  `bump_worker_units_done()` had no caller, so /metrics and the console
+  page read a permanent zero) and `6eb122d` (`tests/drill_offload_live.py`,
+  13 live checks + IMPLEMENTATION.md addendum). Evidence: the drill ran
+  **ALL PASS** against the production coordinator — attribution for job
+  1892 identical to the coordinator's rows and to the Switch worker's own
+  claim log, client 32.3 MiB/s vs hand-run clusterctl 33.3 MiB/s, and job
+  1894 (64×32 MiB) survived a real SIGKILL of the Switch worker: complete
+  in 65 s, 64/64 verified, the killed attempt named (`lease_expired`,
+  switchlab, attempt=1), the unit finished at attempt 2, worker back
+  healthy on its own (pid 65773 → 66248). Suite **73 passed, 1 skipped**;
+  negative controls by execution — 3 new client tests fail against the
+  pre-change offload.py, the counter test fails `0 != 3` against the
+  pre-fix store; **CI green** on all three tips (44101278120, 44103113020,
+  44104116251). Not claimed: the live coordinator keeps its pre-fix store
+  until its next restart, so the live counter still reads 0; the drill is
+  manual (not in CI) and its throughput band is coarse. ≈35 tool calls;
+  the dangerous-command gate blocked one heredoc that merely *mentioned*
+  `kill -9`, so the addendum was appended from a scratch file.
 
 ## Notes
 
