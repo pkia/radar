@@ -25,9 +25,6 @@ found by web research and keep their source URL.
   reads them; the tool is read-only, proven by a source scan and by a
   run that leaves the tree byte-identical.**
 
-- **cluster-prototype — run the offload client against the real two
-  boxes** — moved to **In progress** 2026-11-17.
-
 - **personal-website — generate the "Currently" panel from the
   board** *(S; new in posts/2026-11-16.html)* — the panel and the radar
   board say the same thing in two places, by hand, and they have
