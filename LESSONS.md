@@ -4,6 +4,28 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-18 — **A default that only exists on this box is invisible
+  from this box.** `dns-watch` defaulted its probe to the bare name
+  `dns-check`, which resolved here because `~/.local/bin/dns-check` is
+  a symlink and that dir is on PATH — and died with `ENOENT` on the
+  runner, reddening 11 of 14 new tests on the first push while the
+  local suite was green. Resolve in order (explicit path verbatim →
+  PATH → the file shipped beside the script), and **before pushing any
+  tool that shells out to a sibling, run its tests under the runner's
+  PATH (`PATH=/usr/bin:/bin`)** — a one-line habit that reproduces the
+  whole class. The failing run is also the control: the fix is only
+  worth claiming because the stripped-PATH test fails without it.
+
+- 2026-11-18 — **`Path("~/x")` is a directory literally named `~`.**
+  The state path's default was `~/.local/state/dns-watch/state.json`
+  and `pathlib` does not expand it, so the live run wrote
+  `./~/.local/state/dns-watch/state.json` *inside the repo* — and the
+  tool stayed self-consistent (load and save agreed on the same wrong
+  path), so its own output looked perfectly healthy. Expand `~` at the
+  boundary (config load and the flag) and test it by running the tool
+  with `HOME=<tmp>` in a subprocess and asserting where the file
+  landed; asserting "a file was written" would have passed.
+
 - 2026-11-17 — **Two readers of the same number agree with each other and
   prove nothing.** `cluster_worker_units_done_total` and the console page
   read `workers.units_done`; the metrics drill compared /metrics to /health,

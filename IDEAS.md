@@ -304,24 +304,77 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — put dns-check on a timer with edge-triggered paging**
-  *(S; on-box; new in posts/2026-11-18.html; picked 2026-11-18)* — the
-  11-16 outage was found by Hermes failing to reach a model provider,
-  which is a late and confusing way to learn that resolution died, and
-  `dns-check` — the read-only verdict written that morning — is a tool
-  nobody runs at 23:35. Next: an hourly timer that runs it, pages on a
-  state change only, and keeps the probe itself read-only. **Acceptance:
-  a header-only resolv.conf fixture fires exactly one page; five more
-  broken runs page nothing; recovery sends one "recovered"; the probe
-  itself stays read-only, proven by a source scan and a byte-identical
-  tree after a run.** Pick rationale: the other 11-18 rows are the
-  coordinator restart (wants a live service bounce, and its console-page
-  clause is owner-gated) and the devlog-card gate (its premise measured
-  false — 53 of 80 cards are hand summaries, see Proposed); the
-  DNS row is the one whose whole acceptance executes here tonight.
-
+*(none — 2026-11-18: the dns-watch row shipped this run, see Done.
+Pickable next: the 11-18 coordinator-restart row (its console-page clause
+is owner-gated — see its own note), the pi-cicd SHA-pin audit, the
+personal-website findings allowlist and Currently-panel rows, the pi-cicd
+freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU
+baseline, and the 11-18 devlog-card gate (fix its measured premise
+first) — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — put dns-check on a timer with edge-triggered paging** — done
+  2026-11-18 (the 11-18 devlog's **S**; picked over the coordinator-restart
+  row — which wants a live service bounce and whose console-page clause is
+  owner-gated — and the devlog-card gate, whose premise measured false).
+  Shipped in pi-cicd `2c00447` (+ `6cc50b3`, the fix CI forced):
+  - `dns-watch` runs `dns-check` once per invocation, maps its exit code to
+    a verdict (`healthy`/`dns`/`egress`/`both`, anything else
+    `probe-error`), compares it with the last verdict in
+    `~/.local/state/dns-watch/state.json`, and publishes **one** ntfy
+    message only when it changes — a standing failure is one page, not one
+    an hour, and a recovery gets its own. First healthy run on an empty
+    state is silent; the first broken one pages. Exit is dns-check's own
+    (0/1/2/3) or 4 when the probe could not run, so the failed unit is
+    still a record pi-doctor names when paging is muted or unconfigured.
+  - `dns-check` gains `DNS_CHECK_RESOLV_CONF` — the file the verdict
+    quotes, never the resolver actually used — and now marks a
+    nameserver-less file as the 2026-11-16 shape, by name.
+  - Wiring: hourly units (`User=ev`, absolute paths, `Restart=no`),
+    install.sh block, `tools.manifest` entry, `docs/units.md` row and a
+    `docs/layers.md` section, `templates/dns-watch.conf.example`, CI
+    byte-compile plus `sh -n dns-check` (which had never been
+    syntax-checked in CI).
+  - **Acceptance, executed:** suite **409 passed, 1 skipped** (15 new in
+    `tests/test_dns_watch.py`, all driving the real CLIs in subprocesses
+    with a loopback ntfy sink). The acceptance pair: a header-only
+    resolv.conf fixture + an unresolvable name → exactly one page naming
+    that file and the "header-only" line, rc 1; five more broken runs →
+    still one page and `since` unmoved; recovery → one "Back to healthy"
+    page, then silence. Plus alternation (4 changes → 4 pages), egress-only
+    named separately (rc 2, its own title), `--dry-run` publishes and
+    writes nothing, corrupt state starts fresh with a named warning,
+    explicit missing probe → named probe-error (rc 4), `STATE=` from config
+    honoured, default state expands `HOME`, and the read-only half: a
+    source rule (comments and echo/printf lines excluded — the recovery
+    commands live there — plus redirections to /dev/null ignored) and a
+    copy of the tree byte-identical after a probe run and after a watch
+    run. **Negative-controlled by execution:** against the pre-change
+    `dns-check` the first-page test fails (the page printed
+    `/etc/resolv.conf`, not the fixture) and its header-only line is
+    absent; a mutant that pages while unchanged fails the five-more and
+    recovery tests; the pre-`expanduser` tool fails the HOME test.
+  - **CI green on the tip** (run 44323641397, `6cc50b3`: 406 passed, 4
+    skipped, byte-compile step ran). The first push `2c00447` was **red** —
+    11 of 14 tests, `dns-check could not run: [Errno 2]` — because the
+    default probe name only resolved on this box, where `dns-check` is a
+    `~/.local/bin` symlink; `6cc50b3` resolves an explicit path verbatim,
+    then PATH, then the copy beside the script, and the regression test
+    runs with `PATH=/usr/bin:/bin`.
+  - Live on this box: `dns-watch` healthy (`rc 0`), state seeded under
+    `~/.local/state/dns-watch/`, second run silent; the first live run
+    found a real defect — `Path("~/.local/...")` wrote a literal `~`
+    directory inside the repo — fixed with its own test. `systemd-analyze
+    verify` accepts both units (rc 0).
+  - **Not claimed:** the units are **not installed** (the `/etc` copy is
+    owner-gated as on every unit ship), so the hourly firing is future and
+    no page has ever gone through the real ntfy — the paging path is proven
+    against a loopback sink, and `/etc/dns-watch.conf` with a publisher
+    token is the owner's one step; until it exists the unit runs, fails on
+    a broken verdict and cannot page. `dns-check`'s own probe is unchanged
+    in what it measures (one raw-IP GET, one `getent`) — the new env var
+    only affects what it quotes. Repo: <https://github.com/pkia/pi-cicd>.
 
 - **cluster-prototype — run the offload client against the real two
   boxes** — done 2026-11-17 (top of both the 11-16 and 11-17 radar lists;
@@ -4004,6 +4057,30 @@ Append-only, one line per run — including failures and no-ops.
   manual (not in CI) and its throughput band is coarse. ≈35 tool calls;
   the dangerous-command gate blocked one heredoc that merely *mentioned*
   `kill -9`, so the addendum was appended from a scratch file.
+
+- 2026-11-18 — implementer run: synced the 11-18 devlog's radar list (3
+  rows — cluster-prototype's coordinator restart, this pi-cicd dns-check
+  timer, personal-website's devlog-card gate — plus a measured note on the
+  card row: card titles match each post's `<h1>` on all 80, but 53 of 80
+  summaries differ from the post's meta description and 7 of 80 from the
+  feed description, so a strict equality gate there is red on arrival).
+  Picked the dns-check timer: the 11-16 outage went unnoticed for ~32
+  minutes and was found by Hermes failing to reach a provider, while the
+  read-only verdict written that morning is a tool nobody runs at 23:35.
+  Shipped pi-cicd `2c00447` (dns-watch + `DNS_CHECK_RESOLV_CONF` + the
+  header-only marking + units/install/docs/CI + 14 tests) and `6cc50b3`
+  (probe resolution when PATH has no dns-check — the first push was red on
+  exactly that, 11 of 14 tests). Evidence: suite **409 passed, 1 skipped**
+  (15 new, real CLIs + loopback ntfy sink); negative controls by execution
+  — the pre-change dns-check fails the first-page test, an always-page
+  mutant fails two, the pre-`expanduser` tool fails the HOME test, and
+  removing `resolve_probe()` fails the stripped-PATH test; **CI green**
+  (run 44323641397 on the tip: 406 passed, 4 skipped). Live: healthy rc 0,
+  state seeded, second run silent, `systemd-analyze verify` rc 0; the
+  first live run found a real defect (`Path("~")` is literal) — fixed in
+  the same push. Not claimed: units not installed (`/etc` owner-gated) and
+  no page has gone through the real ntfy yet — `/etc/dns-watch.conf` is the
+  owner's one step. ≈45 tool calls.
 
 ## Notes
 
