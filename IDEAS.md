@@ -13,6 +13,35 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **cluster-prototype — restart the coordinator and prove the counter
+  moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
+  fix (`units_done` bumped in `post_result`) is on disk and not in the
+  running process, so the live counter still reads 0. Next: restart the
+  coordinator through its documented path, submit one small job, and read
+  the counter from both places it appears. **Acceptance:
+  `cluster_worker_units_done_total` for `switchlab` increments by exactly
+  the units that worker was credited with; a retried unit counts once;
+  and the value survives a second restart because it lives in the store,
+  not in the process.** (The devlog also asks for the console page to
+  show the same number — that page still 404s until the owner's
+  `install.sh` pass lands the 11-05 console drop-in, so a picker should
+  treat that clause as owner-gated rather than verify it by restarting.)
+
+- **personal-website — stop a devlog card drifting from its post**
+  *(S; new in posts/2026-11-18.html)* — the feed and sitemap are gated
+  1:1 with `blog/posts/`, but the index card above each post is the one
+  copy nothing compares, and the daily job writes it by hand. Next: a
+  gate comparing a card's title and summary against the post's own text.
+  **Acceptance: a one-word drift fails naming both files and the line;
+  a matching card passes; the newest card must be first; an unlisted
+  post still fails as it does today.** **Measured before picking
+  (2026-11-18):** card titles match each post's `<h1>` on all 80 cards,
+  but the summaries are hand-rewritten — 53 of 80 differ from the post's
+  `meta description` and 7 of 80 differ from the feed item's
+  description, so a strict equality gate on either pair is red on
+  arrival. The picker must either choose the pair and repair the tree in
+  the same change, or define a tolerance that is written down.
+
 - **pi-cicd — list every third-party action and whether it is pinned to
   a SHA** *(S; new in posts/2026-11-17.html)* — the repo has one
   workflow and exactly one `uses:` line, so this is cheap now and gets
@@ -275,12 +304,22 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-17: the offload live-run row shipped this run, see Done.
-Pickable next: the personal-website external-findings allowlist row, the
-pi-cicd freshness gauge on the console page, the pi-cicd fingerprint-demo
-deploy row, the switch-l4t-gpu GPU baseline, the pi-cicd SHA-pin audit
-row (new in the 11-17 devlog), and the personal-website Currently panel —
-all under Proposed.)*
+- **pi-cicd — put dns-check on a timer with edge-triggered paging**
+  *(S; on-box; new in posts/2026-11-18.html; picked 2026-11-18)* — the
+  11-16 outage was found by Hermes failing to reach a model provider,
+  which is a late and confusing way to learn that resolution died, and
+  `dns-check` — the read-only verdict written that morning — is a tool
+  nobody runs at 23:35. Next: an hourly timer that runs it, pages on a
+  state change only, and keeps the probe itself read-only. **Acceptance:
+  a header-only resolv.conf fixture fires exactly one page; five more
+  broken runs page nothing; recovery sends one "recovered"; the probe
+  itself stays read-only, proven by a source scan and a byte-identical
+  tree after a run.** Pick rationale: the other 11-18 rows are the
+  coordinator restart (wants a live service bounce, and its console-page
+  clause is owner-gated) and the devlog-card gate (its premise measured
+  false — 53 of 80 cards are hand summaries, see Proposed); the
+  DNS row is the one whose whole acceptance executes here tonight.
+
 
 ## Done
 
