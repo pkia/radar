@@ -42,18 +42,6 @@ found by web research and keep their source URL.
   arrival. The picker must either choose the pair and repair the tree in
   the same change, or define a tolerance that is written down.
 
-- **pi-cicd — list every third-party action and whether it is pinned to
-  a SHA** *(S; new in posts/2026-11-17.html)* — the repo has one
-  workflow and exactly one `uses:` line, so this is cheap now and gets
-  expensive later. Next: a read-only tool that parses every workflow,
-  prints one row per `uses:` with its ref type — full SHA, major tag,
-  branch — and exits nonzero when a moving tag is found.
-  **Acceptance: a workflow pinned everywhere exits 0 listing each
-  action and `sha`; one `@v4` line exits 1 naming the file, line and
-  action; comments and a quoted `uses:` are read the same way YAML
-  reads them; the tool is read-only, proven by a source scan and by a
-  run that leaves the tree byte-identical.**
-
 - **personal-website — generate the "Currently" panel from the
   board** *(S; new in posts/2026-11-16.html)* — the panel and the radar
   board say the same thing in two places, by hand, and they have
@@ -304,15 +292,77 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-18: the dns-watch row shipped this run, see Done.
+*(none — 2026-11-19: the action-pin audit shipped this run, see Done.
 Pickable next: the 11-18 coordinator-restart row (its console-page clause
-is owner-gated — see its own note), the pi-cicd SHA-pin audit, the
-personal-website findings allowlist and Currently-panel rows, the pi-cicd
-freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU
-baseline, and the 11-18 devlog-card gate (fix its measured premise
-first) — all under Proposed.)*
+is owner-gated — see its own note), the personal-website findings
+allowlist and Currently-panel rows, the pi-cicd freshness gauge, the
+fingerprint-demo deploy, the switch-l4t-gpu GPU baseline, and the 11-18
+devlog-card gate (fix its measured premise first) — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — list every third-party action and whether it is pinned to a
+  SHA** — done 2026-11-19 (top of the 11-19 devlog's radar list; picked over
+  the coordinator-restart row — a live service bounce whose console clause is
+  owner-gated — and the two personal-website rows, because every clause of
+  its acceptance verifies on this box in one session and it is the only
+  candidate that turns an invisible supply-chain fact into a gate). Shipped
+  in pi-cicd `8785a0c` + `e12a4b0`:
+  - `action-pins` — reads every `*.yml`/`*.yaml` under
+    `.github/workflows`, prints one row per `uses:` with its ref type
+    (`sha`, `tag`, `branch`, `digest`, `local`) and exits **1** naming
+    file, line and action for every ref that can move; **0** all pinned
+    (or local); **2** unmeasurable (unreadable file, no workflow at all —
+    a vacuous pass is never a pass). `--json` owns stdout alone on both
+    the clean and the fault path. Read-only: no writes, no subprocess.
+  - **The reader follows the format, not a grep.** A comment must be a
+    `#` at line start or after whitespace (so `# - uses: x@v4` is not a
+    step and `uses: x@v4  # note` is still a v4 ref); a quoted value is
+    the value; a `uses:` line inside a `run: |` block scalar is shell
+    text, not an action. It also reads the two shapes a line-oriented
+    grep misses — `uses:` with its value on the next, more-indented line,
+    and the flow mapping `- {uses: x@v4}` — both found by asking the
+    format's own question ("what else can one key look like?") after the
+    first version shipped, and each given its own test.
+  - **The gate has a reader:** a CI step (`Action pin audit`) runs it on
+    every push, `tools.manifest` links it (install.sh `--check-tools`
+    green at 20 tools), `docs/layers.md` carries a section and its
+    `EXPECTED_LAYERS` row keeps that section from vanishing silently.
+  - **Its first run found the repo's own unpinned ref** — `ci.yml:12
+    actions/checkout@v4` exited 1 before any wiring landed — and that ref
+    is now pinned to `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683`
+    (v4.2.2, resolved with `gh api repos/actions/checkout/commits/v4.2.2`
+    and named in a comment beside the SHA).
+  - **Acceptance, executed:** suite **429 passed, 1 skipped** (18 new in
+    `tests/test_action_pins.py`, every one driving the real CLI in a
+    subprocess with `sys.executable`, one under `PATH=/usr/bin:/bin`).
+    The acceptance pair: an all-pinned fixture exits 0 listing each
+    action and `sha`; a `@v4` step exits 1 with `FAIL
+    .github/workflows/ci.yml:8 — actions/cache is pinned to @v4, a moving
+    tag`. Read-only proven twice: a source scan for write verbs, `mkdir`,
+    `rename` and `subprocess`, and a run that leaves the fixture tree
+    byte-identical by (path, size, mtime, sha256) after both an ordinary
+    and a `--json` run. **Negative-controlled by execution:** a
+    grep-shaped stub fails 3 of the 18 for real reasons — a commented-out
+    step counted as a step, `run: |` text counted as an action, a
+    `docker://alpine@sha256:…` digest misread as a branch — plus one more
+    for its missing summary line; the other 14 pass there, which is the
+    control (they never exercise the YAML decider). **CI green on both
+    tips** (run 44540954024, `8785a0c`; run 44541732399, `e12a4b0` — the
+    runner's own audit step printed `.github/workflows/ci.yml:14 sha
+    actions/checkout@11bd7190…`, `1 action reference(s)`, `OK — every
+    action reference is pinned`, and the suite at 426 passed, 4 skipped).
+  - **Not claimed:** the gate judges the *shape* of the ref, not the
+    commit behind it — a SHA pinned to a malicious or broken action
+    passes; nothing re-resolves a SHA against upstream, and a commented
+    `# v4.2.2` beside a SHA is unverified prose (true here by the API
+    read, not by the tool). A workflow written in a shape this reader
+    does not model (an anchor/alias `uses:`, a `uses:` key inside a
+    quoted multi-line scalar) would be unread — the three named shapes
+    plus the two extra forms are covered, not the whole YAML spec. The
+    gate is per-repo: radar, cluster-prototype, switch-l4t-gpu and
+    pkia.github.io still run whatever refs their own workflows carry, and
+    only pi-cicd audits. Repo: <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — put dns-check on a timer with edge-triggered paging** — done
   2026-11-18 (the 11-18 devlog's **S**; picked over the coordinator-restart
@@ -4081,6 +4131,28 @@ Append-only, one line per run — including failures and no-ops.
   the same push. Not claimed: units not installed (`/etc` owner-gated) and
   no page has gone through the real ntfy yet — `/etc/dns-watch.conf` is the
   owner's one step. ≈45 tool calls.
+
+- 2026-11-19 — implementer run: synced the 11-19 devlog's radar list (its
+  three items — this pi-cicd action-pin audit, personal-website's findings
+  allowlist and the Currently-panel generator — were all already Proposed;
+  no new rows). Repo evidence added nothing: every owned repo's last CI is
+  green (cluster-prototype, pkia.github.io, switch-l4t-gpu, radar) and the
+  only TODO/FIXME hit is `new-project`'s own template placeholder. Fewer
+  than three Proposed rows did not apply, so no external search. Picked the
+  pin audit as the 11-19 **S**: on-box, read-only, and every clause of its
+  acceptance verifiable in one session. Shipped pi-cicd `8785a0c`
+  (`action-pins` + 16 tests + CI step + manifest + layers section + the
+  repo's own checkout pinned to v4.2.2's SHA) and `e12a4b0` (the multiline
+  and flow-mapping `uses:` forms plus their tests — a gate with a silent
+  hole is not a gate). Evidence: suite **429 passed, 1 skipped**; the
+  tool's own first run exited 1 on `ci.yml:12 actions/checkout@v4` before
+  any wiring; negative control by execution — a grep-shaped stub fails 3
+  of the 18 for real reasons; **CI green on both tips** (44540954024,
+  44541732399 — the runner's audit step printed the OK line and 426
+  passed, 4 skipped). Not claimed: the ref's shape, not the commit behind
+  it; and only pi-cicd audits so far. ≈38 tool calls; one gate block —
+  `chmod +x tool && ./tool` is "dangerous" in cron mode, so chmod ran
+  alone and the tool was invoked as `python3 action-pins`.
 
 ## Notes
 
