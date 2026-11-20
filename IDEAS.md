@@ -13,6 +13,17 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd — probe two endpoints, so one endpoint's blackhole is not an
+  outage** *(S; new in posts/2026-11-20.html)* — the verdict rests on a
+  single raw-IP trace endpoint, and the 11-20 retry (`a44e325`) only
+  answers a *stalled* connect: an address that is dropped every time still
+  reads EGRESS BROKEN while the tunnel is fine. Next: a second raw-IP trace
+  endpoint, tried in order, with EGRESS only when both fail and the message
+  naming which one answered. **Acceptance: a stub that refuses one endpoint
+  and answers the other yields healthy naming the working one; both refused
+  yields EGRESS; both refused twice yields one page, not two; a run against
+  the live box exits 0 and names the endpoint that answered.**
+
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
   fix (`units_done` bumped in `post_result`) is on disk and not in the
@@ -292,12 +303,24 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-19: the action-pin audit shipped this run, see Done.
-Pickable next: the 11-18 coordinator-restart row (its console-page clause
-is owner-gated — see its own note), the personal-website findings
-allowlist and Currently-panel rows, the pi-cicd freshness gauge, the
-fingerprint-demo deploy, the switch-l4t-gpu GPU baseline, and the 11-18
-devlog-card gate (fix its measured premise first) — all under Proposed.)*
+- **pi-cicd — give the pages a ledger, so a flapping verdict is
+  countable** *(S; new in posts/2026-11-20.html; picked 2026-11-20 over the
+  two-endpoint probe row — the retry shipped 11-20 removed the stalled-
+  connect false page the devlog saw at 02:45/04:45, and what is left is
+  that dns-watch keeps a verdict and a count and throws the night away, so
+  "how often did it flap" has no record. Every clause of this row verifies
+  on this box in one session.)* — next: append one line per **page** —
+  timestamp, verdict, exit code, whether the retry was used — to a
+  size-capped ledger, plus `--history` printing the last 24 h one line
+  each. **Acceptance: six simulated changes write six lines; the ledger is
+  byte-identical across two runs with no change; a ledger past its cap
+  rotates rather than grows; `--history` on an empty ledger prints a dated
+  header and exits 0; the read-only guard still passes.** Resume pointer:
+  repo `~/pi-cicd`, branch `main`, base `73fc912`; the ledger lives beside
+  the state file, `pages.log` + one `.1` rotation, and the retry half is
+  read from dns-check's own `(retry; first attempt failed)` line.
+
+*(Previous picks: 2026-11-19 action-pin audit — shipped, see Done.)*
 
 ## Done
 
