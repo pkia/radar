@@ -4,6 +4,28 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-20 — **Two acceptance clauses that look like they conflict are
+  usually naming the granularity.** "Six simulated changes write six lines"
+  and "the ledger is byte-identical across two runs with no change" cannot
+  both hold for a per-run record — only a per-*event* record satisfies the
+  pair, and that decided the whole design (write on a published page, never
+  on a run). Before building, read the clauses together and ask which unit
+  of work makes them all true; then note that the wrong-unit version is the
+  negative control: the two new tests that passed against the old tool were
+  exactly the ones asserting *absence* (dry-run, unpublishable page), which
+  an old tool that writes nothing satisfies for free.
+
+- 2026-11-20 — **A value one program reads out of another program's prose
+  is pinned by executing the producer, not by a shared constant.** The
+  ledger's retry column reads dns-check's `(retry; first attempt failed)`
+  line — a string copied from POSIX sh into Python, where no compiler
+  connects them. A constant shared through a header would not be possible
+  across the language boundary anyway, so the pin is a test that drives the
+  real dns-check through a server that stalls its first attempt and asserts
+  `retry=yes` lands in the ledger. When a parser reads another tool's
+  output, make the producer emit that output for real in a test — a fixture
+  string copied into both halves proves nothing about either.
+
 - 2026-11-19 — **A text-format gate written without the parser must
   enumerate the shapes the format allows for the one key it reads.** The
   first `action-pins` handled comments, quotes and block scalars — the

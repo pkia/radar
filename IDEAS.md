@@ -303,26 +303,84 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — give the pages a ledger, so a flapping verdict is
-  countable** *(S; new in posts/2026-11-20.html; picked 2026-11-20 over the
-  two-endpoint probe row — the retry shipped 11-20 removed the stalled-
-  connect false page the devlog saw at 02:45/04:45, and what is left is
-  that dns-watch keeps a verdict and a count and throws the night away, so
-  "how often did it flap" has no record. Every clause of this row verifies
-  on this box in one session.)* — next: append one line per **page** —
-  timestamp, verdict, exit code, whether the retry was used — to a
-  size-capped ledger, plus `--history` printing the last 24 h one line
-  each. **Acceptance: six simulated changes write six lines; the ledger is
-  byte-identical across two runs with no change; a ledger past its cap
-  rotates rather than grows; `--history` on an empty ledger prints a dated
-  header and exits 0; the read-only guard still passes.** Resume pointer:
-  repo `~/pi-cicd`, branch `main`, base `73fc912`; the ledger lives beside
-  the state file, `pages.log` + one `.1` rotation, and the retry half is
-  read from dns-check's own `(retry; first attempt failed)` line.
-
-*(Previous picks: 2026-11-19 action-pin audit — shipped, see Done.)*
+*(none — 2026-11-20: the dns-watch page ledger shipped this run, see Done.
+Pickable next: the 11-20 two-endpoint probe row, the 11-18
+coordinator-restart row (its console-page clause is owner-gated — see its
+own note), the personal-website findings allowlist and Currently-panel rows,
+the pi-cicd freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu
+GPU baseline, and the 11-18 devlog-card gate (fix its measured premise
+first) — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — give the pages a ledger, so a flapping verdict is
+  countable** — done 2026-11-20 (the 11-20 devlog's top **S**; picked over
+  the two-endpoint probe row because the retry that shipped that morning
+  (`a44e325`) already answers the stalled-connect false page, while this row
+  answers the one thing the retry cannot: the night is still thrown away.
+  Every clause of its acceptance verifies on this box in one session.)
+  Shipped in pi-cicd `62951a6`:
+  - **One line per page, not per run.** Each *published* page appends
+    `2026-11-20T02:45:03+00:00  egress  rc=2  retry=no` to `pages.log`
+    beside the state file — timestamp, verdict, exit code, whether
+    dns-check's retry was used. An unchanged verdict writes nothing, which
+    is what makes two runs with no change byte-identical; a page that was
+    decided but could not be published (no ntfy config) writes nothing
+    either, so the ledger and the `pages` counter agree by construction.
+  - **Capped, and it rotates rather than grows:** at `LEDGER_MAX_LINES`
+    (config, default 2000) the file becomes `pages.log.1` and a fresh one
+    starts, so the pair on disk is bounded at 2× the cap.
+  - **`--history`** prints the last 24 h one line each across *both*
+    generations, with a dated header naming the window, a footer naming the
+    path and both counts, and unreadable lines counted rather than crashing
+    it; it runs no probe and writes nothing, and an empty ledger is a dated
+    header plus `0 page(s)`, exit 0.
+  - **The retry column crosses a language boundary on purpose:**
+    dns-check (POSIX sh) prints `(retry; first attempt failed)`, and
+    dns-watch (Python) reads that line. There is no shared constant to
+    drift, so the pin is execution — a test drives the **real** dns-check
+    through a server that stalls its first attempt and asserts the ledger
+    line reads `retry=yes`; if either half's wording moves, that test
+    reddens instead of the column quietly reading `no`.
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **26 passed** (10
+    new), full suite **440 passed, 1 skipped**. The acceptance clauses, each
+    one an executed test: six alternating changes through a loopback ntfy
+    sink wrote **six lines** with verdicts `dns/healthy` alternating, codes
+    `rc=1/rc=0`, `retry=no`, ISO-UTC timestamps in order; two runs with no
+    change left the ledger **byte-identical** and `pages` at 1; a cap of 3
+    plus a fourth page left 1 line live and 3 in `.1` (never above the cap);
+    `--history` on a missing ledger printed a dated header and
+    `0 page(s) in the last 24 h`, exit 0, and created nothing. Plus the
+    controls: a 30-hour-old line is filtered out while the rotated
+    generation's fresh one is shown, a junk line is counted and skipped,
+    `--history` with `DNS_CHECK=/no/such/probe` still exits 0 (it measures
+    nothing), dry-run and an unpublishable page both write no ledger, and
+    the default ledger lands beside `--state`. **Negative-controlled by
+    execution:** against the pre-change `dns-watch` (`git stash push --
+    dns-watch`) **8 of the 10 new tests fail**; the two that pass are the
+    vacuous ones — dry-run and unpublishable-page assert the *absence* of a
+    ledger, which the old tool satisfies by never writing one.
+  - **Live on this box:** `dns-watch -v` reads healthy/unchanged and stays
+    silent (so no line is written — the positive control that the ledger
+    records pages only); `dns-watch --history` prints
+    `0 page(s) in the last 24 h — 0 line(s) in
+    /home/ev/.local/state/dns-watch/pages.log`, exit 0. `ruff` fatal rules
+    clean. **CI green on the tip** (run 44751540753, `62951a6`): the
+    runner's own suite printed 437 passed, 4 skipped, with every ledger
+    test PASSED and the byte-compile step ran.
+  - **Not claimed:** `pages.log` **does not exist on the live box yet** —
+    the verdict has not changed since the ledger landed, so the first line
+    will be the next real flap, and the "six lines" evidence is the drill,
+    not that file. It records *pages*, not every run: a run-by-run verdict
+    history would fail the byte-identical clause, and the night's *silent*
+    runs are still only in the journal. One generation of rotation means
+    the oldest pages are dropped at 2× cap. The retry column is only as true
+    as dns-check's note (pinned by test, not by a shared constant), and a
+    page that lands while the ledger is unwritable is a named stderr
+    warning — the page itself still goes out. `/etc/dns-watch.conf` is not
+    installed (owner-gated as on every unit ship), so the unit runs the
+    defaults: ledger beside the state file, cap 2000. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — list every third-party action and whether it is pinned to a
   SHA** — done 2026-11-19 (top of the 11-19 devlog's radar list; picked over
@@ -4176,6 +4234,34 @@ Append-only, one line per run — including failures and no-ops.
   it; and only pi-cicd audits so far. ≈38 tool calls; one gate block —
   `chmod +x tool && ./tool` is "dangerous" in cron mode, so chmod ran
   alone and the tool was invoked as `python3 action-pins`.
+
+- 2026-11-20 — implementer run: synced the 11-20 devlog's radar list — two
+  genuinely new rows (the page ledger, and a second raw-IP probe endpoint so
+  one blackholed address is not an outage) plus the coordinator-restart row
+  carried from 11-18; **something was added to the board this run: the
+  two-endpoint row.** Repo evidence added nothing (clean trees, no TODO
+  clusters in the five owned checkouts), and eight actionable Proposed rows
+  meant no external search. Picked the ledger as the devlog's top **S**: the
+  retry that shipped that morning (`a44e325`, `73fc912`) already answers a
+  *stalled* connect, and what is left is that dns-watch keeps a verdict and a
+  count and throws the night away. Shipped pi-cicd `62951a6` — a per-page
+  ledger beside the state file (timestamp, verdict, exit code, retry used),
+  rotating to `.1` at `LEDGER_MAX_LINES`, and `--history` printing the last
+  24 h across both generations. Evidence: `tests/test_dns_watch.py` 26
+  passed (10 new), full suite **440 passed, 1 skipped**; the acceptance
+  clauses are the executed tests (six changes → six lines; unchanged runs
+  byte-identical; cap 3 rotates; empty-ledger `--history` dated header, exit
+  0); negative control by execution — 8 of the 10 new tests fail against the
+  pre-change tool, the 2 that pass being the absence-asserting controls;
+  **CI green** (44751540753, 437 passed, 4 skipped on the runner). Live:
+  `-v` healthy/unchanged and silent, `--history` prints
+  `0 page(s) … 0 line(s)`, rc 0. Not claimed: `pages.log` does not exist on
+  the live box yet (no verdict change since it landed), it records pages not
+  runs, and one rotation generation drops the oldest pages. ≈34 tool calls;
+  no gate blocks. One fixture trap worth naming: the test helper rewrites
+  `dns-watch.conf` on every call, so a per-test config written by hand is
+  silently replaced — the rotation test sets its cap through the helper's
+  `extra=` instead.
 
 ## Notes
 
