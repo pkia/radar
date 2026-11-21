@@ -13,16 +13,17 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd — probe two endpoints, so one endpoint's blackhole is not an
-  outage** *(S; new in posts/2026-11-20.html)* — the verdict rests on a
-  single raw-IP trace endpoint, and the 11-20 retry (`a44e325`) only
-  answers a *stalled* connect: an address that is dropped every time still
-  reads EGRESS BROKEN while the tunnel is fine. Next: a second raw-IP trace
-  endpoint, tried in order, with EGRESS only when both fail and the message
-  naming which one answered. **Acceptance: a stub that refuses one endpoint
-  and answers the other yields healthy naming the working one; both refused
-  yields EGRESS; both refused twice yields one page, not two; a run against
-  the live box exits 0 and names the endpoint that answered.**
+- **pi-cicd — record every run, not just every page, so a dead timer is
+  visible** *(S; new in posts/2026-11-21.html)* — an empty ledger currently
+  means either "nothing changed" or "the timer stopped firing three days
+  ago", and nothing on disk distinguishes them. Next: stamp `last_run` in
+  the state file on every run (it already writes `checked_at`, so this is
+  mostly the reading), have `--history` print the age of the newest run,
+  and add a STALE verdict the morning audit can read. **Acceptance: a state
+  file whose newest run is three hours old yields a STALE line and exit 1;
+  a fresh one exits 0; a missing state file names the path and exits 2,
+  because "cannot measure" is not a pass; `--history` still writes
+  nothing.**
 
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
@@ -303,8 +304,9 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-20: the dns-watch page ledger shipped this run, see Done.
-Pickable next: the 11-20 two-endpoint probe row, the 11-18
+*(none — 2026-11-21: the two-endpoint probe shipped this run, see Done.
+Pickable next: the 11-21 record-every-run row (top of the 11-21 devlog
+list, and it is the same file this run just touched), the 11-18
 coordinator-restart row (its console-page clause is owner-gated — see its
 own note), the personal-website findings allowlist and Currently-panel rows,
 the pi-cicd freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu
@@ -312,6 +314,65 @@ GPU baseline, and the 11-18 devlog-card gate (fix its measured premise
 first) — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — probe two endpoints, so one endpoint's blackhole is not an
+  outage** — done 2026-11-21 (the 11-20 row, named again as the devlog's
+  "still the top pickable row" on 11-21; picked first because the retry that
+  shipped the morning before (`a44e325`) only answers a *stalled* connect,
+  and every clause of its acceptance verifies on this box in one session —
+  loopback stubs for the fault branches, a live run for the last one).
+  Shipped in pi-cicd `a7025f7`:
+  - **The IP half carries an ordered list.** `DNS_CHECK_URLS` (ordered,
+    space-separated) defaults to two raw-IP endpoints on **different
+    networks** — `https://1.1.1.1/cdn-cgi/trace`, then `https://8.8.8.8/` —
+    tried in order, and the OK line prints the endpoint that answered. The
+    older `DNS_CHECK_URL` still works as a single endpoint (and as the whole
+    list when `DNS_CHECK_URLS` is unset); the list wins when both are set,
+    so nothing a previous run wired changes meaning.
+  - **A fallback is not a retry, and the two are spelled differently.** One
+    dead address reads `OK (fallback; 1 endpoint(s) failed first)`; the run
+    still makes two passes over the list, and a whole failed pass reads the
+    same `(retry; first attempt failed)` the 11-20 ledger column already
+    parses — so the cross-language pin holds. Only every endpoint failing
+    both passes is EGRESS, and the fault verdict prints each endpoint tried
+    (the page inherits the text, so the reader sees the list, not a shrug).
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **32 passed** (6
+    new), full suite **446 passed, 1 skipped**. Each clause is an executed
+    test: a dead endpoint plus a live one → rc 0, healthy, the live URL on
+    the IP egress line and the dead one not, `fallback; 1 endpoint(s) failed
+    first`, and no `retry;` anywhere; the same swap as a *recovery* → one
+    recovery page naming the live endpoint and a ledger line reading
+    `healthy rc=0 retry=no` (a fallback is not a retry); both refused → rc
+    2, EGRESS, both URLs named; both refused twice → **one** page and
+    `pages` at 1; `DNS_CHECK_URLS` beats a failing `DNS_CHECK_URL`; and the
+    default list is pinned hermetically — stub `curl`/`getent` on `PATH`
+    record exactly `1.1.1.1, 8.8.8.8, 1.1.1.1, 8.8.8.8` in that order and
+    the verdict is rc 2 naming both. **Negative-controlled by execution:**
+    against the pre-change `dns-check` (`git stash push -- dns-check`, run
+    under `timeout -s KILL`) **all 6 new tests fail**, each for its own
+    reason (the old tool probed the live 1.1.1.1 regardless of the list).
+  - **Live on this box:** default run healthy, naming
+    `https://1.1.1.1/cdn-cgi/trace`, rc 0; with the first endpoint pointed
+    at a dead port (`DNS_CHECK_URLS="https://8.8.8.8:1/
+    https://1.1.1.1/cdn-cgi/trace"`) the verdict is healthy naming
+    `1.1.1.1/cdn-cgi/trace` with `(fallback; 1 endpoint(s) failed first)`,
+    rc 0 — the exact case the row was filed for; both refused
+    (`127.0.0.1:1`, `127.0.0.1:2`) exits 2 printing both `tried` lines;
+    `dns-watch -v` reads healthy/unchanged and stays silent, and
+    `--history` prints `0 page(s) … 0 line(s)`, rc 0. **CI green on the
+    tip** (run 44912890647, `a7025f7`): the runner ran `sh -n dns-check`,
+    both new endpoint tests PASSED, and the suite printed **443 passed, 4
+    skipped** (the three extra skips are the Prometheus drills).
+  - **Not claimed:** the second endpoint answers **302** and any HTTP
+    answer counts as egress — unchanged semantics (the probe proves packets
+    leave, not that the endpoint is healthy), so a captive portal still
+    reads OK; the pair is hardcoded on two networks, so a failure of the
+    shared upstream path (the tunnel itself) still reads EGRESS — correctly;
+    the ledger's `retry=` column says `no` for a fallback (it was not a
+    retry — the fallback fact lives in the page/console text, not the
+    ledger); the service units are unchanged (they inherit the default list)
+    and `/etc/dns-watch.conf` stays owner-gated. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — give the pages a ledger, so a flapping verdict is
   countable** — done 2026-11-20 (the 11-20 devlog's top **S**; picked over
@@ -4262,6 +4323,30 @@ Append-only, one line per run — including failures and no-ops.
   `dns-watch.conf` on every call, so a per-test config written by hand is
   silently replaced — the rotation test sets its cap through the helper's
   `extra=` instead.
+
+- 2026-11-21 — implementer run: synced the 11-21 devlog's radar list — one
+  genuinely new row (record every run, not just every page: a dead timer is
+  invisible today) and its second item is the row this run shipped; the
+  coordinator-restart row was already on the board. **Something was added:
+  the record-every-run row.** Repo evidence added nothing (clean trees, no
+  TODO clusters in the owned checkouts), and eight actionable Proposed rows
+  meant no external search. Picked the two-endpoint probe row — the 11-21
+  devlog names it "still the top pickable row", and every clause of its
+  acceptance verifies here in one session. Shipped pi-cicd `a7025f7`:
+  `dns-check` carries an ordered endpoint list (default two addresses on
+  different networks), the OK line names the endpoint that answered, a dead
+  address is a `fallback` and a whole failed pass is still the `retry` the
+  ledger parses, and only every endpoint failing both passes is EGRESS —
+  with each endpoint named. Evidence: 32 passed in `tests/test_dns_watch.py`
+  (6 new), full suite **446 passed, 1 skipped**; negative control by
+  execution — all 6 new tests fail against the pre-change probe; **CI green**
+  (44912890647, 443 passed / 4 skipped on the runner, `sh -n dns-check`
+  ran). Live: default healthy naming 1.1.1.1, a dead first endpoint
+  healthy via fallback naming the live one, both refused exit 2 naming
+  both, `dns-watch -v` silent and `--history` 0 pages. Not claimed: any
+  HTTP answer still counts as egress (302 included), the pair is hardcoded
+  so a tunnel-wide failure still reads EGRESS, and the ledger column says
+  `retry=no` for a fallback. ≈42 tool calls; no gate blocks.
 
 ## Notes
 

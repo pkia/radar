@@ -4,6 +4,30 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-21 — **A new success path gets new words; the old marker keeps
+  its own case.** `dns-check` prints `(retry; first attempt failed)` and
+  `dns-watch` parses that exact string into the ledger's `retry=` column —
+  a value crossing a language boundary. Adding a second endpoint created a
+  second way to succeed (the fallback), and making it share the retry
+  marker would have told the ledger a retry happened when none did, so the
+  fallback got its own note (`fallback; N endpoint(s) failed first`) and
+  the retry note stayed verbatim for the retry case only. The pinning test
+  asserts both halves: the fallback line says `fallback` **and** no
+  `retry;` appears anywhere in that run. When a producer gains a success
+  path, ask which downstream reader keyed on the old one.
+
+- 2026-11-21 — **Pin a third-party default by stubbing the client on
+  `PATH`, not by trusting the network.** The probe's default endpoint list
+  lives in the tool and points at two public addresses; a CI test that
+  actually fetched them would be slow, flaky and would still not prove
+  *which* URLs were tried. A stub `curl` that appends its last argument to
+  a log and exits 7 (plus a stub `getent` that answers, so the verdict is
+  egress-only) makes the default list observable hermetically: the test
+  asserts the exact four calls `1.1.1.1, 8.8.8.8, 1.1.1.1, 8.8.8.8` and
+  the order, so a changed endpoint is a reviewed diff rather than a
+  silent drift. Assert the literal values a default carries, not "two
+  distinct URLs" — the literal is what a reviewer needs to see.
+
 - 2026-11-20 — **Two acceptance clauses that look like they conflict are
   usually naming the granularity.** "Six simulated changes write six lines"
   and "the ledger is byte-identical across two runs with no change" cannot
