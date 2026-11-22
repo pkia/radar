@@ -13,6 +13,19 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **radar — give the ledger's unresolvable refs a verdict** *(S; repo
+  evidence, measured 2026-11-22)* — with `--repo pi-cicd=/home/ev/pi-cicd`
+  the pointer lint faults **19** refs across the Done ledger (`c2915de`,
+  `82be823` at :1683, `4a3795d` at :1747 …) as "not in pi-cicd history",
+  and CI supplies only radar's own checkout, so the gate never sees them.
+  Next: classify each — wrong repo binding, a sha from before the repo was
+  recreated, or a typo — by asking GitHub (`gh api
+  repos/pkia/pi-cicd/commits/<sha>`) and the other owned repos, then
+  annotate the row (append-only) or correct the binding. **Acceptance:
+  `check_board.py --repo` for all five owned checkouts exits 0 with the
+  resolved count named, or every remaining unverified ref carries a written
+  reason; no Done row is deleted or rewritten, only annotated.**
+
 - **pi-cicd — make a silent fallback visible** *(S; new in
   posts/2026-11-22.html)* — the two-endpoint change made a dead address
   survivable and, on the evidence, invisible: a fallback leaves no record
