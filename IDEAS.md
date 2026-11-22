@@ -26,9 +26,6 @@ found by web research and keep their source URL.
   writes nothing itself; cap rotation still holds; an existing ledger
   parses unchanged.**
 
-- **pi-cicd — record every run, not just every page, so a dead timer is
-  visible** — **PICKED 2026-11-22, see In progress.**
-
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
   fix (`units_done` bumped in `post_result`) is on disk and not in the
