@@ -4442,7 +4442,10 @@ Append-only, one line per run — including failures and no-ops.
   measured that the units ARE installed and firing hourly (a correction to
   older rows). Not claimed: pi-doctor does not call `--stale` yet,
   `--history` still exits 0, and the 2 h limit is a judgement about timer
-  drift. ≈40 tool calls; no gate blocks.
+  drift. Honest miss inside this run: radar's own CI was **red** on one
+  intermediate commit (`33afb4e` — the new ledger-refs row's backticked shas
+  bound to radar and faulted, and a `| tail` had masked the checker's exit
+  code) and is green on the tip (`e01dce6`). ≈45 tool calls; no gate blocks.
 
 ## Notes
 

@@ -4,6 +4,15 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-22 — **A gate's exit status does not survive a pipe, and a row's
+  own backticked shas bind to the row's own repo.** `python3
+  tools/check_board.py | tail -2` printed the fault lines *and* returned
+  tail's 0, so the `&&` chain committed and pushed a red board. Run a gate
+  unpiped (or with `set -o pipefail`) before the commit it guards, and when
+  filing a row about refs that live in another repo, do not backtick the
+  shas: the checker binds them by the title's project prefix, so a `radar —`
+  row citing pi-cicd shas faults itself.
+
 - 2026-11-22 — **An exit code the tool owns can collide with argparse's own
   failure code, so pin the line as well.** `--stale`'s contract is 0 fresh /
   1 STALE / 2 unmeasurable, and argparse also exits 2 on an unknown option —
