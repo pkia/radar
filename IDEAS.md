@@ -305,22 +305,74 @@ rest now build on it:
 
 ## In progress
 
-- **pi-cicd — record every run, not just every page, so a dead timer is
-  visible** *(S; picked 2026-11-22 from posts/2026-11-21.html, and today's
-  post still calls it the top open row)* — an empty ledger means either
-  "nothing changed" or "the timer stopped firing three days ago", and nothing
-  on disk distinguishes them. `checked_at` is already stamped on every run
-  that saves state, so the missing half is the reading. Plan: `--history`
-  prints the newest run's age (still exit 0, still writes nothing), and a
-  new reader `--stale` / `--stale-after HOURS` prints one line and exits
-  0 fresh / 1 STALE / 2 unmeasurable for the morning audit, probing nothing
-  and writing nothing. **Acceptance: a state file whose newest run is three
-  hours old yields a STALE line and exit 1; a fresh one exits 0; a missing
-  state file names the path and exits 2, because "cannot measure" is not a
-  pass; `--history` still writes nothing.** Resume pointer: pi-cicd on
-  master, tool `dns-watch`, tests `tests/test_dns_watch.py`.
+*(none — 2026-11-22: the run-age reader shipped this run, see Done. Pickable
+next: the 11-22 fallback-visibility row (top of today's list, same file),
+the 11-18 coordinator-restart row (its console-page clause is owner-gated),
+the personal-website findings allowlist and Currently-panel rows, the pi-cicd
+freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU baseline,
+and the 11-18 devlog-card gate (fix its measured premise first) — all under
+Proposed.)*
 
 ## Done
+
+- **pi-cicd — record every run, not just every page, so a dead timer is
+  visible** — done 2026-11-22 (filed by the 11-21 run from that day's post,
+  and still named the top open row in today's 11-22 post; picked over today's
+  new fallback-visibility row because it retires the larger blindness — a
+  quiet night and a dead timer were the same bytes — and every clause
+  verifies on this box in one session). Shipped in pi-cicd `4bd1519`:
+  - **The reading, not a new stamp.** Every run that saves state already
+    writes `checked_at`; the ledger records *pages*, so an empty ledger is
+    genuinely ambiguous. `--history` now prints `newest run: <stamp>
+    (<age> ago)` above its page lines and keeps its exit code (0) and its
+    "writes nothing" contract — it is still a reader.
+  - **`--stale` is the verdict the morning audit calls.** One line, one exit
+    code: **0** fresh (OK on stdout), **1** STALE naming the age, the limit
+    and the state path (stderr), **2** unmeasurable — a missing, non-JSON,
+    non-object, stamp-less or unparseable state file names its path, because
+    "cannot measure" is not a pass. The limit is `STALE_AFTER_HOURS`
+    (default 2 h against the hourly timer, so one missed fire is still OK)
+    or `--stale-after HOURS`, which refuses a non-positive value. It runs no
+    probe and writes nothing; `--history --stale` prints both and takes the
+    verdict's exit code.
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **45 passed** (13
+    new items), full suite **459 passed, 1 skipped**. Each clause is an
+    executed test driving the real CLI: 3.5 h old → rc 1, `STALE — newest
+    run 3.5 h ago, limit 2 h`, the path named, stdout empty, state bytes
+    unchanged; 0.4 h old → rc 0 with the exact OK line; a missing state file
+    → rc 2, `UNMEASURABLE`, the path, nothing created; four undateable
+    state files (junk JSON, a list, no `checked_at`, `"yesterday"`) each
+    rc 2 naming the reason; `--stale-after 4` passes where `1` fails;
+    `STALE_AFTER_HOURS=5` moves the bare flag's limit; `--stale-after 0`
+    exits 2 `must be greater than zero`; a stamp one hour in the future
+    reads `-1.0 h ago` and is **not** stale; `--history` shows the age
+    above the page lines and writes no ledger; both readers leave the state
+    and ledger files byte- and mtime-identical with a broken `DNS_CHECK` and
+    leave no `.tmp` behind. **Negative-controlled by execution:** against the
+    pre-change `dns-watch` (`git stash push -- dns-watch`, under
+    `timeout -s KILL`) **all 13 fail** — and the rc-2 cases needed their
+    text assertions, because argparse's own "unrecognized arguments" exit is
+    also 2: a test that checked only the code would have passed vacuously.
+  - **Live on this box:** `python3 dns-watch --stale` → `OK — newest run
+    0.5 h ago, limit 2 h`, rc 0, against the live state (13:46 today);
+    `--stale-after 200` → OK; `--history` prints the same stamp with
+    `0 page(s) in the last 24 h — 0 line(s)` and creates nothing. Also
+    measured, correcting older rows: the units **are installed** —
+    `dns-watch.timer` is active hourly (last 13:46, next 14:46),
+    `/etc/dns-watch.conf` exists (root:ev 0640, 11-19), so the hourly run
+    picks this change up from the repo symlink on its next fire with no
+    restart. **CI green on the tip** (run 45032108543, `4bd1519`): the
+    runner printed every new test PASSED by name and the suite at **456
+    passed, 4 skipped** (the extra skips are the Prometheus drills).
+  - **Not claimed:** the daily pi-doctor audit does **not** call `--stale`
+    yet — the verdict exists and is cheap, but wiring it into pi-doctor's
+    findings is a separate row; `--stale` measures the *state file's* stamp,
+    so a run whose state write failed reads as stale (truthful, one interval
+    early) and `--dry-run` never refreshes it; the default 2 h is a
+    judgement about timer drift, not a measurement — a unit whose
+    `OnUnitActiveSec` is later stretched must move the limit with it; and
+    `--history` still exits 0, so an audit reading *it* will never see the
+    fault. Repo: <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — probe two endpoints, so one endpoint's blackhole is not an
   outage** — done 2026-11-21 (the 11-20 row, named again as the devlog's
@@ -4354,6 +4406,30 @@ Append-only, one line per run — including failures and no-ops.
   HTTP answer still counts as egress (302 included), the pair is hardcoded
   so a tunnel-wide failure still reads EGRESS, and the ledger column says
   `retry=no` for a fallback. ≈42 tool calls; no gate blocks.
+
+- 2026-11-22 — implementer run: synced the 11-22 devlog's radar list — one
+  genuinely new row (make a silent fallback visible: a dead endpoint
+  survives and leaves no record) plus the record-every-run row the 11-21 run
+  filed, which today's post still calls the top open row; the
+  coordinator-restart row was already on the board. **Something was added:
+  the fallback-visibility row.** Repo evidence added nothing (clean trees, no
+  TODO clusters), and eight actionable Proposed rows meant no external
+  search. Picked record-every-run: a quiet night and a dead timer were the
+  same bytes, and the fix is the reading of a stamp every run already
+  writes. Shipped pi-cicd `4bd1519` — `--history` prints the newest run's
+  age; `--stale` / `--stale-after HOURS` is a one-line verdict (0 fresh,
+  1 STALE, 2 unmeasurable naming the state path) that probes nothing and
+  writes nothing, with `STALE_AFTER_HOURS` (default 2 h) in the config and
+  docs/units/layers/template updated. Evidence: 13 new tests, file at 45
+  passed, full suite **459 passed, 1 skipped**; negative control by
+  execution — all 13 fail against the pre-change tool, and the rc-2 cases
+  needed text assertions because argparse's own unknown-flag exit is also 2;
+  **CI green** (45032108543; every new test PASSED by name, runner 456
+  passed / 4 skipped). Live: `--stale` OK at 0.5 h on the real state, and
+  measured that the units ARE installed and firing hourly (a correction to
+  older rows). Not claimed: pi-doctor does not call `--stale` yet,
+  `--history` still exits 0, and the 2 h limit is a judgement about timer
+  drift. ≈40 tool calls; no gate blocks.
 
 ## Notes
 

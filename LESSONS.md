@@ -4,6 +4,27 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-22 — **An exit code the tool owns can collide with argparse's own
+  failure code, so pin the line as well.** `--stale`'s contract is 0 fresh /
+  1 STALE / 2 unmeasurable, and argparse also exits 2 on an unknown option —
+  which is exactly what the pre-change tool does when the negative control
+  runs the new tests against it. A test asserting only `rc == 2` for the
+  missing-state case would therefore have passed against code that never
+  implemented the flag at all. Assert the verdict word, the path and the
+  empty stdout too, and say in the ledger that the old tool's rc was
+  vacuous. General shape: before claiming a fault-branch test is
+  negative-controlled, check whether the *old* program can produce the same
+  exit code for an unrelated reason.
+
+- 2026-11-22 — **A state file being rewritten hourly is evidence the timer is
+  installed, whatever the board says.** Three earlier rows carried "the units
+  are not installed" as a not-claimed clause; the live state file's
+  `checked_at` was 30 minutes old and `dns-watch.timer` was active, so the
+  clause had been stale for days and the hourly firing was already there to
+  read. Before repeating a not-claimed clause from the board, measure it —
+  `systemctl is-active`, the state file's mtime, the unit's own journal — and
+  correct the row in the same run.
+
 - 2026-11-21 — **A new success path gets new words; the old marker keeps
   its own case.** `dns-check` prints `(retry; first attempt failed)` and
   `dns-watch` parses that exact string into the ledger's `retry=` column —
