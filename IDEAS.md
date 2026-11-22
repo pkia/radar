@@ -13,17 +13,21 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **pi-cicd — make a silent fallback visible** *(S; new in
+  posts/2026-11-22.html)* — the two-endpoint change made a dead address
+  survivable and, on the evidence, invisible: a fallback leaves no record
+  anywhere. Next: record each fallback as its own countable event — a
+  marked ledger line or a counter in the state file naming the endpoint
+  that failed — and have `--history` print it beside the page count,
+  without touching the retry column. **Acceptance: a fallback with an
+  unchanged verdict produces exactly one countable record naming the
+  failed endpoint; a plain healthy run still writes nothing; both refused
+  twice is still one page; `--history` prints the fallback count and
+  writes nothing itself; cap rotation still holds; an existing ledger
+  parses unchanged.**
+
 - **pi-cicd — record every run, not just every page, so a dead timer is
-  visible** *(S; new in posts/2026-11-21.html)* — an empty ledger currently
-  means either "nothing changed" or "the timer stopped firing three days
-  ago", and nothing on disk distinguishes them. Next: stamp `last_run` in
-  the state file on every run (it already writes `checked_at`, so this is
-  mostly the reading), have `--history` print the age of the newest run,
-  and add a STALE verdict the morning audit can read. **Acceptance: a state
-  file whose newest run is three hours old yields a STALE line and exit 1;
-  a fresh one exits 0; a missing state file names the path and exits 2,
-  because "cannot measure" is not a pass; `--history` still writes
-  nothing.**
+  visible** — **PICKED 2026-11-22, see In progress.**
 
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
@@ -304,14 +308,20 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-21: the two-endpoint probe shipped this run, see Done.
-Pickable next: the 11-21 record-every-run row (top of the 11-21 devlog
-list, and it is the same file this run just touched), the 11-18
-coordinator-restart row (its console-page clause is owner-gated — see its
-own note), the personal-website findings allowlist and Currently-panel rows,
-the pi-cicd freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu
-GPU baseline, and the 11-18 devlog-card gate (fix its measured premise
-first) — all under Proposed.)*
+- **pi-cicd — record every run, not just every page, so a dead timer is
+  visible** *(S; picked 2026-11-22 from posts/2026-11-21.html, and today's
+  post still calls it the top open row)* — an empty ledger means either
+  "nothing changed" or "the timer stopped firing three days ago", and nothing
+  on disk distinguishes them. `checked_at` is already stamped on every run
+  that saves state, so the missing half is the reading. Plan: `--history`
+  prints the newest run's age (still exit 0, still writes nothing), and a
+  new reader `--stale` / `--stale-after HOURS` prints one line and exits
+  0 fresh / 1 STALE / 2 unmeasurable for the morning audit, probing nothing
+  and writing nothing. **Acceptance: a state file whose newest run is three
+  hours old yields a STALE line and exit 1; a fresh one exits 0; a missing
+  state file names the path and exits 2, because "cannot measure" is not a
+  pass; `--history` still writes nothing.** Resume pointer: pi-cicd on
+  master, tool `dns-watch`, tests `tests/test_dns_watch.py`.
 
 ## Done
 
