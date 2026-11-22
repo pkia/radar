@@ -15,8 +15,8 @@ found by web research and keep their source URL.
 
 - **radar — give the ledger's unresolvable refs a verdict** *(S; repo
   evidence, measured 2026-11-22)* — with `--repo pi-cicd=/home/ev/pi-cicd`
-  the pointer lint faults **19** refs across the Done ledger (`c2915de`,
-  `82be823` at :1683, `4a3795d` at :1747 …) as "not in pi-cicd history",
+  the pointer lint faults **19** refs across the Done ledger (c2915de and
+  82be823 at :1683, 4a3795d at :1747 …) as "not in pi-cicd history",
   and CI supplies only radar's own checkout, so the gate never sees them.
   Next: classify each — wrong repo binding, a sha from before the repo was
   recreated, or a typo — by asking GitHub (`gh api
