@@ -4,6 +4,24 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-23 — **A fault verdict printed only on stderr is invisible through a
+  helper that returns stdout.** pi-doctor's `run()` returns `(rc, stdout)` and
+  drops stderr, and `dns-watch --stale` prints both STALE and UNMEASURABLE
+  there — so reusing the helper as-is would have produced a finding with an
+  empty detail (`sys:dns-watch-stale — `), rc 1 and a green-looking assertion
+  that "a finding appeared". Before reusing a subprocess wrapper, read where
+  the producer writes: a verdict on stderr needs a helper that keeps it
+  (`run_full()` here), and the test must assert the *content* (age, limit,
+  path), not the count.
+
+- 2026-11-23 — **An alert's dedupe key is its finding's first segment, so put
+  the fixed part of the message there.** pi-doctor keys `_key(f)` on the text
+  before the first " — " and re-pages every 6 h; a finding whose key carried
+  the measured age ("3.5 h ago") would page daily, and one whose key carried
+  nothing unique would never re-page at all. Put the stable identity left of
+  the dash and every moving number right of it, then test two ages share one
+  key — the dedupe rule is invisible until an age ticks.
+
 - 2026-11-22 — **A gate's exit status does not survive a pipe, and a row's
   own backticked shas bind to the row's own repo.** `python3
   tools/check_board.py | tail -2` printed the fault lines *and* returned

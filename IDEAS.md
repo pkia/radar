@@ -318,15 +318,82 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-22: the run-age reader shipped this run, see Done. Pickable
-next: the 11-22 fallback-visibility row (top of today's list, same file),
-the 11-18 coordinator-restart row (its console-page clause is owner-gated),
+*(none — 2026-11-23: the dns-watch freshness reader shipped this run, see
+Done. Pickable next: the 11-22 fallback-visibility row (the newest post
+still names it, second in today's list), the 11-18 coordinator-restart row
+(its console-page clause is owner-gated), the radar ledger-refs verdict row,
 the personal-website findings allowlist and Currently-panel rows, the pi-cicd
 freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU baseline,
 and the 11-18 devlog-card gate (fix its measured premise first) — all under
 Proposed.)*
 
 ## Done
+
+- **pi-cicd — put the stale verdict in front of the audit** — done
+  2026-11-23 (filed and shipped in this run from the 11-23 devlog's top
+  row: the `--stale` reader shipped on 11-22 and nothing called it, so a
+  dead timer still looked exactly like a quiet night; picked over the
+  11-22 fallback-visibility row because it retires the larger blindness
+  — the *timer* dying — and every clause of its acceptance verifies here
+  in one session). Shipped in pi-cicd `6486a62`:
+  - **The audit reads the tool, it does not re-implement it.** `main()`
+    now calls `check_dns_watch()`, which runs `dns-watch --stale` and
+    maps its contract: 0 → nothing added, 1 → `sys:dns-watch-stale —
+    <age>, limit <N> h (<state>)`, 2 → `sys:dns-watch-unmeasurable —
+    <reason naming the path>`, anything else → `sys:dns-watch-error`.
+    The age rule, the limit (`STALE_AFTER_HOURS`) and the state
+    parsing stay in `dns-watch`; `--stale` probes nothing and writes
+    nothing, so the audit stays a reader. The finding's first segment
+    is fixed, so the existing 6 h alert dedupe keys on the *verdict*,
+    not on an age that ticks.
+  - **A missing or junk state file is a fault, never a pass** — the
+    case that matters (deleted state, a timer that never ran) used to
+    read as healthy silence.
+  - **Resolution follows the 11-18 lesson:** `PI_DOCTOR_DNS_WATCH`
+    override, then `PATH`, then the copy beside this script through
+    `realpath` (the installed symlink resolves into the repo), and the
+    tool runs as `sys.executable <tool>` because the exec bit is an
+    install artefact (10-13). `run_full()` was added beside `run()`
+    because dns-watch prints both fault verdicts on **stderr** and the
+    old helper returns stdout only.
+  - **Acceptance, executed:** `tests/test_pi_doctor.py` **45 passed, 1
+    skipped** (8 new, each driving the real dns-watch against state
+    fixtures), full suite **467 passed, 1 skipped**. Clause by clause:
+    a 3.5 h state → one finding naming `3.5 h ago`, a `limit N h` and
+    the state path, printed under "Needs attention"; a 0.4 h state →
+    `([], [])` and a report with no dns-watch line; a missing state
+    file → `unmeasurable` naming the path; a junk state → same, naming
+    the path and "not JSON"; no tool at all → `sys:dns-watch-missing`;
+    two stale findings with different ages share one `_key`; `main()`
+    on a stale state prints the verdict and pages exactly once, and a
+    second run prints the same line and pages nothing; and with a fresh
+    verdict the report **below its header is byte-identical** to the
+    same audit with the reader absent (the header carries the run's
+    minute, so equality is compared under it — stated, not fudged).
+    **Negative-controlled by execution:** against the pre-change
+    `pi-doctor` (`git stash push -- pi-doctor`, run under `timeout -s
+    KILL`) **7 of the 8 fail**; the eighth is the `_key` control, which
+    the old module satisfies vacuously. **CI green on the tip** (run
+    45201730193, `6486a62`): the runner printed all eight new tests
+    PASSED by name, suite **464 passed, 4 skipped** there (the three
+    extra skips are the Prometheus drills).
+  - **Live on this box:** `check_dns_watch()` against the live state →
+    `([], [])` (fresh, 0.22 h); a *copy* of the live state with its
+    `checked_at` moved back 3.5 h → `sys:dns-watch-stale — newest run
+    3.7 h ago, limit 2 h (<copy path>)` — the real state shape parses
+    and the verdict flips. The audit runs from Hermes cron (`pi-doctor
+    daily audit`, `30 6 * * *`, workdir `/home/ev/pi-cicd`, last run
+    today 07:06 ok, next 2026-11-24T06:30), so tomorrow's report
+    carries this code with no restart.
+  - **Not claimed:** the real alert path was not exercised — tests stub
+    `send_alert`; what is proven is the finding and the dedupe, not a
+    WhatsApp/ntfy message. The audit **reports** a dead timer; it does
+    not restart it (the fix stays the owner's `install.sh` pass / unit).
+    The limit is dns-watch's own config, so moving `STALE_AFTER_HOURS`
+    moves the fault's threshold too (one rule, by design). A missing
+    `dns-watch` is deliberately a fault, so pi-doctor now assumes the
+    tool exists on the host it audits. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — record every run, not just every page, so a dead timer is
   visible** — done 2026-11-22 (filed by the 11-21 run from that day's post,
@@ -4446,6 +4513,34 @@ Append-only, one line per run — including failures and no-ops.
   intermediate commit (`33afb4e` — the new ledger-refs row's backticked shas
   bound to radar and faulted, and a `| tail` had masked the checker's exit
   code) and is green on the tip (`e01dce6`). ≈45 tool calls; no gate blocks.
+
+- 2026-11-23 — implementer run: synced the 11-23 devlog's radar list — three
+  items, **one genuinely new** (put the stale verdict in front of the audit:
+  the daily audit should call dns-watch --stale), and the other two (the
+  11-22 fallback-visibility row, the radar ledger-refs row) were already on
+  the board. **Something was added: the audit row — and it was picked and
+  shipped the same run**, because it is the one-line closure of yesterday's
+  ship (a reader nothing read) and every clause of its acceptance verifies
+  here in one session. Repo evidence added nothing (TODO/FIXME counts 1 in
+  pi-cicd, 0 in cluster-prototype and personal-website, 7 in radar — no
+  clusters, no failing tests, clean trees), and nine actionable Proposed
+  rows meant no external search. Shipped pi-cicd `6486a62`: `check_dns_watch`
+  runs `dns-watch --stale` and turns rc 1 into `sys:dns-watch-stale`
+  (age, limit, state path) and rc 2 into `sys:dns-watch-unmeasurable`
+  (path named) — never a pass; tool resolution is override → PATH →
+  sibling via realpath, run as `sys.executable <tool>`; a new `run_full()`
+  keeps stderr, where both fault verdicts are printed. Evidence:
+  `tests/test_pi_doctor.py` 45 passed, 1 skipped (8 new, all driving the
+  real dns-watch), full suite **467 passed, 1 skipped**; negative control
+  by execution — 7 of 8 fail against the pre-change pi-doctor, the eighth
+  the `_key` control passing vacuously; **CI green** (45201730193; all
+  eight new tests PASSED by name, runner 464 passed / 4 skipped). Live:
+  fresh state → no finding; a copy of the live state aged 3.5 h →
+  `newest run 3.7 h ago, limit 2 h (<copy path>)`; the Hermes cron job
+  (`30 6 * * *`, next 2026-11-24T06:30) will run this code tomorrow.
+  Not claimed: the real WhatsApp/ntfy alert path (send_alert is stubbed in
+  tests) and a restart of the timer — the audit reports, the owner's
+  install.sh pass fixes. ≈35 tool calls; no gate blocks.
 
 ## Notes
 
