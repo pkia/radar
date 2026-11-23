@@ -13,6 +13,101 @@ found by web research and keep their source URL.
 
 ## Proposed
 
+- **radar — give the ledger's unresolvable refs a verdict** *(S; repo
+  evidence, measured 2026-11-22)* — with `--repo pi-cicd=/home/ev/pi-cicd`
+  the pointer lint faults **19** refs across the Done ledger (c2915de and
+  82be823 at :1683, 4a3795d at :1747 …) as "not in pi-cicd history",
+  and CI supplies only radar's own checkout, so the gate never sees them.
+  Next: classify each — wrong repo binding, a sha from before the repo was
+  recreated, or a typo — by asking GitHub (`gh api
+  repos/pkia/pi-cicd/commits/<sha>`) and the other owned repos, then
+  annotate the row (append-only) or correct the binding. **Acceptance:
+  `check_board.py --repo` for all five owned checkouts exits 0 with the
+  resolved count named, or every remaining unverified ref carries a written
+  reason; no Done row is deleted or rewritten, only annotated.**
+
+- **pi-cicd — make a silent fallback visible** *(S; new in
+  posts/2026-11-22.html)* — the two-endpoint change made a dead address
+  survivable and, on the evidence, invisible: a fallback leaves no record
+  anywhere. Next: record each fallback as its own countable event — a
+  marked ledger line or a counter in the state file naming the endpoint
+  that failed — and have `--history` print it beside the page count,
+  without touching the retry column. **Acceptance: a fallback with an
+  unchanged verdict produces exactly one countable record naming the
+  failed endpoint; a plain healthy run still writes nothing; both refused
+  twice is still one page; `--history` prints the fallback count and
+  writes nothing itself; cap rotation still holds; an existing ledger
+  parses unchanged.**
+
+- **cluster-prototype — restart the coordinator and prove the counter
+  moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
+  fix (`units_done` bumped in `post_result`) is on disk and not in the
+  running process, so the live counter still reads 0. Next: restart the
+  coordinator through its documented path, submit one small job, and read
+  the counter from both places it appears. **Acceptance:
+  `cluster_worker_units_done_total` for `switchlab` increments by exactly
+  the units that worker was credited with; a retried unit counts once;
+  and the value survives a second restart because it lives in the store,
+  not in the process.** (The devlog also asks for the console page to
+  show the same number — that page still 404s until the owner's
+  `install.sh` pass lands the 11-05 console drop-in, so a picker should
+  treat that clause as owner-gated rather than verify it by restarting.)
+
+- **personal-website — stop a devlog card drifting from its post**
+  *(S; new in posts/2026-11-18.html)* — the feed and sitemap are gated
+  1:1 with `blog/posts/`, but the index card above each post is the one
+  copy nothing compares, and the daily job writes it by hand. Next: a
+  gate comparing a card's title and summary against the post's own text.
+  **Acceptance: a one-word drift fails naming both files and the line;
+  a matching card passes; the newest card must be first; an unlisted
+  post still fails as it does today.** **Measured before picking
+  (2026-11-18):** card titles match each post's `<h1>` on all 80 cards,
+  but the summaries are hand-rewritten — 53 of 80 differ from the post's
+  `meta description` and 7 of 80 differ from the feed item's
+  description, so a strict equality gate on either pair is red on
+  arrival. The picker must either choose the pair and repair the tree in
+  the same change, or define a tolerance that is written down.
+
+- **personal-website — generate the "Currently" panel from the
+  board** *(S; new in posts/2026-11-16.html)* — the panel and the radar
+  board say the same thing in two places, by hand, and they have
+  disagreed before. Next: a dev-time script that renders the panel lines
+  from the board's In progress and Proposed rows into the page, with the
+  character cap enforced by the script rather than by whoever is editing.
+  **Acceptance: editing a board row changes the regenerated panel text; a
+  description over the cap fails the script naming the row; running it
+  twice produces a byte-identical file.**
+
+- **personal-website — give the 16 findings reasons, so the 17th is
+  visible** *(S; new in posts/2026-11-15.html)* — the external pass has a
+  destination (the run summary) and now a noise problem: on a clean tree
+  it lists the same WAF 403s and private-repo 404s every run, and a list
+  that always says 16 is a list nobody reads. Next: a committed
+  allowlist, one URL per line with a reason, consulted by the external
+  pass. **Acceptance: every current finding has a reason; a planted dead
+  URL appears in the summary and is not allowlisted; an allowlist entry
+  that stops being flagged is itself reported as stale; the gate stays
+  report-only either way.**
+
+- **pi-cicd — put the freshness verdict on the console page** *(S; new
+  in posts/2026-11-15.html)* — `feed-fresh` measures the newest post's
+  age against the 36-hour limit, prints one line, exits, and the number
+  is gone until the next hour. Next: an opt-in `--prom-file` that writes
+  the measured age and the exit status as gauges for node_exporter's
+  textfile collector, temp-file plus atomic rename. **Acceptance: after a
+  run the `.prom` file carries both; a four-days-stale fixture flips the
+  gauge and the panel shows it; without the flag the tree stays
+  byte-identical and the read-only guard still passes.**
+
+- **pi-cicd — deploy the fingerprint demo like everything else** *(S;
+  on-box; new in posts/2026-11-13.html)* — the fingerprint demo's unit
+  file is committed in its own repo but was installed by hand: no
+  compile gate, no health probe, no rollback. Next: put it on pi-cicd's
+  pull-based CD with a `/health` check on its port and automatic
+  rollback when the unit fails to come back. **Acceptance: a
+  deliberately broken commit rolls back and the previous build answers
+  `/health`; a good one deploys with nobody logged into the box.**
+
 - **cluster — feed the graphs, not just the probes** —
   **SHIPPED 2026-11-03, see Done** (cluster-prototype `5c52715`,
   pi-cicd `38c65ce`; CI green on both).
@@ -27,18 +122,6 @@ found by web research and keep their source URL.
 
 - **pi-cicd — give the cluster numbers a console page** —
   **SHIPPED 2026-11-05, see Done** (pi-cicd `545cf04`; CI green).
-
-- **radar — stop tracking bytecode** *(S; on-box; repo evidence,
-  found 2026-11-09)* — this repo tracks
-  `engine/__pycache__/__init__.cpython-313.pyc`, so every local
-  pytest run leaves `M engine/__pycache__/…` in `git status` — the
-  same defect switch-l4t-gpu shipped away on 2026-11-07 (`f416b56`).
-  Next: `.gitignore` gains `__pycache__/` and `*.pyc`, the tracked
-  file leaves the index via `git rm --cached` (the working-tree copy
-  stays, now ignored), no source or CI change. **Acceptance:
-  `git ls-files` carries zero `.pyc`; `git status` comes back empty
-  after a full pytest run and after a `python3 -m compileall .`; CI
-  green on the tip.**
 
 - **personal-website — cover the served text the gate still skips** —
   **SHIPPED 2026-11-08, see Done** (pkia.github.io `2a4639b`; CI green,
@@ -235,23 +318,738 @@ rest now build on it:
 
 ## In progress
 
-- **personal-website — make link rot fail CI** *(S; on-box; new in
-  posts/2026-11-09.html; picked 2026-11-10)* — the house-rules checker
-  proves structure, cache-busters and addresses, but nothing proves the
-  links still land: rename one post and every card pointing at it breaks
-  silently. Next: extend the checker to resolve every internal href and
-  in-page anchor across pages, posts and project tours, and give
-  external links a timed check that reports URL and status without
-  failing the run on a single flaky timeout. **Acceptance: a planted
-  broken internal href and a planted missing anchor both fail naming
-  file, line and target; the current tree passes; network-less runs
-  skip the external pass loudly, never silently.**
-  *(Resume pointer: repo /home/ev/personal-website — GitHub
-  pkia/pkia.github.io, default branch master; targets
-  tools/check_site.py + tests/test_check_site.py; nothing written yet
-  at pick time.)*
+*(none — 2026-11-23: the dns-watch freshness reader shipped this run, see
+Done. Pickable next: the 11-22 fallback-visibility row (the newest post
+still names it, second in today's list), the 11-18 coordinator-restart row
+(its console-page clause is owner-gated), the radar ledger-refs verdict row,
+the personal-website findings allowlist and Currently-panel rows, the pi-cicd
+freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU baseline,
+and the 11-18 devlog-card gate (fix its measured premise first) — all under
+Proposed.)*
 
 ## Done
+
+- **pi-cicd — record every run, not just every page, so a dead timer is
+  visible** — done 2026-11-22 (filed by the 11-21 run from that day's post,
+  and still named the top open row in today's 11-22 post; picked over today's
+  new fallback-visibility row because it retires the larger blindness — a
+  quiet night and a dead timer were the same bytes — and every clause
+  verifies on this box in one session). Shipped in pi-cicd `4bd1519`:
+  - **The reading, not a new stamp.** Every run that saves state already
+    writes `checked_at`; the ledger records *pages*, so an empty ledger is
+    genuinely ambiguous. `--history` now prints `newest run: <stamp>
+    (<age> ago)` above its page lines and keeps its exit code (0) and its
+    "writes nothing" contract — it is still a reader.
+  - **`--stale` is the verdict the morning audit calls.** One line, one exit
+    code: **0** fresh (OK on stdout), **1** STALE naming the age, the limit
+    and the state path (stderr), **2** unmeasurable — a missing, non-JSON,
+    non-object, stamp-less or unparseable state file names its path, because
+    "cannot measure" is not a pass. The limit is `STALE_AFTER_HOURS`
+    (default 2 h against the hourly timer, so one missed fire is still OK)
+    or `--stale-after HOURS`, which refuses a non-positive value. It runs no
+    probe and writes nothing; `--history --stale` prints both and takes the
+    verdict's exit code.
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **45 passed** (13
+    new items), full suite **459 passed, 1 skipped**. Each clause is an
+    executed test driving the real CLI: 3.5 h old → rc 1, `STALE — newest
+    run 3.5 h ago, limit 2 h`, the path named, stdout empty, state bytes
+    unchanged; 0.4 h old → rc 0 with the exact OK line; a missing state file
+    → rc 2, `UNMEASURABLE`, the path, nothing created; four undateable
+    state files (junk JSON, a list, no `checked_at`, `"yesterday"`) each
+    rc 2 naming the reason; `--stale-after 4` passes where `1` fails;
+    `STALE_AFTER_HOURS=5` moves the bare flag's limit; `--stale-after 0`
+    exits 2 `must be greater than zero`; a stamp one hour in the future
+    reads `-1.0 h ago` and is **not** stale; `--history` shows the age
+    above the page lines and writes no ledger; both readers leave the state
+    and ledger files byte- and mtime-identical with a broken `DNS_CHECK` and
+    leave no `.tmp` behind. **Negative-controlled by execution:** against the
+    pre-change `dns-watch` (`git stash push -- dns-watch`, under
+    `timeout -s KILL`) **all 13 fail** — and the rc-2 cases needed their
+    text assertions, because argparse's own "unrecognized arguments" exit is
+    also 2: a test that checked only the code would have passed vacuously.
+  - **Live on this box:** `python3 dns-watch --stale` → `OK — newest run
+    0.5 h ago, limit 2 h`, rc 0, against the live state (13:46 today);
+    `--stale-after 200` → OK; `--history` prints the same stamp with
+    `0 page(s) in the last 24 h — 0 line(s)` and creates nothing. Also
+    measured, correcting older rows: the units **are installed** —
+    `dns-watch.timer` is active hourly (last 13:46, next 14:46),
+    `/etc/dns-watch.conf` exists (root:ev 0640, 11-19), so the hourly run
+    picks this change up from the repo symlink on its next fire with no
+    restart. **CI green on the tip** (run 45032108543, `4bd1519`): the
+    runner printed every new test PASSED by name and the suite at **456
+    passed, 4 skipped** (the extra skips are the Prometheus drills).
+  - **Not claimed:** the daily pi-doctor audit does **not** call `--stale`
+    yet — the verdict exists and is cheap, but wiring it into pi-doctor's
+    findings is a separate row; `--stale` measures the *state file's* stamp,
+    so a run whose state write failed reads as stale (truthful, one interval
+    early) and `--dry-run` never refreshes it; the default 2 h is a
+    judgement about timer drift, not a measurement — a unit whose
+    `OnUnitActiveSec` is later stretched must move the limit with it; and
+    `--history` still exits 0, so an audit reading *it* will never see the
+    fault. Repo: <https://github.com/pkia/pi-cicd>.
+
+- **pi-cicd — probe two endpoints, so one endpoint's blackhole is not an
+  outage** — done 2026-11-21 (the 11-20 row, named again as the devlog's
+  "still the top pickable row" on 11-21; picked first because the retry that
+  shipped the morning before (`a44e325`) only answers a *stalled* connect,
+  and every clause of its acceptance verifies on this box in one session —
+  loopback stubs for the fault branches, a live run for the last one).
+  Shipped in pi-cicd `a7025f7`:
+  - **The IP half carries an ordered list.** `DNS_CHECK_URLS` (ordered,
+    space-separated) defaults to two raw-IP endpoints on **different
+    networks** — `https://1.1.1.1/cdn-cgi/trace`, then `https://8.8.8.8/` —
+    tried in order, and the OK line prints the endpoint that answered. The
+    older `DNS_CHECK_URL` still works as a single endpoint (and as the whole
+    list when `DNS_CHECK_URLS` is unset); the list wins when both are set,
+    so nothing a previous run wired changes meaning.
+  - **A fallback is not a retry, and the two are spelled differently.** One
+    dead address reads `OK (fallback; 1 endpoint(s) failed first)`; the run
+    still makes two passes over the list, and a whole failed pass reads the
+    same `(retry; first attempt failed)` the 11-20 ledger column already
+    parses — so the cross-language pin holds. Only every endpoint failing
+    both passes is EGRESS, and the fault verdict prints each endpoint tried
+    (the page inherits the text, so the reader sees the list, not a shrug).
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **32 passed** (6
+    new), full suite **446 passed, 1 skipped**. Each clause is an executed
+    test: a dead endpoint plus a live one → rc 0, healthy, the live URL on
+    the IP egress line and the dead one not, `fallback; 1 endpoint(s) failed
+    first`, and no `retry;` anywhere; the same swap as a *recovery* → one
+    recovery page naming the live endpoint and a ledger line reading
+    `healthy rc=0 retry=no` (a fallback is not a retry); both refused → rc
+    2, EGRESS, both URLs named; both refused twice → **one** page and
+    `pages` at 1; `DNS_CHECK_URLS` beats a failing `DNS_CHECK_URL`; and the
+    default list is pinned hermetically — stub `curl`/`getent` on `PATH`
+    record exactly `1.1.1.1, 8.8.8.8, 1.1.1.1, 8.8.8.8` in that order and
+    the verdict is rc 2 naming both. **Negative-controlled by execution:**
+    against the pre-change `dns-check` (`git stash push -- dns-check`, run
+    under `timeout -s KILL`) **all 6 new tests fail**, each for its own
+    reason (the old tool probed the live 1.1.1.1 regardless of the list).
+  - **Live on this box:** default run healthy, naming
+    `https://1.1.1.1/cdn-cgi/trace`, rc 0; with the first endpoint pointed
+    at a dead port (`DNS_CHECK_URLS="https://8.8.8.8:1/
+    https://1.1.1.1/cdn-cgi/trace"`) the verdict is healthy naming
+    `1.1.1.1/cdn-cgi/trace` with `(fallback; 1 endpoint(s) failed first)`,
+    rc 0 — the exact case the row was filed for; both refused
+    (`127.0.0.1:1`, `127.0.0.1:2`) exits 2 printing both `tried` lines;
+    `dns-watch -v` reads healthy/unchanged and stays silent, and
+    `--history` prints `0 page(s) … 0 line(s)`, rc 0. **CI green on the
+    tip** (run 44912890647, `a7025f7`): the runner ran `sh -n dns-check`,
+    both new endpoint tests PASSED, and the suite printed **443 passed, 4
+    skipped** (the three extra skips are the Prometheus drills).
+  - **Not claimed:** the second endpoint answers **302** and any HTTP
+    answer counts as egress — unchanged semantics (the probe proves packets
+    leave, not that the endpoint is healthy), so a captive portal still
+    reads OK; the pair is hardcoded on two networks, so a failure of the
+    shared upstream path (the tunnel itself) still reads EGRESS — correctly;
+    the ledger's `retry=` column says `no` for a fallback (it was not a
+    retry — the fallback fact lives in the page/console text, not the
+    ledger); the service units are unchanged (they inherit the default list)
+    and `/etc/dns-watch.conf` stays owner-gated. Repo:
+    <https://github.com/pkia/pi-cicd>.
+
+- **pi-cicd — give the pages a ledger, so a flapping verdict is
+  countable** — done 2026-11-20 (the 11-20 devlog's top **S**; picked over
+  the two-endpoint probe row because the retry that shipped that morning
+  (`a44e325`) already answers the stalled-connect false page, while this row
+  answers the one thing the retry cannot: the night is still thrown away.
+  Every clause of its acceptance verifies on this box in one session.)
+  Shipped in pi-cicd `62951a6`:
+  - **One line per page, not per run.** Each *published* page appends
+    `2026-11-20T02:45:03+00:00  egress  rc=2  retry=no` to `pages.log`
+    beside the state file — timestamp, verdict, exit code, whether
+    dns-check's retry was used. An unchanged verdict writes nothing, which
+    is what makes two runs with no change byte-identical; a page that was
+    decided but could not be published (no ntfy config) writes nothing
+    either, so the ledger and the `pages` counter agree by construction.
+  - **Capped, and it rotates rather than grows:** at `LEDGER_MAX_LINES`
+    (config, default 2000) the file becomes `pages.log.1` and a fresh one
+    starts, so the pair on disk is bounded at 2× the cap.
+  - **`--history`** prints the last 24 h one line each across *both*
+    generations, with a dated header naming the window, a footer naming the
+    path and both counts, and unreadable lines counted rather than crashing
+    it; it runs no probe and writes nothing, and an empty ledger is a dated
+    header plus `0 page(s)`, exit 0.
+  - **The retry column crosses a language boundary on purpose:**
+    dns-check (POSIX sh) prints `(retry; first attempt failed)`, and
+    dns-watch (Python) reads that line. There is no shared constant to
+    drift, so the pin is execution — a test drives the **real** dns-check
+    through a server that stalls its first attempt and asserts the ledger
+    line reads `retry=yes`; if either half's wording moves, that test
+    reddens instead of the column quietly reading `no`.
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **26 passed** (10
+    new), full suite **440 passed, 1 skipped**. The acceptance clauses, each
+    one an executed test: six alternating changes through a loopback ntfy
+    sink wrote **six lines** with verdicts `dns/healthy` alternating, codes
+    `rc=1/rc=0`, `retry=no`, ISO-UTC timestamps in order; two runs with no
+    change left the ledger **byte-identical** and `pages` at 1; a cap of 3
+    plus a fourth page left 1 line live and 3 in `.1` (never above the cap);
+    `--history` on a missing ledger printed a dated header and
+    `0 page(s) in the last 24 h`, exit 0, and created nothing. Plus the
+    controls: a 30-hour-old line is filtered out while the rotated
+    generation's fresh one is shown, a junk line is counted and skipped,
+    `--history` with `DNS_CHECK=/no/such/probe` still exits 0 (it measures
+    nothing), dry-run and an unpublishable page both write no ledger, and
+    the default ledger lands beside `--state`. **Negative-controlled by
+    execution:** against the pre-change `dns-watch` (`git stash push --
+    dns-watch`) **8 of the 10 new tests fail**; the two that pass are the
+    vacuous ones — dry-run and unpublishable-page assert the *absence* of a
+    ledger, which the old tool satisfies by never writing one.
+  - **Live on this box:** `dns-watch -v` reads healthy/unchanged and stays
+    silent (so no line is written — the positive control that the ledger
+    records pages only); `dns-watch --history` prints
+    `0 page(s) in the last 24 h — 0 line(s) in
+    /home/ev/.local/state/dns-watch/pages.log`, exit 0. `ruff` fatal rules
+    clean. **CI green on the tip** (run 44751540753, `62951a6`): the
+    runner's own suite printed 437 passed, 4 skipped, with every ledger
+    test PASSED and the byte-compile step ran.
+  - **Not claimed:** `pages.log` **does not exist on the live box yet** —
+    the verdict has not changed since the ledger landed, so the first line
+    will be the next real flap, and the "six lines" evidence is the drill,
+    not that file. It records *pages*, not every run: a run-by-run verdict
+    history would fail the byte-identical clause, and the night's *silent*
+    runs are still only in the journal. One generation of rotation means
+    the oldest pages are dropped at 2× cap. The retry column is only as true
+    as dns-check's note (pinned by test, not by a shared constant), and a
+    page that lands while the ledger is unwritable is a named stderr
+    warning — the page itself still goes out. `/etc/dns-watch.conf` is not
+    installed (owner-gated as on every unit ship), so the unit runs the
+    defaults: ledger beside the state file, cap 2000. Repo:
+    <https://github.com/pkia/pi-cicd>.
+
+- **pi-cicd — list every third-party action and whether it is pinned to a
+  SHA** — done 2026-11-19 (top of the 11-19 devlog's radar list; picked over
+  the coordinator-restart row — a live service bounce whose console clause is
+  owner-gated — and the two personal-website rows, because every clause of
+  its acceptance verifies on this box in one session and it is the only
+  candidate that turns an invisible supply-chain fact into a gate). Shipped
+  in pi-cicd `8785a0c` + `e12a4b0`:
+  - `action-pins` — reads every `*.yml`/`*.yaml` under
+    `.github/workflows`, prints one row per `uses:` with its ref type
+    (`sha`, `tag`, `branch`, `digest`, `local`) and exits **1** naming
+    file, line and action for every ref that can move; **0** all pinned
+    (or local); **2** unmeasurable (unreadable file, no workflow at all —
+    a vacuous pass is never a pass). `--json` owns stdout alone on both
+    the clean and the fault path. Read-only: no writes, no subprocess.
+  - **The reader follows the format, not a grep.** A comment must be a
+    `#` at line start or after whitespace (so `# - uses: x@v4` is not a
+    step and `uses: x@v4  # note` is still a v4 ref); a quoted value is
+    the value; a `uses:` line inside a `run: |` block scalar is shell
+    text, not an action. It also reads the two shapes a line-oriented
+    grep misses — `uses:` with its value on the next, more-indented line,
+    and the flow mapping `- {uses: x@v4}` — both found by asking the
+    format's own question ("what else can one key look like?") after the
+    first version shipped, and each given its own test.
+  - **The gate has a reader:** a CI step (`Action pin audit`) runs it on
+    every push, `tools.manifest` links it (install.sh `--check-tools`
+    green at 20 tools), `docs/layers.md` carries a section and its
+    `EXPECTED_LAYERS` row keeps that section from vanishing silently.
+  - **Its first run found the repo's own unpinned ref** — `ci.yml:12
+    actions/checkout@v4` exited 1 before any wiring landed — and that ref
+    is now pinned to `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683`
+    (v4.2.2, resolved with `gh api repos/actions/checkout/commits/v4.2.2`
+    and named in a comment beside the SHA).
+  - **Acceptance, executed:** suite **429 passed, 1 skipped** (18 new in
+    `tests/test_action_pins.py`, every one driving the real CLI in a
+    subprocess with `sys.executable`, one under `PATH=/usr/bin:/bin`).
+    The acceptance pair: an all-pinned fixture exits 0 listing each
+    action and `sha`; a `@v4` step exits 1 with `FAIL
+    .github/workflows/ci.yml:8 — actions/cache is pinned to @v4, a moving
+    tag`. Read-only proven twice: a source scan for write verbs, `mkdir`,
+    `rename` and `subprocess`, and a run that leaves the fixture tree
+    byte-identical by (path, size, mtime, sha256) after both an ordinary
+    and a `--json` run. **Negative-controlled by execution:** a
+    grep-shaped stub fails 3 of the 18 for real reasons — a commented-out
+    step counted as a step, `run: |` text counted as an action, a
+    `docker://alpine@sha256:…` digest misread as a branch — plus one more
+    for its missing summary line; the other 14 pass there, which is the
+    control (they never exercise the YAML decider). **CI green on both
+    tips** (run 44540954024, `8785a0c`; run 44541732399, `e12a4b0` — the
+    runner's own audit step printed `.github/workflows/ci.yml:14 sha
+    actions/checkout@11bd7190…`, `1 action reference(s)`, `OK — every
+    action reference is pinned`, and the suite at 426 passed, 4 skipped).
+  - **Not claimed:** the gate judges the *shape* of the ref, not the
+    commit behind it — a SHA pinned to a malicious or broken action
+    passes; nothing re-resolves a SHA against upstream, and a commented
+    `# v4.2.2` beside a SHA is unverified prose (true here by the API
+    read, not by the tool). A workflow written in a shape this reader
+    does not model (an anchor/alias `uses:`, a `uses:` key inside a
+    quoted multi-line scalar) would be unread — the three named shapes
+    plus the two extra forms are covered, not the whole YAML spec. The
+    gate is per-repo: radar, cluster-prototype, switch-l4t-gpu and
+    pkia.github.io still run whatever refs their own workflows carry, and
+    only pi-cicd audits. Repo: <https://github.com/pkia/pi-cicd>.
+
+- **pi-cicd — put dns-check on a timer with edge-triggered paging** — done
+  2026-11-18 (the 11-18 devlog's **S**; picked over the coordinator-restart
+  row — which wants a live service bounce and whose console-page clause is
+  owner-gated — and the devlog-card gate, whose premise measured false).
+  Shipped in pi-cicd `2c00447` (+ `6cc50b3`, the fix CI forced):
+  - `dns-watch` runs `dns-check` once per invocation, maps its exit code to
+    a verdict (`healthy`/`dns`/`egress`/`both`, anything else
+    `probe-error`), compares it with the last verdict in
+    `~/.local/state/dns-watch/state.json`, and publishes **one** ntfy
+    message only when it changes — a standing failure is one page, not one
+    an hour, and a recovery gets its own. First healthy run on an empty
+    state is silent; the first broken one pages. Exit is dns-check's own
+    (0/1/2/3) or 4 when the probe could not run, so the failed unit is
+    still a record pi-doctor names when paging is muted or unconfigured.
+  - `dns-check` gains `DNS_CHECK_RESOLV_CONF` — the file the verdict
+    quotes, never the resolver actually used — and now marks a
+    nameserver-less file as the 2026-11-16 shape, by name.
+  - Wiring: hourly units (`User=ev`, absolute paths, `Restart=no`),
+    install.sh block, `tools.manifest` entry, `docs/units.md` row and a
+    `docs/layers.md` section, `templates/dns-watch.conf.example`, CI
+    byte-compile plus `sh -n dns-check` (which had never been
+    syntax-checked in CI).
+  - **Acceptance, executed:** suite **409 passed, 1 skipped** (15 new in
+    `tests/test_dns_watch.py`, all driving the real CLIs in subprocesses
+    with a loopback ntfy sink). The acceptance pair: a header-only
+    resolv.conf fixture + an unresolvable name → exactly one page naming
+    that file and the "header-only" line, rc 1; five more broken runs →
+    still one page and `since` unmoved; recovery → one "Back to healthy"
+    page, then silence. Plus alternation (4 changes → 4 pages), egress-only
+    named separately (rc 2, its own title), `--dry-run` publishes and
+    writes nothing, corrupt state starts fresh with a named warning,
+    explicit missing probe → named probe-error (rc 4), `STATE=` from config
+    honoured, default state expands `HOME`, and the read-only half: a
+    source rule (comments and echo/printf lines excluded — the recovery
+    commands live there — plus redirections to /dev/null ignored) and a
+    copy of the tree byte-identical after a probe run and after a watch
+    run. **Negative-controlled by execution:** against the pre-change
+    `dns-check` the first-page test fails (the page printed
+    `/etc/resolv.conf`, not the fixture) and its header-only line is
+    absent; a mutant that pages while unchanged fails the five-more and
+    recovery tests; the pre-`expanduser` tool fails the HOME test.
+  - **CI green on the tip** (run 44323641397, `6cc50b3`: 406 passed, 4
+    skipped, byte-compile step ran). The first push `2c00447` was **red** —
+    11 of 14 tests, `dns-check could not run: [Errno 2]` — because the
+    default probe name only resolved on this box, where `dns-check` is a
+    `~/.local/bin` symlink; `6cc50b3` resolves an explicit path verbatim,
+    then PATH, then the copy beside the script, and the regression test
+    runs with `PATH=/usr/bin:/bin`.
+  - Live on this box: `dns-watch` healthy (`rc 0`), state seeded under
+    `~/.local/state/dns-watch/`, second run silent; the first live run
+    found a real defect — `Path("~/.local/...")` wrote a literal `~`
+    directory inside the repo — fixed with its own test. `systemd-analyze
+    verify` accepts both units (rc 0).
+  - **Not claimed:** the units are **not installed** (the `/etc` copy is
+    owner-gated as on every unit ship), so the hourly firing is future and
+    no page has ever gone through the real ntfy — the paging path is proven
+    against a loopback sink, and `/etc/dns-watch.conf` with a publisher
+    token is the owner's one step; until it exists the unit runs, fails on
+    a broken verdict and cannot page. `dns-check`'s own probe is unchanged
+    in what it measures (one raw-IP GET, one `getent`) — the new env var
+    only affects what it quotes. Repo: <https://github.com/pkia/pi-cicd>.
+
+- **cluster-prototype — run the offload client against the real two
+  boxes** — done 2026-11-17 (top of both the 11-16 and 11-17 radar lists;
+  picked over the pi-cicd SHA-pin row because it is the only one that
+  proves a shipped-but-unproven feature end to end, and both boxes were
+  up and healthy at pick time). Shipped in cluster-prototype `1894a31`
+  (client names a lost lease), `5cc595e` (the counter the drill found
+  dead), `6eb122d` (`tests/drill_offload_live.py` + the
+  IMPLEMENTATION.md addendum):
+  - **The drill** (`tests/drill_offload_live.py`, 13 checks, live against
+    the production coordinator and both workers): A attribution — job
+    1892, 8×8 MiB through `offload.run`; every unit's
+    (index, status, worker, attempt) identical to `/jobs/<id>`'s own rows;
+    all 8 digests distinct and `/jobs/<id>/results` agrees with
+    `unit_rows`; the 3 units the client pins on `switchlab` are exactly
+    the 3 unit ids the Switch worker's **own log** says it claimed
+    (23720–23722). B throughput — the same params hand-run through
+    `clusterctl` (job 1893): client 32.3 MiB/s vs hand-run 33.3 MiB/s,
+    both derived from the coordinator's `created_at`/`finished_at` so the
+    comparison is one clock; band 0.5–2.0×. C kill — job 1894 (64×32 MiB,
+    2048 MiB): unit 0 seen running on `switchlab` at attempt 1, then
+    `pkill -9` on the Switch (rc 0, pid 65773); the job still reached
+    **complete in 65 s with 64/64 units verified**, the killed unit's lease
+    expired (`lease_expired` event, worker=switchlab, unit_id 23736,
+    "attempt=1 requeued"), it finished at **attempt 2 — on switchlab
+    again after its restart, proven by that worker's own claim log** — and
+    the worker came back healthy on its own (pid 65773 → 66248). **Both
+    branches were executed this session:** in run 1 (job 1888) the
+    requeued unit landed on `raspberrypi` instead; same mechanism, first
+    claim wins.
+  - **The failed one is named, not silently healed:** `offload` now carries
+    each unit's `attempt` (summary line + `--json`), `Job.requeued` lists
+    the units whose lease was lost, and the coordinator's event log names
+    the worker that held the lost attempt — which the coordinator's own
+    rows cannot, since `unit_rows` carries only the current attempt.
+  - **A real defect fell out of the acceptance:** `Store.bump_worker_units_done()`
+    had **no caller**, so every worker's `units_done` stayed 0 for the life
+    of the deployment while `/metrics` (`cluster_worker_units_done_total`)
+    and the 11-05 console page read it — two readers of one dead number,
+    invisible because the metrics drill compares /metrics against /health
+    and both read the same zero. `post_result` now bumps it on an accepted
+    success only (not retries, not fenced stale results).
+  - **Acceptance, executed:** suite **73 passed, 1 skipped** (12 in
+    `tests/test_offload.py`, was 9 — requeued unit named with its attempt,
+    `--json` carries per-unit attempt/worker, clean jobs name no requeue;
+    plus the new store counter test). **Negative-controlled by execution:**
+    against the pre-change `offload.py` the 3 new client tests fail
+    (`AttributeError: 'Unit' object has no attribute 'attempt'`), and
+    against `1894a31`'s `store.py` the counter test fails `0 != 3`.
+    **CI green on every tip:** `1894a31` (run 44101278120), `5cc595e`
+    (44103113020), and the final `6eb122d` (44104116251 — runner itself
+    printed 73 passed, 1 skipped and the fatal-rules lint clean).
+  - **Not claimed:** the **live coordinator still serves the pre-fix
+    store** (no manual service restart was performed, per the guardrail),
+    so the live `units_done` counter reads 0 until its next restart — the
+    drill's cross-check deliberately uses the workers' own claim logs
+    instead of that counter. The drill is **not in CI** (it needs the live
+    cluster and does a real SIGKILL); it is a manual acceptance run.
+    The throughput band is coarse by design (0.5–2.0×, spot values
+    within 3 % here), and each run hashes ~2 GiB and kills the Switch
+    worker once — a ~2-minute drill, not a cheap one. Also observed and
+    left alone: pi-cicd's worktree still carries the 11-16 uncommitted
+    `docs/units.md` + untracked `docs/incidents/` — not this run's to
+    commit. Repo: <https://github.com/pkia/cluster-prototype>.
+
+- **pi-cicd — one manifest for repo-root tools** — done 2026-11-16 (the
+  11-16 devlog's **S**; picked over the personal-website allowlist row and
+  the pi-cicd freshness-gauge row because it retires a drift pair that has
+  already cost a red build, and every clause of its acceptance verifies on
+  this box with no hardware and no owner install). Shipped in pi-cicd
+  `dcb1832`:
+  - `tools.manifest` — one bare name per line, `#` comments ignored — is
+    now the only list. `install.sh` links and chmods from it (one loop
+    replacing the 18 hand-written `ln` lines *and* a second, separately
+    drifting chmod list), and refuses to run when the repo root holds a
+    tool the manifest omits, naming it. `install.sh --check-tools` runs
+    that validation and exits before `mkdir`, so the test drives the
+    installer's own rule instead of restating it in Python.
+  - **The scan rule, written once:** a tool is an extensionless regular
+    file at the repo root whose first two bytes are `#!`. Libraries
+    (`.py`), `install.sh` (`.sh`) and the manifest itself fall outside
+    it, so the rule needs no hand-kept ignore list to rot beside the
+    tools — the class of defect this row exists to retire.
+  - **Acceptance, executed:** suite **394 passed, 1 skipped** (10 tests in
+    `tests/test_install_sh.py`, was 2). Deleting `feed-fresh` from a
+    copied manifest fails the installer run naming it, and the test half
+    sees the same disagreement; a mode-644 stub `drill-stub-tool` fails
+    the gate naming it and clears with one added manifest line; a manifest
+    entry with no file behind it and a duplicate entry each fail naming
+    it; `--check-tools` leaves the copied tree byte-identical
+    (path/size/mode/mtime) and creates nothing under `HOME`; the full
+    installer, with `sudo`/`gh` stubbed, links all 18 names into a temp
+    `~/.local/bin` as executable symlinks. **Negative-controlled by
+    execution:** against the pre-change installer **7 of the 10 fail**;
+    the three that pass are the data-side checks plus the linking test,
+    which the old hardcoded block satisfied because it happened to list
+    the same 18 names.
+  - **CI green on the tip** (run 43883559242, `dcb1832`): all ten install
+    tests PASSED on the runner — 391 passed / 4 skipped there, the three
+    extra skips being the Prometheus drills (no binary on runners).
+  - **Not claimed:** the live `~/.local/bin` was not re-linked — that only
+    happens on the owner's `sudo ~/pi-cicd/install.sh` pass, and it would
+    change nothing today (tree and manifest agree; the existing symlinks
+    already name the same files). The manifest is still a list a human
+    updates; what is now guaranteed is that forgetting shows up as a named
+    failure instead of a silently unlinked tool. Repo:
+    <https://github.com/pkia/pi-cicd>.
+
+- **radar — make the board refuse a row it can never ship** — done
+  2026-11-15 (the 11-15 devlog's **S**; picked over the pi-cicd
+  freshness-gauge and personal-website allowlist rows because its whole
+  acceptance verifies on this box in one session and it retires a cost
+  the loop pays every run). Shipped in radar `a350284`:
+  - `tools/check_board.py` gains `OUT_OF_SCOPE` — the old Pi
+    deployment's projects (twitter-launch, forex-copybot/copybot,
+    maritime-dashboard, project-hub, ais_analysis, camoufox-setup) plus
+    Train/cs2-train — and an **actionable** Proposed row whose title
+    prefix names one is a fault naming the project and the directive
+    date. Prefix, never prose: an in-scope row may still mention a
+    retired project in its body (control test).
+  - Ledger rows stay exempt — the Skipped and Done history names those
+    projects legitimately, so the board's own 26-row ledger is
+    untouched — and `title_prefix()` is now shared with `project_repo()`
+    so the scope rule cannot drift from the commit-ref binding it sits
+    beside. The OK line reports the count.
+  - **Acceptance, executed:** suite **31 passed** (7 new in
+    `tests/test_check_board.py`): a planted twitter-launch row fails
+    naming it at its own line as the row's only fault; all eight
+    retired prefixes (both copybot spellings, AIS, Train's colon
+    spelling) fault with their project named; the five in-scope
+    prefixes pass; a SKIPPED row and a SHIPPED-stamped row naming
+    twitter-launch/forex-copybot stay clean; a prose mention inside an
+    in-scope row stays clean; the real board exits 0 with
+    `0 out-of-scope Proposed row(s)`. Negative-controlled by execution
+    (`git stash` on the tool): **5 of the 7 fail** — and the two that
+    pass are the vacuous controls (prose, Skipped history) the old
+    checker satisfies without ever reading scope. **Live drill** on a
+    copy of the real board with one planted twitter-launch row:
+    `FAIL …:16 — row "twitter-launch — planted drill row" names
+    out-of-scope project twitter-launch`, exit 1, while the real board
+    exits 0. **CI green on the tip** (run 43722292383, `a350284`) — the
+    runner's own Board lint step printed the new OK line including
+    `0 out-of-scope Proposed row(s)`, and 31 tests passed there.
+  - **Not claimed:** the set is a hardcoded list — a newly retired
+    project must be added by hand, and lifting the directive means
+    editing this tool as well as AGENTS.md. It judges the title prefix
+    only, so a row titled "radar — …" that is really about a retired
+    project still lints green: the prefix is the board's convention and
+    the checker reads the board, not intent. Repo:
+    <https://github.com/pkia/radar>.
+
+- **personal-website — surface the external-link report** — done
+  2026-11-14 (the 11-11 **S**, restated in the 11-13 and 11-14 devlogs;
+  picked over the fingerprint-demo deploy row and the GPU-baseline row
+  because every clause of its acceptance verifies on this box in one
+  session, with no hardware and no owner install). Shipped in
+  pkia.github.io `548e32a`:
+  - `tools/check_site.py`'s external pass now also writes its findings
+    to the **run summary** — `$GITHUB_STEP_SUMMARY` by default (the
+    mechanism CI already exports to every step, so `ci.yml` needed only
+    a comment), or `--summary PATH` for a local drill — as markdown: a
+    header line with `N unique link(s), F flagged` and one table row
+    per flagged link naming URL and status.
+  - **One measurement, two readers:** `check_external` returns the
+    findings it prints, and the summary is rendered from that same
+    list, so the log and the page cannot disagree. Three states are
+    stated, never inferred: findings (table), zero findings ("no
+    findings: every external link answered"), and a **skipped pass
+    named as skipped** ("says nothing about the links") — a
+    network-less run can no longer look clean in the summary.
+  - **The gate's verdict is untouched:** the summary is written after
+    the fault path returns, a write failure is reported and swallowed,
+    and the summary path is **refused when it resolves inside the
+    checked tree** (a future `--summary .` cannot litter the site). The
+    block is *appended*, since CI's file already holds other steps'
+    output.
+  - **The read-only guard was narrowed, not deleted** (the 11-12
+    lesson): the source scan keeps every banned verb (`write_text`,
+    `unlink`, `os.remove`, `shutil`, `subprocess`, `open(` — so the
+    write uses `write_bytes`), adds *exactly one write call site* and
+    pins that its target is the summary path; a behavioural twin
+    asserts a run leaves the fixture tree byte-identical.
+  - **Acceptance, executed:** suite **48 passed** (9 new in
+    `tests/test_check_site.py`): the planted dead URL appears in the
+    summary as `| <url> | 404 |` while the live link beside it does
+    not; every flagged link gets a row and nothing else does; a clean
+    run reports `0 flagged` / "no findings" with no table; the exit
+    code is identical with and without a summary, and a faulting run
+    (1) never reaches the external pass so it writes none; the
+    `$GITHUB_STEP_SUMMARY` env is honoured and the block lands after
+    existing content; a network-less run writes the SKIPPED block and
+    not `0 flagged`; a path inside the tree is refused with the tree
+    unchanged; a broken summary target leaves rc 0. **Negative
+    controlled by execution:** against the pre-change checker (`git
+    stash` on the tool, under `timeout -s KILL`) **9 of the 10 selected
+    tests fail**; the tenth is the no-summary control, which the old
+    checker satisfies vacuously.
+  - **Live drill on a copy of the real tree with one planted dead
+    URL** (`https://github.com/pkia/does-not-exist-radar-drill`): exit
+    **0**, summary names it `404` beside the tree's real findings —
+    `241 unique link(s), 17 flagged`. Those 17 are genuine anonymous
+    answers, spot-checked rather than assumed: `gh repo view`
+    confirms `pkia/cluster-prototype` is **PRIVATE**, so its 404 is
+    correct, and the rest are WAF 403s / rate-limit 429s. **CI green
+    on the tip** (run 43603265343, `548e32a`); the runner's own Site
+    house rules step did the real pass — `240 unique link(s), 17
+    flagged` — and printed `findings written to the run summary
+    (/home/runner/work/_temp/_runner_file_commands/step_summary_…)`,
+    with the 9 new tests PASSED in that run.
+  - **Not claimed:** the *rendered* summary was not read back. The
+    job page needs a signed-in viewer (anonymous fetch says "Sign in to
+    view logs") and the REST check-run `output.summary` for the job
+    stays empty, so what is verified is the write into the runner's own
+    step-summary file plus the block's exact content from the drill —
+    not pixels on the page. The pass is still per-run: a link that dies
+    between runs is only reported when the gate next runs, and 403/429
+    third-party answers stay reports by design (the row's own
+    constraint). Repo: <https://github.com/pkia/pkia.github.io>.
+
+- **pi-cicd — a freshness tripwire for the feed** — done 2026-11-13 (the
+  11-12 devlog's **S**, restated 11-13; picked over the GPU-baseline row
+  because every half of its acceptance verifies on this box with no
+  hardware and no third party — a copy of the real feed plus a pinned
+  clock makes the stale case real, not mocked). Shipped in pi-cicd
+  `d9bfb1a`:
+  - `feed-fresh` — one GET of the published feed, one line, one exit
+    code. It reads the newest **item's** date (RSS `pubDate`, Atom
+    `published`/`updated` as fallback) and never the feed's
+    `lastBuildDate`: a generator can rebuild a feed around a dead post,
+    which is exactly the failure the check exists to catch. Contract:
+    **0** fresh (OK line carries the measured age), **1** STALE (names
+    the hours since the last post and the limit), **2** unmeasurable
+    (unfetchable, unparseable, or no dated item — a feed nobody can
+    date is never a pass). `--now` pins the evaluation instant,
+    `--file`/`--url` pick the source, `--json` owns stdout alone.
+  - **Stateless, as the row asked:** no state file, no cache, no dedupe
+    — every run writes nothing, so a stale state file cannot silence the
+    verdict. Proven twice, by execution: a source scan for every write
+    verb and a writing-mode `open`, and a run that leaves the fixture
+    tree byte-identical (names, mtimes, bytes).
+  - Wiring: `systemd/feed-fresh.{service,timer}` (hourly, `User=ev`,
+    absolute paths — a system unit resolves `%h` from the manager, the
+    09-26 trap), `install.sh` links the tool and installs the units,
+    `docs/units.md` row + `docs/layers.md` section (both indexes are
+    tested), `tests/test_install_sh.py`'s TOOLS list, and a CI
+    byte-compile step.
+  - **Acceptance, executed:** suite **18 new tests** in
+    `tests/test_feed_fresh.py`, full suite **386 passed, 1 skipped**.
+    The acceptance pair is driven through the real CLI in a subprocess:
+    a fresh feed exits 0 with `OK … 6.0 h old`; a pinned stale feed
+    (61.5 h) exits 1 with `STALE … 61.5 h old, limit 36 h` on stderr.
+    Each stale fixture carries a **fresh `lastBuildDate`**, so a
+    checker reading the build stamp passes them and the tests fail —
+    the negative control is the fixture's own shape. **Live drill on a
+    copy of the real feed:** with every `pubDate` shifted four days
+    back and `lastBuildDate` left at today's value, the tool exits 1
+    naming `104.2 h old, limit 36 h`; with the items untouched and the
+    build stamp aged five days it exits 0 naming `8.2 h old`. The live
+    feed itself: `feed-fresh: OK — newest post 2026-11-13T07:00:00+01:00,
+    8.2 h old (limit 36 h)`, exit 0. `systemd-analyze verify` accepts
+    both unit files (rc 0). **CI green on the tip** (run 43440765165,
+    `d9bfb1a`, success — the runner ran 383 passed, 4 skipped; the three
+    extra skips are the Prometheus drill tests, which skip on runners
+    without the binary, and the byte-compile step for feed-fresh ran).
+  - **Not claimed — and why:** the units are **not installed** (the
+    `/etc` copy is cron-mode gated, as on every unit ship), so the live
+    hourly firing and a real failed-unit page wait on the owner's
+    `sudo ~/pi-cicd/install.sh`; the tool itself is on PATH already
+    (`~/.local/bin/feed-fresh`, the same symlink install.sh makes).
+    **No ntfy paging:** a stale feed fails the unit, and the daily
+    pi-doctor audit's `sys:failed-unit` finding is what names it — up
+    to a day later, not the hour; an immediate page would need
+    edge-state this row's "keeps no state" acceptance forbids. The
+    devlog's "same one-liner on the cluster console page" half is **not
+    built**: that page is rendered server-side from Prometheus
+    queries, and landing a freshness number there needs a textfile
+    collector the box does not have — filed as the honest remainder
+    rather than faked with a static line. Repo:
+    <https://github.com/pkia/pi-cicd>.
+
+- **radar — lint the ledger's pointers** — done 2026-11-12 (the 11-12
+  devlog's **S**, on-box; picked over the pi-cicd feed tripwire because
+  every half of its acceptance verifies in one session and it extends
+  the checker this repo already ships). Shipped in radar `99a60ff`:
+  - `tools/check_board.py` gains two **ledger pointer** checks beside
+    the row-shape lint it shipped Monday. A `**SHIPPED**` stamp must
+    land on a Done row carrying the same title — titles compared with
+    bold, backticks and punctuation normalised away, so the board's
+    wrapping does not matter; a stamp pointing at a row that is not
+    there faults naming file:line, the row and the missing twin. Only
+    the explicit stamp is held to it: the board's older plain-prose
+    pointers ("shipped same day, see Done") name an outcome without
+    promising a same-title row, and faulting history is not a gate.
+  - Every backticked commit ref (7–40 lowercase hex, at least one
+    digit — a run id is 11 digits and never backticked) must resolve
+    with `git cat-file -e <sha>^{commit}` in the history of the repo
+    its row names. Binding is the board's own convention: the title's
+    project prefix (`radar — …`, `personal-website — …`, `cluster — …`)
+    maps to a repo name, and only repos handed on `--repo NAME=PATH`
+    are checked. `radar` defaults to this checkout — which is all a CI
+    checkout has — so a ref bound to an unseen repo is *counted
+    unverified*, never faulted; a gate that faults on what it cannot
+    see would be red on every runner forever.
+  - **Acceptance, executed:** suite **24 passed** (9 new in
+    `tests/test_check_board.py`): the three planted violations each
+    fail naming the row and the broken pointer — a ghost SHIPPED stamp
+    with no Done twin; a Done row that exists under a *near-miss*
+    title; a cited 0abc123 absent from a fixture repo's history
+    (which also proves resolution is real: the same row with that
+    repo's actual sha resolves and the OK line counts 2 resolved);
+    plus the controls — a ref bound to an unsupplied repo stays
+    unverified, binding follows the title prefix rather than the file,
+    and a run leaves the fixture repo's HEAD, worktree and directory
+    listing byte-identical. Negative-controlled by execution: against
+    the pre-change checker (`git stash` on the tool, under
+    `timeout -s KILL`) the **7 new pointer tests fail**; the two CI/
+    harness tests pass there vacuously. **Live fault probe on a copy of
+    the real board:** three planted pointers (a ghost stamp, a renamed
+    SHIPPED row, a bogus radar sha) produced three named faults and
+    exit 1, while the real board stays `OK — … 9 SHIPPED marker(s)
+    matched to Done, 5 commit ref(s) resolved in radar, 138 unverified
+    (repo not supplied)`, exit 0. **CI green on the tip** (run
+    43234426015, `99a60ff`, 14 s) — and the runner's own lint step
+    printed the same 5 resolved refs, which is the half a depth-1
+    checkout would have faulted.
+  - **Not claimed:** the checker still cannot judge prose, and it
+    checks only refs whose repo it was handed — the 138 unverified refs
+    (pi-cicd, cluster-prototype, pkia.github.io …) are named as
+    unverified on every run, not proven. Passing more checkouts
+    (`--repo pi-cicd=PATH` …) widens it locally, but CI cannot see
+    those repos and the gate is designed not to pretend it can. IN
+    PROGRESS rows are still unchecked for required fields — the
+    resume-pointer rule remains a possible follow-on. Repo:
+    <https://github.com/pkia/radar>.
+
+- **radar — stop tracking bytecode** — done 2026-11-11 (the 11-09
+  repo-evidence **S**, picked over the GPU-baseline row as the
+  smallest fully-verifiable-on-this-box win). Shipped in radar
+  `37d92f4`:
+  - The whole fix is `git rm --cached
+    engine/__pycache__/__init__.cpython-313.pyc` — the `.gitignore`
+    rules the row asked for have existed since 09-18 (`59863a6`
+    created the file with `__pycache__/` + `*.pyc`); the index copy
+    was the last holdout because gitignore never untracks tracked
+    files. No source, test or CI change.
+  - **Negative control, executed both ways:** pre-fix, one
+    `touch engine/__init__.py && python3 -c "import engine"` left
+    `M engine/__pycache__/__init__.cpython-313.pyc` in status (the
+    documented dirtiness, reproduced); post-fix, the same bytecode
+    regeneration leaves `git status` empty.
+  - **Acceptance, executed:** `git ls-files` carries zero `.pyc`;
+    full pytest **15 passed**, then `python3 -m compileall .` rc 0,
+    tree clean after both; the working-tree pyc stays on disk,
+    now ignored (`git check-ignore` names `.gitignore:1`). **CI
+    green on the tip** (run 43034869692, `37d92f4`, success).
+
+- **personal-website — make link rot fail CI** — done 2026-11-10 (the
+  board's link-rot **S**, carried from the 11-09 devlog; picked over
+  the GPU-baseline row because every half of its acceptance verifies
+  on this box in one session with no hardware). Shipped in
+  pkia.github.io `9790499` (gate + tests) and `b6a9b0f` (the content
+  fix the gate's first live run caught):
+  - `tools/check_site.py` gains the **links** gate: every `<a href>`
+    must land. Internal links resolve the way Pages serves them —
+    relative, `/absolute`, and now also the site's own origin-absolute
+    `https://pkia.github.io/...` spellings, which the assets gate
+    always skipped as "external" (every post self-links its guid URL
+    that way, so the class was wide open) — and every `#fragment` an
+    internal link carries, including same-page links, must name a real
+    anchor (`id=`, or `<a name=>`) in its target file. The assets gate
+    keeps every non-`<a>` reference unchanged.
+  - The **external pass**: one timed GET per unique http(s) link
+    outside the origin (redirects followed, one retry on network
+    errors, fetched in parallel via `http.client`), report-only by
+    design — URL and status are named, but no third-party answer can
+    fail the run, so one flaky timeout never turns CI red; a run with
+    no network skips it loudly (refused probe → named SKIPPED line on
+    stdout AND stderr, zero link fetches). Knobs:
+    `CHECK_SITE_PROBE_URL`, `CHECK_SITE_TIMEOUT`.
+  - **Acceptance, executed:** suite **39 passed** (10 new): the four
+    planted faults (dangling internal href; missing cross-post anchor;
+    missing same-page anchor; broken origin-absolute link) fail
+    against the pre-change checker (git stash NC: 6 selected tests
+    failed) and pass against the new one, each naming file:line and
+    target; the external pass exercised hermetically against a
+    loopback HTTP server — a broken link reported
+    (`external: …/gone -> 404`) while the run stays green (exit 0), a
+    3 s endpoint at timeout=1 retried twice (the server saw both
+    attempts) and still green, a refused probe (`localhost:1`) skips
+    loudly with zero link fetches, unique URLs fetched once, and the
+    OK line carries the counts. **Live tree clean:** `OK — 80 pages,
+    72 posts, … links 849 internal / 229 external`, 16 flagged, all
+    report-only (WAF 403s, rate-limit 429s, private-repo 404s). **CI
+    green on the tip** (run 42832892119, `b6a9b0f`, success — the
+    runner's own Site house rules step did the real external pass:
+    `links 849 internal / 228 external`, 16 flagged); the Pages deploy
+    followed (run 42832890087).
+  - **The gate's first live run caught real rot** — what the row
+    predicted: two posts (09-13, 09-14) credited personal-website work
+    with links to `github.com/pkia/personal-website`, a repo that does
+    not exist; the site's repo is `pkia/pkia.github.io`. Both href and
+    visible link text fixed (`b6a9b0f`); the dead URL left the
+    external set (229 → 228 unique).
+  - **Not claimed:** external answers stay reports — the gate is
+    internal rot only, per the row (a private repo's anonymous 404, a
+    WAF 403 or a rate-limited 429 must not decide CI); anchor checking
+    covers `id`/`a[name]` in served HTML, not JS-generated ids; the
+    probe (the site's own origin) proves network reachability, not the
+    external hosts' health. Repo:
+    <https://github.com/pkia/pkia.github.io>.
 
 - **radar — lint the board in CI** — done 2026-11-09 (the carried
   **S** both the 11-08 and 11-09 devlogs name; picked over the
@@ -3376,6 +4174,279 @@ Append-only, one line per run — including failures and no-ops.
   across the owned checkouts); no external search (3 pickable after
   the addition). Next pickables: GPU-baseline row, radar lint row.
   ≈16 tool calls.
+
+- 2026-11-10 — shipped **personal-website: make link rot fail CI**
+  (`9790499` + `b6a9b0f`; CI green run 42832892119, Pages deploy
+  42832890087): the links gate (every internal href lands — including
+  origin-absolute spellings the assets gate skipped — and every
+  #fragment names a real anchor) plus a report-only timed external
+  pass (one GET per unique URL, loud SKIPPED when network-less). 39
+  tests pass (10 new; stash NC: all 6 selected fail pre-change); live
+  tree 849 internal / 229 external clean; CI green on the tip. The
+  first live run caught real rot: two posts linked the nonexistent
+  pkia/personal-website slug — fixed to pkia/pkia.github.io. Sync:
+  the 11-10 devlog carried no new rows (all three items already under
+  Proposed); repo evidence added nothing; no external search (3
+  pickable). ≈17 tool calls.
+
+- 2026-11-11 — implementer run: synced the 11-11 devlog (1 new:
+  personal-website surface-the-external-link-report row; the other two
+  rows already on the board). Picked **radar: stop tracking bytecode**
+  and shipped `37d92f4` — premise corrected at pick time (gitignore
+  rules landed 09-18; the real defect was the single tracked pyc, so
+  the fix is one `git rm --cached`). Evidence: NC dirty pre-fix /
+  clean post-fix, 15 passed + compileall rc 0 with an empty status,
+  CI green (run 43034869692). Repo evidence sweep: trees clean, and
+  switch-l4t-gpu lives at `~/switch-l4t-gpu-clone` (renamed checkout,
+  same repo — GPU-baseline row stays actionable). ≈12 tool calls.
+
+- 2026-11-12 — implementer run: synced the 11-12 devlog (2 new: the
+  pi-cicd feed-freshness tripwire and this run's pick, the radar
+  ledger-pointer lint). Picked **radar: lint the ledger's pointers** and
+  shipped `99a60ff` — `tools/check_board.py` now faults a `**SHIPPED**`
+  stamp with no same-title Done row and any commit ref that does not
+  resolve in the history of the repo its row's title prefix names
+  (`--repo NAME=PATH`; radar by default, others counted unverified);
+  ci.yml checks out with `fetch-depth: 0` so the refs resolve on a
+  runner. Evidence: 24 passed (9 new), the 7 new pointer tests fail
+  against the pre-change checker under `timeout -s KILL`, live fault
+  probe on a board copy produced 3 named faults + exit 1 while the real
+  board is clean, CI green (run 43234426015, and the runner's own lint
+  step resolved 5 refs). En route the gate faulted the first draft of
+  its own Done row for citing a planted bogus sha — fixed by
+  un-backticking the example. Repo evidence sweep: every owned tree
+  clean, all listed CI runs green. ≈18 tool calls.
+
+- 2026-11-14 — implementer run: synced the 11-14 devlog (no new rows —
+  its three items are the fingerprint-demo deploy, the GPU baseline and
+  the external-link report, all already on the board; Proposed holds 3
+  actionable rows, so no external search). Picked
+  **personal-website: surface the external-link report** (the 11-11
+  **S**) over the other two: every clause of its acceptance verifies on
+  this box in one session, while the deploy row needs the owner's CD
+  install and the GPU row needs the Switch powered. Shipped `548e32a` —
+  the external pass appends its findings to `$GITHUB_STEP_SUMMARY`
+  (or `--summary PATH`) as a URL/status table, with zero-findings and
+  skipped-pass states stated explicitly, a path inside the tree
+  refused, and failures swallowed so the exit code never moves; the
+  read-only guard narrowed to exactly-one-write-call-site plus a
+  byte-identical-tree twin. Evidence: 48 passed (9 new), NC 9 of 10
+  fail against the pre-change tool, live drill on a real-tree copy with
+  a planted dead URL (exit 0, named 404, 241 unique / 17 flagged, and
+  the private-repo 404 spot-checked as correct), CI green (run
+  43603265343) with the runner's own step writing the summary file.
+  Not claimed: the rendered page needs a signed-in viewer. ≈22 tool
+  calls.
+
+- 2026-11-13 — implementer run: synced the 11-13 devlog (1 new: pi-cicd
+  deploy the fingerprint demo on pull-based CD — filed Proposed). Picked
+  **pi-cicd: a freshness tripwire for the feed** (the 11-12 **S**,
+  restated 11-13) over the GPU-baseline row: every half of its
+  acceptance verifies on this box with no hardware. Shipped `d9bfb1a` —
+  `feed-fresh` reads the newest ITEM date of the published feed (never
+  `lastBuildDate`), exits 0 fresh / 1 STALE naming the hours and the
+  limit / 2 unmeasurable, and writes nothing at all (stateless by the
+  row's own acceptance); hourly unit + timer, install.sh, both doc
+  indexes and a CI byte-compile step wired. Evidence: 18 new tests,
+  full suite 386 passed 1 skipped; live on the real feed rc 0 (`8.2 h
+  old`), and on a copy with pubDates shifted four days but the build
+  stamp left fresh rc 1 naming `104.2 h old` — the build-stamp control
+  in the other direction also ran (fresh items, 5-day-old build stamp,
+  rc 0); `systemd-analyze verify` rc 0 on both units. CI green (run
+  43440765165, 383 passed / 4 skipped on the runner). Units not
+  installed — `/etc` is cron-gated; owner step is
+  `sudo ~/pi-cicd/install.sh`. Console-page half not built (needs a
+  Prometheus textfile collector). ≈24 tool calls.
+
+- 2026-11-15 — shipped **radar: the board refuses a row it can never
+  ship** (the 11-15 devlog's **S**; synced the same post's three items —
+  this one, the pi-cicd `--prom-file` freshness gauge and the
+  personal-website external-findings allowlist — and picked this because
+  every clause of its acceptance verifies here in one session and it
+  stops the loop paying to read rows that can never ship). Shipped
+  `a350284`: `check_board.py` gains `OUT_OF_SCOPE` (old-deployment repos
+  + Train/cs2-train) enforced on **actionable Proposed rows only**, by
+  title prefix; ledger rows and in-scope prose are untouched; the OK
+  line reports the count. Evidence: 7 new tests, suite **31 passed**;
+  negative control by execution — 5 of the 7 fail against the pre-change
+  checker and the 2 that pass are its vacuous controls; live drill on a
+  board copy (planted twitter-launch row) exits 1 naming the project at
+  its own line while the real board exits 0; **CI green** (run
+  43722292383) with the runner's Board lint step printing
+  `0 out-of-scope Proposed row(s)`. Not claimed: the prefix list is
+  hardcoded and the rule reads the title, not intent. ≈19 tool calls.
+
+- 2026-11-16 — implementer run: synced the 11-16 devlog's radar list (3
+  new rows: cluster-prototype offload client against the real two boxes,
+  this pi-cicd tools manifest, personal-website Currently panel from the
+  board) and picked the manifest row — it retires a duplicate-list pair
+  whose drift already turned a list edit into a red build, and every
+  clause verifies here with no hardware and no owner install. Shipped
+  pi-cicd `dcb1832`: `tools.manifest` is the only list; install.sh links
+  and chmods from it and refuses a root tool it omits; `--check-tools`
+  validates and exits before touching anything, so the test drives the
+  installer's own rule. Evidence: 10 install tests (was 2), suite **394
+  passed, 1 skipped**; negative control by execution — 7 of 10 fail
+  against the pre-change installer, the 3 passes being data-side checks
+  and the linking test it satisfied by luck; **CI green** (run
+  43883559242) with all ten PASSED on the runner (391 passed / 4 skipped
+  there). Not claimed: the live `~/.local/bin` is only refreshed by the
+  owner's `sudo install.sh` pass. Observed and left alone: pi-cicd's
+  worktree carries uncommitted `docs/units.md` and an untracked
+  `docs/incidents/2026-11-16-dns-outage.md` from the earlier dns-check
+  work — not this run's to commit. ≈40 tool calls.
+
+- 2026-11-17 — implementer run: synced the 11-17 devlog's radar list (one
+  genuinely new row, pi-cicd's SHA-pin audit of every `uses:` line; the
+  other two were already on the board) and picked the cluster-prototype
+  offload live-run row — the top item of both the 11-16 and 11-17 lists,
+  and the only candidate that proves shipped-but-unproven code end to end;
+  both boxes were healthy at pick time. Shipped cluster-prototype
+  `1894a31` (offload names a lost lease: per-unit attempt in the summary
+  and `--json`), `5cc595e` (the `units_done` counter the drill found dead —
+  `bump_worker_units_done()` had no caller, so /metrics and the console
+  page read a permanent zero) and `6eb122d` (`tests/drill_offload_live.py`,
+  13 live checks + IMPLEMENTATION.md addendum). Evidence: the drill ran
+  **ALL PASS** against the production coordinator — attribution for job
+  1892 identical to the coordinator's rows and to the Switch worker's own
+  claim log, client 32.3 MiB/s vs hand-run clusterctl 33.3 MiB/s, and job
+  1894 (64×32 MiB) survived a real SIGKILL of the Switch worker: complete
+  in 65 s, 64/64 verified, the killed attempt named (`lease_expired`,
+  switchlab, attempt=1), the unit finished at attempt 2, worker back
+  healthy on its own (pid 65773 → 66248). Suite **73 passed, 1 skipped**;
+  negative controls by execution — 3 new client tests fail against the
+  pre-change offload.py, the counter test fails `0 != 3` against the
+  pre-fix store; **CI green** on all three tips (44101278120, 44103113020,
+  44104116251). Not claimed: the live coordinator keeps its pre-fix store
+  until its next restart, so the live counter still reads 0; the drill is
+  manual (not in CI) and its throughput band is coarse. ≈35 tool calls;
+  the dangerous-command gate blocked one heredoc that merely *mentioned*
+  `kill -9`, so the addendum was appended from a scratch file.
+
+- 2026-11-18 — implementer run: synced the 11-18 devlog's radar list (3
+  rows — cluster-prototype's coordinator restart, this pi-cicd dns-check
+  timer, personal-website's devlog-card gate — plus a measured note on the
+  card row: card titles match each post's `<h1>` on all 80, but 53 of 80
+  summaries differ from the post's meta description and 7 of 80 from the
+  feed description, so a strict equality gate there is red on arrival).
+  Picked the dns-check timer: the 11-16 outage went unnoticed for ~32
+  minutes and was found by Hermes failing to reach a provider, while the
+  read-only verdict written that morning is a tool nobody runs at 23:35.
+  Shipped pi-cicd `2c00447` (dns-watch + `DNS_CHECK_RESOLV_CONF` + the
+  header-only marking + units/install/docs/CI + 14 tests) and `6cc50b3`
+  (probe resolution when PATH has no dns-check — the first push was red on
+  exactly that, 11 of 14 tests). Evidence: suite **409 passed, 1 skipped**
+  (15 new, real CLIs + loopback ntfy sink); negative controls by execution
+  — the pre-change dns-check fails the first-page test, an always-page
+  mutant fails two, the pre-`expanduser` tool fails the HOME test, and
+  removing `resolve_probe()` fails the stripped-PATH test; **CI green**
+  (run 44323641397 on the tip: 406 passed, 4 skipped). Live: healthy rc 0,
+  state seeded, second run silent, `systemd-analyze verify` rc 0; the
+  first live run found a real defect (`Path("~")` is literal) — fixed in
+  the same push. Not claimed: units not installed (`/etc` owner-gated) and
+  no page has gone through the real ntfy yet — `/etc/dns-watch.conf` is the
+  owner's one step. ≈45 tool calls.
+
+- 2026-11-19 — implementer run: synced the 11-19 devlog's radar list (its
+  three items — this pi-cicd action-pin audit, personal-website's findings
+  allowlist and the Currently-panel generator — were all already Proposed;
+  no new rows). Repo evidence added nothing: every owned repo's last CI is
+  green (cluster-prototype, pkia.github.io, switch-l4t-gpu, radar) and the
+  only TODO/FIXME hit is `new-project`'s own template placeholder. Fewer
+  than three Proposed rows did not apply, so no external search. Picked the
+  pin audit as the 11-19 **S**: on-box, read-only, and every clause of its
+  acceptance verifiable in one session. Shipped pi-cicd `8785a0c`
+  (`action-pins` + 16 tests + CI step + manifest + layers section + the
+  repo's own checkout pinned to v4.2.2's SHA) and `e12a4b0` (the multiline
+  and flow-mapping `uses:` forms plus their tests — a gate with a silent
+  hole is not a gate). Evidence: suite **429 passed, 1 skipped**; the
+  tool's own first run exited 1 on `ci.yml:12 actions/checkout@v4` before
+  any wiring; negative control by execution — a grep-shaped stub fails 3
+  of the 18 for real reasons; **CI green on both tips** (44540954024,
+  44541732399 — the runner's audit step printed the OK line and 426
+  passed, 4 skipped). Not claimed: the ref's shape, not the commit behind
+  it; and only pi-cicd audits so far. ≈38 tool calls; one gate block —
+  `chmod +x tool && ./tool` is "dangerous" in cron mode, so chmod ran
+  alone and the tool was invoked as `python3 action-pins`.
+
+- 2026-11-20 — implementer run: synced the 11-20 devlog's radar list — two
+  genuinely new rows (the page ledger, and a second raw-IP probe endpoint so
+  one blackholed address is not an outage) plus the coordinator-restart row
+  carried from 11-18; **something was added to the board this run: the
+  two-endpoint row.** Repo evidence added nothing (clean trees, no TODO
+  clusters in the five owned checkouts), and eight actionable Proposed rows
+  meant no external search. Picked the ledger as the devlog's top **S**: the
+  retry that shipped that morning (`a44e325`, `73fc912`) already answers a
+  *stalled* connect, and what is left is that dns-watch keeps a verdict and a
+  count and throws the night away. Shipped pi-cicd `62951a6` — a per-page
+  ledger beside the state file (timestamp, verdict, exit code, retry used),
+  rotating to `.1` at `LEDGER_MAX_LINES`, and `--history` printing the last
+  24 h across both generations. Evidence: `tests/test_dns_watch.py` 26
+  passed (10 new), full suite **440 passed, 1 skipped**; the acceptance
+  clauses are the executed tests (six changes → six lines; unchanged runs
+  byte-identical; cap 3 rotates; empty-ledger `--history` dated header, exit
+  0); negative control by execution — 8 of the 10 new tests fail against the
+  pre-change tool, the 2 that pass being the absence-asserting controls;
+  **CI green** (44751540753, 437 passed, 4 skipped on the runner). Live:
+  `-v` healthy/unchanged and silent, `--history` prints
+  `0 page(s) … 0 line(s)`, rc 0. Not claimed: `pages.log` does not exist on
+  the live box yet (no verdict change since it landed), it records pages not
+  runs, and one rotation generation drops the oldest pages. ≈34 tool calls;
+  no gate blocks. One fixture trap worth naming: the test helper rewrites
+  `dns-watch.conf` on every call, so a per-test config written by hand is
+  silently replaced — the rotation test sets its cap through the helper's
+  `extra=` instead.
+
+- 2026-11-21 — implementer run: synced the 11-21 devlog's radar list — one
+  genuinely new row (record every run, not just every page: a dead timer is
+  invisible today) and its second item is the row this run shipped; the
+  coordinator-restart row was already on the board. **Something was added:
+  the record-every-run row.** Repo evidence added nothing (clean trees, no
+  TODO clusters in the owned checkouts), and eight actionable Proposed rows
+  meant no external search. Picked the two-endpoint probe row — the 11-21
+  devlog names it "still the top pickable row", and every clause of its
+  acceptance verifies here in one session. Shipped pi-cicd `a7025f7`:
+  `dns-check` carries an ordered endpoint list (default two addresses on
+  different networks), the OK line names the endpoint that answered, a dead
+  address is a `fallback` and a whole failed pass is still the `retry` the
+  ledger parses, and only every endpoint failing both passes is EGRESS —
+  with each endpoint named. Evidence: 32 passed in `tests/test_dns_watch.py`
+  (6 new), full suite **446 passed, 1 skipped**; negative control by
+  execution — all 6 new tests fail against the pre-change probe; **CI green**
+  (44912890647, 443 passed / 4 skipped on the runner, `sh -n dns-check`
+  ran). Live: default healthy naming 1.1.1.1, a dead first endpoint
+  healthy via fallback naming the live one, both refused exit 2 naming
+  both, `dns-watch -v` silent and `--history` 0 pages. Not claimed: any
+  HTTP answer still counts as egress (302 included), the pair is hardcoded
+  so a tunnel-wide failure still reads EGRESS, and the ledger column says
+  `retry=no` for a fallback. ≈42 tool calls; no gate blocks.
+
+- 2026-11-22 — implementer run: synced the 11-22 devlog's radar list — one
+  genuinely new row (make a silent fallback visible: a dead endpoint
+  survives and leaves no record) plus the record-every-run row the 11-21 run
+  filed, which today's post still calls the top open row; the
+  coordinator-restart row was already on the board. **Something was added:
+  the fallback-visibility row.** Repo evidence added nothing (clean trees, no
+  TODO clusters), and eight actionable Proposed rows meant no external
+  search. Picked record-every-run: a quiet night and a dead timer were the
+  same bytes, and the fix is the reading of a stamp every run already
+  writes. Shipped pi-cicd `4bd1519` — `--history` prints the newest run's
+  age; `--stale` / `--stale-after HOURS` is a one-line verdict (0 fresh,
+  1 STALE, 2 unmeasurable naming the state path) that probes nothing and
+  writes nothing, with `STALE_AFTER_HOURS` (default 2 h) in the config and
+  docs/units/layers/template updated. Evidence: 13 new tests, file at 45
+  passed, full suite **459 passed, 1 skipped**; negative control by
+  execution — all 13 fail against the pre-change tool, and the rc-2 cases
+  needed text assertions because argparse's own unknown-flag exit is also 2;
+  **CI green** (45032108543; every new test PASSED by name, runner 456
+  passed / 4 skipped). Live: `--stale` OK at 0.5 h on the real state, and
+  measured that the units ARE installed and firing hourly (a correction to
+  older rows). Not claimed: pi-doctor does not call `--stale` yet,
+  `--history` still exits 0, and the 2 h limit is a judgement about timer
+  drift. Honest miss inside this run: radar's own CI was **red** on one
+  intermediate commit (`33afb4e` — the new ledger-refs row's backticked shas
+  bound to radar and faulted, and a `| tail` had masked the checker's exit
+  code) and is green on the tip (`e01dce6`). ≈45 tool calls; no gate blocks.
 
 ## Notes
 

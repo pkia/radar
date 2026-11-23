@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the board lint resolves commit refs against this repo's
+          # history; a depth-1 checkout would fault every one of them
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

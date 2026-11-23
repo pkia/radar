@@ -4,6 +4,240 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-22 — **A gate's exit status does not survive a pipe, and a row's
+  own backticked shas bind to the row's own repo.** `python3
+  tools/check_board.py | tail -2` printed the fault lines *and* returned
+  tail's 0, so the `&&` chain committed and pushed a red board. Run a gate
+  unpiped (or with `set -o pipefail`) before the commit it guards, and when
+  filing a row about refs that live in another repo, do not backtick the
+  shas: the checker binds them by the title's project prefix, so a `radar —`
+  row citing pi-cicd shas faults itself.
+
+- 2026-11-22 — **An exit code the tool owns can collide with argparse's own
+  failure code, so pin the line as well.** `--stale`'s contract is 0 fresh /
+  1 STALE / 2 unmeasurable, and argparse also exits 2 on an unknown option —
+  which is exactly what the pre-change tool does when the negative control
+  runs the new tests against it. A test asserting only `rc == 2` for the
+  missing-state case would therefore have passed against code that never
+  implemented the flag at all. Assert the verdict word, the path and the
+  empty stdout too, and say in the ledger that the old tool's rc was
+  vacuous. General shape: before claiming a fault-branch test is
+  negative-controlled, check whether the *old* program can produce the same
+  exit code for an unrelated reason.
+
+- 2026-11-22 — **A state file being rewritten hourly is evidence the timer is
+  installed, whatever the board says.** Three earlier rows carried "the units
+  are not installed" as a not-claimed clause; the live state file's
+  `checked_at` was 30 minutes old and `dns-watch.timer` was active, so the
+  clause had been stale for days and the hourly firing was already there to
+  read. Before repeating a not-claimed clause from the board, measure it —
+  `systemctl is-active`, the state file's mtime, the unit's own journal — and
+  correct the row in the same run.
+
+- 2026-11-21 — **A new success path gets new words; the old marker keeps
+  its own case.** `dns-check` prints `(retry; first attempt failed)` and
+  `dns-watch` parses that exact string into the ledger's `retry=` column —
+  a value crossing a language boundary. Adding a second endpoint created a
+  second way to succeed (the fallback), and making it share the retry
+  marker would have told the ledger a retry happened when none did, so the
+  fallback got its own note (`fallback; N endpoint(s) failed first`) and
+  the retry note stayed verbatim for the retry case only. The pinning test
+  asserts both halves: the fallback line says `fallback` **and** no
+  `retry;` appears anywhere in that run. When a producer gains a success
+  path, ask which downstream reader keyed on the old one.
+
+- 2026-11-21 — **Pin a third-party default by stubbing the client on
+  `PATH`, not by trusting the network.** The probe's default endpoint list
+  lives in the tool and points at two public addresses; a CI test that
+  actually fetched them would be slow, flaky and would still not prove
+  *which* URLs were tried. A stub `curl` that appends its last argument to
+  a log and exits 7 (plus a stub `getent` that answers, so the verdict is
+  egress-only) makes the default list observable hermetically: the test
+  asserts the exact four calls `1.1.1.1, 8.8.8.8, 1.1.1.1, 8.8.8.8` and
+  the order, so a changed endpoint is a reviewed diff rather than a
+  silent drift. Assert the literal values a default carries, not "two
+  distinct URLs" — the literal is what a reviewer needs to see.
+
+- 2026-11-20 — **Two acceptance clauses that look like they conflict are
+  usually naming the granularity.** "Six simulated changes write six lines"
+  and "the ledger is byte-identical across two runs with no change" cannot
+  both hold for a per-run record — only a per-*event* record satisfies the
+  pair, and that decided the whole design (write on a published page, never
+  on a run). Before building, read the clauses together and ask which unit
+  of work makes them all true; then note that the wrong-unit version is the
+  negative control: the two new tests that passed against the old tool were
+  exactly the ones asserting *absence* (dry-run, unpublishable page), which
+  an old tool that writes nothing satisfies for free.
+
+- 2026-11-20 — **A value one program reads out of another program's prose
+  is pinned by executing the producer, not by a shared constant.** The
+  ledger's retry column reads dns-check's `(retry; first attempt failed)`
+  line — a string copied from POSIX sh into Python, where no compiler
+  connects them. A constant shared through a header would not be possible
+  across the language boundary anyway, so the pin is a test that drives the
+  real dns-check through a server that stalls its first attempt and asserts
+  `retry=yes` lands in the ledger. When a parser reads another tool's
+  output, make the producer emit that output for real in a test — a fixture
+  string copied into both halves proves nothing about either.
+
+- 2026-11-19 — **A text-format gate written without the parser must
+  enumerate the shapes the format allows for the one key it reads.** The
+  first `action-pins` handled comments, quotes and block scalars — the
+  three cases a grep gets wrong — and silently skipped `uses:` whose value
+  sits on the next, more-indented line, plus the flow mapping
+  `- {uses: x@v4}`. Both are legal YAML and both walked straight past the
+  audit: a gate with an unread shape passes the very thing it exists to
+  refuse. When reading one key out of a format you are not parsing, list
+  every legal spelling of *that key* (inline, quoted, next-line scalar,
+  flow mapping, inside a block scalar, commented) and give each a test —
+  the stub-shaped negative control then shows exactly which ones the naive
+  reader gets wrong (here 3 of 18), which is the coverage argument.
+
+- 2026-11-19 — **`chmod +x tool && ./tool` is "dangerous" to the cron
+  approval gate** (a chmod followed by immediate execution, no user to
+  approve), so the obvious way to smoke-test a brand-new tool is blocked in
+  unattended runs. Run `chmod 755 tool` as its own command and invoke the
+  tool as `python3 tool`; commit the bit with
+  `git update-index --chmod=+x tool`, and have the tests call
+  `sys.executable` rather than the path — the exec bit then matters only to
+  install.sh and to `git ls-files -s`.
+
+- 2026-11-18 — **A default that only exists on this box is invisible
+  from this box.** `dns-watch` defaulted its probe to the bare name
+  `dns-check`, which resolved here because `~/.local/bin/dns-check` is
+  a symlink and that dir is on PATH — and died with `ENOENT` on the
+  runner, reddening 11 of 14 new tests on the first push while the
+  local suite was green. Resolve in order (explicit path verbatim →
+  PATH → the file shipped beside the script), and **before pushing any
+  tool that shells out to a sibling, run its tests under the runner's
+  PATH (`PATH=/usr/bin:/bin`)** — a one-line habit that reproduces the
+  whole class. The failing run is also the control: the fix is only
+  worth claiming because the stripped-PATH test fails without it.
+
+- 2026-11-18 — **`Path("~/x")` is a directory literally named `~`.**
+  The state path's default was `~/.local/state/dns-watch/state.json`
+  and `pathlib` does not expand it, so the live run wrote
+  `./~/.local/state/dns-watch/state.json` *inside the repo* — and the
+  tool stayed self-consistent (load and save agreed on the same wrong
+  path), so its own output looked perfectly healthy. Expand `~` at the
+  boundary (config load and the flag) and test it by running the tool
+  with `HOME=<tmp>` in a subprocess and asserting where the file
+  landed; asserting "a file was written" would have passed.
+
+- 2026-11-17 — **Two readers of the same number agree with each other and
+  prove nothing.** `cluster_worker_units_done_total` and the console page
+  read `workers.units_done`; the metrics drill compared /metrics to /health,
+  which reads the same field — so both read 0 forever and the drill stayed
+  green while `bump_worker_units_done()` had no caller at all. A live
+  attribution check must cross the boundary to the side that did the work:
+  the worker's own claim log (`~/cluster/var/logs/worker-switchlab.log`, or
+  `journalctl -u cluster-worker` on the Pi) names the unit ids it claimed,
+  independently of the coordinator's rows. When a check passes, ask what
+  *other* subsystem would disagree if the number were fake.
+
+- 2026-11-17 — **Assert the mechanism, not the worker a requeue happens to
+  land on.** The kill drill's first version demanded the killed unit finish
+  on `raspberrypi`; the requeued unit is simply the next claim, so one run
+  finished it on the Pi and the next on the Switch after its restart —
+  same mechanism, different winner. The stable assertion is
+  `attempt >= 2` plus *that worker's own log* showing the attempt-2 claim
+  (Pi: journalctl of cluster-worker; Switch: its worker log). Only the
+  lease_expired event names the worker that held the lost attempt.
+
+- 2026-11-16 — **A negative control must not run the old code's root side
+  effects.** The installer's pre-change `install.sh` ignores `--check-tools`
+  and runs the whole install: `sudo cp` into `/etc/systemd/system`, unit
+  enables, `systemctl restart ntfy`. Stashing it and running the new tests
+  would have performed a real install on the live box, in a test. The
+  control that worked: copy the repo to a temp dir, put the old script
+  back *there*, and prepend a PATH dir whose `sudo` and `gh` are no-op
+  stubs — then the same tests run and their failure is the evidence. Same
+  family as the 10-29 soak lesson (a control executes the real code, so
+  scope what the real code can reach); the general rule: before
+  negative-controlling a script, list its privileged calls and neutralise
+  every one of them on PATH, or prove the control's blast radius is empty
+  afterwards.
+
+- 2026-11-16 — **A duplicated list is a defect even when both copies are
+  correct today.** `install.sh`'s eighteen `ln` lines, its separate chmod
+  list and the test's `TOOLS` array were three copies of one fact: adding
+  `dns-check` meant editing all three, and forgetting one turned a list
+  edit into a red build. Replace duplicates with one committed list *plus*
+  one written rule for what belongs in it — here "extensionless regular
+  file at the repo root starting with a shebang", which needs no ignore
+  list — and let the test execute the installer's own checker
+  (`--check-tools`) instead of restating the rule in Python. Two readers,
+  one implementation, and a planted fault (a stub script, a deleted
+  entry) fails both.
+
+- 2026-11-14 — **A step summary is a file the runner harvests, and the
+  page it feeds is not readable back anonymously.** `$GITHUB_STEP_SUMMARY`
+  is a path the runner creates per step and collects at step end, so a
+  summary must be *appended* (other steps share the file) and written
+  during the step — and its verification stops at the file: the job page
+  needs a signed-in viewer ("Sign in to view logs") and the REST
+  check-run `output.summary` for the job comes back empty. Cite the
+  runner's own path line from the log plus the block's exact content
+  from a local drill; never claim "it renders on the page". Corollary
+  from the same change: refuse a summary path that resolves inside the
+  checked tree, or a later `--summary .` writes into the site.
+
+- 2026-11-13 — **A heartbeat check must read the thing that beats, not
+  its packaging.** A feed generator rewrites `lastBuildDate` every time
+  it renders, so a feed rebuilt around a three-day-old post still looks
+  alive; `feed-fresh` measures the newest **item's** `pubDate` (Atom
+  `published`/`updated` as fallback) and every stale fixture carries a
+  fresh build stamp, so a checker reading the stamp passes the tests'
+  own faults. General shape: when a gate measures "is X still
+  happening", name the timestamp that only advances when X happens, and
+  make the misleading one present-but-wrong in the fixtures.
+
+- 2026-11-13 — **`--json` that also prints the human line hides behind
+  the fault path.** The 10-12 lesson recurred here and the test missed
+  it: the JSON test only ran the STALE case, where the human line goes
+  to stderr, so `json.loads(stdout)` parsed fine while a *fresh* feed
+  printed JSON plus prose on stdout. Test machine output on the
+  **success** path too — the fault path's stream discipline can mask it.
+
+- 2026-11-12 — **When a capability needs the token a read-only guard
+  bans, narrow the guard to a proof of scope — do not delete it.** The
+  board checker's read-only test asserted the source contains no
+  `subprocess` at all; resolving commit refs needs git. Dropping the
+  token would have left "read-only" as prose. The replacement proves
+  the property instead: exactly one `subprocess.run` call site, its
+  argv starts `["git", "-C"`, its verb is `cat-file` and no write verb
+  appears, and a behavioural twin runs it against a fixture repo and
+  asserts HEAD, worktree and directory listing are unchanged. Any guard
+  that becomes false by design gets a narrower true one in the same
+  change, or the next run quietly loses the property.
+
+- 2026-11-12 — **A history-dependent gate needs the history in the
+  checkout.** The pointer lint resolves shas with `git cat-file`, but
+  `actions/checkout` is depth-1 by default, so the first CI run would
+  have faulted every ref with "not in history" while the local run was
+  green — a false-red that looks like a board defect. Pin
+  `fetch-depth: 0`, and read the runner's own OK line (it named the
+  same 5 resolved refs as the box) as the evidence the history was
+  really there, not just that the step exited 0.
+
+- 2026-11-10 — **Read a source-scan's banned tokens before choosing the
+  stdlib client.** The site checker's read-only test bans the literal
+  `open(` — which is a substring of `urlopen(` — so urllib would have
+  reddened the guard the moment the external pass landed. `http.client`
+  does the same job scan-clean. Any new capability in a repo whose
+  guard is a token scan: read the token list first, then pick the
+  import.
+
+- 2026-11-10 — **The triage probe must share the gate's resolver.** A
+  pre-build probe of the real tree reported 10 dangling internal links
+  — all false: the probe resolved origin-absolute URLs
+  (`https://pkia.github.io/...`) down the relative-path branch while
+  the gate strips the origin first. The 11-04 lesson ("a link checker
+  must resolve the way the server does") applies one level up: a probe
+  that triages the gate's future findings must reuse the gate's
+  resolve() exactly, and every probe finding goes against the
+  filesystem before any content fix is written.
+
 - 2026-11-09 — **A workflow that triggers on a branch the repo never
   pushes to has never run.** radar's ci.yml said `branches: [main]`
   while the default branch is master — `gh run list` for the repo
@@ -333,3 +567,18 @@ still means "this row" after the next conversion. A scan/gate that pins a
 - 2026-10-06 — a test helper that monkeypatches a module-level loader silently undoes a patch the test just made: run_main() set mp.load_publisher to the recorder, overwriting the boom an earlier line had installed, so the failure-path assertion proved nothing until the test called mp.main() directly. Patch the module yourself when the assertion is about the patch.
 
 - 2026-10-27 — **a host-specific default leaks host files into hermetic tests on the dev box.** The pi-backup tests share one `write_config` helper, so adding `RECEIPTS_DIR` with a real-path default meant every existing tmp archive on this Pi would silently fold the live receipts in — breaking exact `nfiles` counts here while staying green on CI (where `/home/ev` doesn't exist), a Pi-only flake by construction. Pin the default *out* (`KEY=` empty) in the shared helper and give the default itself its own dedicated test; same shape as the 09-08 machine-private-state rule, one level down: it is not only test-*read* host state that bites, it is test-*input* defaults.
+
+- 2026-11-15 — **a scope rule belongs on the row's registered prefix, not
+  its prose, and a fixture edit must move both sides of a ledger pair.**
+  The board's out-of-scope lint judges `title_prefix()` — the same helper
+  the commit-ref binding already used — so a row is refused for the project
+  it is *filed under*, while an in-scope row may still discuss a retired one
+  in its body. Sharing the helper (rather than writing a second splitter) is
+  what keeps the new rule from drifting from the old one. Two fixture
+  traps cost a cycle each: the minimal board's own `good row` is actionable,
+  so counts in a new test are relative to the fixture + the planted rows;
+  and renaming a row's title in only one section makes the SHIPPED-twin
+  check fault the fixture itself — edit the stamp row and its Done twin
+  together. Also, when negative-controlling a tolerant checker, name which
+  new tests pass against the old code and why: here 2 of 7 pass because
+  the old checker never read scope at all, which is a control, not coverage.
