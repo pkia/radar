@@ -4598,6 +4598,31 @@ Append-only, one line per run — including failures and no-ops.
   tests) and a restart of the timer — the audit reports, the owner's
   install.sh pass fixes. ≈35 tool calls; no gate blocks.
 
+- 2026-11-24 — implementer run: synced the 11-24 devlog's radar list — three
+  items (fallback visibility, radar ledger refs, coordinator restart), **all
+  already on the board**, so nothing new was filed; eight actionable Proposed
+  rows meant no external search, and repo evidence added nothing (clean trees,
+  the suite green at 476). **Picked the fallback-visibility row** — the
+  11-24 post's top pickable slot and the one hole the 11-21 two-endpoint ship
+  opened: the verdict did not change, so a fallback had no page, no ledger
+  line, no state field — nothing. Shipped pi-cicd `7b02766`: dns-check's
+  fallback note now names the endpoint(s) that failed instead of counting
+  them; dns-watch writes one `fallbacks.log` line per run that used one
+  (timestamp, marker, `failed=`, `answered=`) beside `pages.log` under the
+  same cap and rotation; `--history` merges the last 24 h of both by stamp
+  and prints one count per kind. Evidence: `tests/test_dns_watch.py` 54
+  passed (9 new), full suite **476 passed, 1 skipped**, also green under
+  `PATH=/usr/bin:/bin`; negative control by execution — 6 of the 9 new tests
+  fail against the pre-change tools, the 3 passing ones assert absent files,
+  and the rewritten fallback-note test fails too; **CI green** (45421444437;
+  every new test PASSED by name, runner 473 passed / 4 skipped). Live: dead
+  first endpoint → `OK (fallback; http://127.0.0.1:1/ failed first)` in
+  0.09 s; two runs on an unchanged healthy verdict → two fallback lines, no
+  `pages.log`, `--history` `2 fallback(s)` with files byte-identical
+  afterwards. Not claimed: the live state dir's first real fallback line,
+  and any alerting on fallbacks (the record is for `--history`/journal).
+  ≈30 tool calls; no gate blocks.
+
 ## Notes
 
 - **Deployment scope locked by owner 2026-11-02** — the radar works on
