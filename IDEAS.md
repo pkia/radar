@@ -374,16 +374,26 @@ its measured premise first) — all under Proposed.)*
     and `--history` then printed `0 page(s) … / 2 fallback(s) in the last
     24 h` with the state and ledger hashes identical afterwards. (`-v` also
     names the fallback on stderr, so the journal carries it.)
-  - **Not claimed:** the live state directory has no `fallbacks.log` yet —
-    the verdict has not leaned on a second endpoint since this landed, so
-    the first live line will be the next real fallback (the two lines above
-    are a drill in a scratch state dir). Only a *fallback* is recorded:
-    a retry-made OK (`ip_tries=2`) writes no fallback line by design — it is
-    a different event, still visible only in the probe's own output. Nothing
-    re-pages or alerts on fallbacks: the record is for `--history` and the
-    journal, not for the phone. `/etc/dns-watch.conf` is untouched, so the
-    hourly unit inherits the new file beside its existing ledger with no
-    restart. Repo: <https://github.com/pkia/pi-cicd>.
+  - **Not claimed:** only a *fallback* is recorded: a retry-made OK
+    (`ip_tries=2`) writes no fallback line by design — it is a different
+    event, still visible only in the probe's own output. Nothing re-pages or
+    alerts on fallbacks: the record is for `--history` and the journal, not
+    for the phone. `/etc/dns-watch.conf` is untouched, so the hourly unit
+    inherits the new file beside its existing ledger with no restart.
+  - **Corrected later in this run, by measuring instead of assuming (the
+    11-22 lesson):** the first version of this row said the live state
+    directory had no `fallbacks.log` yet. It did — the **real hourly unit**
+    ran the new code from the repo symlink and at **14:47:21 UTC on
+    2026-11-24** reached its OK through the second endpoint
+    (`journalctl -u dns-watch` prints `OK (fallback;
+    https://1.1.1.1/cdn-cgi/trace failed first)`), writing exactly one line
+    — `failed=https://1.1.1.1/cdn-cgi/trace
+    answered=https://8.8.8.8/` — with **no page** (`pages` still 6),
+    **no** `pages.log` created, and the next hour's direct OK adding
+    nothing. So the row's headline clause is proven on the live unit, an
+    hour after the code landed, not only in the drill below; and the live
+    `--history` reads `0 page(s) … / 1 fallback(s) in the last 24 h`.
+    Repo: <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — put the stale verdict in front of the audit** — done
   2026-11-23 (filed and shipped in this run from the 11-23 devlog's top
