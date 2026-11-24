@@ -26,19 +26,6 @@ found by web research and keep their source URL.
   resolved count named, or every remaining unverified ref carries a written
   reason; no Done row is deleted or rewritten, only annotated.**
 
-- **pi-cicd — make a silent fallback visible** *(S; new in
-  posts/2026-11-22.html)* — the two-endpoint change made a dead address
-  survivable and, on the evidence, invisible: a fallback leaves no record
-  anywhere. Next: record each fallback as its own countable event — a
-  marked ledger line or a counter in the state file naming the endpoint
-  that failed — and have `--history` print it beside the page count,
-  without touching the retry column. **Acceptance: a fallback with an
-  unchanged verdict produces exactly one countable record naming the
-  failed endpoint; a plain healthy run still writes nothing; both refused
-  twice is still one page; `--history` prints the fallback count and
-  writes nothing itself; cap rotation still holds; an existing ledger
-  parses unchanged.**
-
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
   fix (`units_done` bumped in `post_result`) is on disk and not in the
@@ -318,16 +305,85 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-23: the dns-watch freshness reader shipped this run, see
-Done. Pickable next: the 11-22 fallback-visibility row (the newest post
-still names it, second in today's list), the 11-18 coordinator-restart row
-(its console-page clause is owner-gated), the radar ledger-refs verdict row,
-the personal-website findings allowlist and Currently-panel rows, the pi-cicd
-freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU baseline,
-and the 11-18 devlog-card gate (fix its measured premise first) — all under
-Proposed.)*
+*(none — 2026-11-24: the fallback-visibility row shipped this run, see
+Done. Pickable next: the radar ledger-refs verdict row (its own top-of-list
+slot in both devlogs), the 11-18 coordinator-restart row (its console-page
+clause is owner-gated), the personal-website findings allowlist and
+Currently-panel rows, the pi-cicd freshness gauge, the fingerprint-demo
+deploy, the switch-l4t-gpu GPU baseline, and the 11-18 devlog-card gate (fix
+its measured premise first) — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — make a silent fallback visible** — done 2026-11-24 (the 11-22
+  row, named again the top pickable row in both the 11-22 and 11-24 devlogs;
+  picked first because it closes the one hole the 11-21 two-endpoint ship
+  opened — a success that pages nothing *and* wrote nothing — and every
+  clause of its acceptance verifies on this box in one session). Shipped in
+  pi-cicd `7b02766`:
+  - **The probe names the failure instead of counting it.** dns-check's
+    fallback note is now `(fallback; <failed endpoint(s)> failed first)` —
+    the old `1 endpoint(s) failed first` told a reader a number and left the
+    name to be guessed, which is the whole record. The retry note stays
+    verbatim (`retry; first attempt failed`), so a fallback and a retry are
+    still distinguishable and the page ledger's `retry=` column is
+    untouched.
+  - **Each fallback run gets its own line, in its own ledger.**
+    `fallbacks.log` sits beside `pages.log` (and follows `--ledger`, one
+    directory one fact) with one line per run that reached its OK through a
+    later endpoint:
+    `2026-11-24T14:44:49+00:00  fallback  failed=<url[,url]>  answered=<url>`.
+    It shares the page ledger's cap and rotation (`-> fallbacks.log.1`);
+    `--dry-run` writes neither. `pages.log` was deliberately not widened: it
+    is keyed on *change*, so adding fallback lines there would have made its
+    page count lie and moved every existing line's contract.
+  - **`--history` reads both.** The last 24 h of pages and fallbacks in one
+    chronological list, then one count per kind beside the page count
+    (`2 fallback(s) in the last 24 h — 2 line(s) in <path>`), reading both
+    generations, counting junk lines, writing nothing. An existing
+    `pages.log` with no `fallbacks.log` beside it prints `0 fallback(s)` and
+    parses exactly as before.
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **54 passed** (9
+    new), full suite **476 passed, 1 skipped**. Clause by clause, each one a
+    test driving the real CLIs: a healthy run on the direct endpoint
+    (no `fallbacks.log`) then a healthy run through the second one → **one**
+    line naming the dead endpoint and the live one, no page, `pages` still
+    0; two dead endpoints before a live one → both names in the record;
+    two plain healthy runs → neither ledger exists; both endpoints refused
+    twice → still one page, one page line, no fallback file; a recovery
+    through a fallback → a page line with `retry=no` **and** one fallback
+    line; a dry run → nothing; cap 2 with three fallbacks → 1 live and 2 in
+    `.1`, never above the cap; a seeded `--history` → the fallback count
+    beside the page count, the in-window line shown, the 30-hour-old one
+    not, both files byte-identical after; a legacy `pages.log` alone →
+    same page lines, `0 fallback(s)`, unchanged bytes. **Negative-controlled
+    by execution:** against the pre-change `dns-watch`/`dns-check`
+    (`git stash push -- dns-watch dns-check`, under `timeout -s KILL`) **6
+    of the 9 new tests fail**, the 3 that pass assert *absent* files (which
+    the old tool satisfies by writing nothing) — and the updated
+    fallback-note test fails too, which is the cross-language pin doing its
+    job. The suite also passes under `PATH=/usr/bin:/bin` (the 11-18
+    lesson). **CI green on the tip** (run 45421444437, `7b02766`): the
+    runner printed every new test PASSED by name and the suite at **473
+    passed, 4 skipped** (the three extra skips are the Prometheus drills).
+  - **Live on this box:** with the first endpoint pointed at a dead port
+    (`DNS_CHECK_URLS="http://127.0.0.1:1/ https://1.1.1.1/cdn-cgi/trace"`),
+    `dns-check` prints `OK (fallback; http://127.0.0.1:1/ failed first)` in
+    0.09 s, and two `dns-watch` runs on an unchanged healthy verdict left
+    **two** fallback lines naming `127.0.0.1:1`, **no** `pages.log` at all,
+    and `--history` then printed `0 page(s) … / 2 fallback(s) in the last
+    24 h` with the state and ledger hashes identical afterwards. (`-v` also
+    names the fallback on stderr, so the journal carries it.)
+  - **Not claimed:** the live state directory has no `fallbacks.log` yet —
+    the verdict has not leaned on a second endpoint since this landed, so
+    the first live line will be the next real fallback (the two lines above
+    are a drill in a scratch state dir). Only a *fallback* is recorded:
+    a retry-made OK (`ip_tries=2`) writes no fallback line by design — it is
+    a different event, still visible only in the probe's own output. Nothing
+    re-pages or alerts on fallbacks: the record is for `--history` and the
+    journal, not for the phone. `/etc/dns-watch.conf` is untouched, so the
+    hourly unit inherits the new file beside its existing ledger with no
+    restart. Repo: <https://github.com/pkia/pi-cicd>.
 
 - **pi-cicd — put the stale verdict in front of the audit** — done
   2026-11-23 (filed and shipped in this run from the 11-23 devlog's top
@@ -4541,6 +4597,31 @@ Append-only, one line per run — including failures and no-ops.
   Not claimed: the real WhatsApp/ntfy alert path (send_alert is stubbed in
   tests) and a restart of the timer — the audit reports, the owner's
   install.sh pass fixes. ≈35 tool calls; no gate blocks.
+
+- 2026-11-24 — implementer run: synced the 11-24 devlog's radar list — three
+  items (fallback visibility, radar ledger refs, coordinator restart), **all
+  already on the board**, so nothing new was filed; eight actionable Proposed
+  rows meant no external search, and repo evidence added nothing (clean trees,
+  the suite green at 476). **Picked the fallback-visibility row** — the
+  11-24 post's top pickable slot and the one hole the 11-21 two-endpoint ship
+  opened: the verdict did not change, so a fallback had no page, no ledger
+  line, no state field — nothing. Shipped pi-cicd `7b02766`: dns-check's
+  fallback note now names the endpoint(s) that failed instead of counting
+  them; dns-watch writes one `fallbacks.log` line per run that used one
+  (timestamp, marker, `failed=`, `answered=`) beside `pages.log` under the
+  same cap and rotation; `--history` merges the last 24 h of both by stamp
+  and prints one count per kind. Evidence: `tests/test_dns_watch.py` 54
+  passed (9 new), full suite **476 passed, 1 skipped**, also green under
+  `PATH=/usr/bin:/bin`; negative control by execution — 6 of the 9 new tests
+  fail against the pre-change tools, the 3 passing ones assert absent files,
+  and the rewritten fallback-note test fails too; **CI green** (45421444437;
+  every new test PASSED by name, runner 473 passed / 4 skipped). Live: dead
+  first endpoint → `OK (fallback; http://127.0.0.1:1/ failed first)` in
+  0.09 s; two runs on an unchanged healthy verdict → two fallback lines, no
+  `pages.log`, `--history` `2 fallback(s)` with files byte-identical
+  afterwards. Not claimed: the live state dir's first real fallback line,
+  and any alerting on fallbacks (the record is for `--history`/journal).
+  ≈30 tool calls; no gate blocks.
 
 ## Notes
 

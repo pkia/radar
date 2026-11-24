@@ -4,6 +4,36 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-24 — **A record of a success that changes nothing belongs in its
+  own file, not in the ledger keyed on change.** `pages.log` is written only
+  when the verdict moves, so a fallback (same verdict, different endpoint)
+  could not go there without making `--history`'s page count lie — and the
+  acceptance pair ("one record for a fallback on an unchanged verdict" + "an
+  existing ledger parses unchanged") is what made that explicit. The new
+  `fallbacks.log` got the same cap, rotation and directory rule, its own
+  marker word, and `--history` merged both by stamp. When two acceptance
+  clauses look like they conflict, one of them is usually naming the file.
+
+- 2026-11-24 — **When the consumer needs a name and the producer prints a
+  count, change the producer — and expect the old assertion to fail.** The
+  row asked for a record "naming the failed endpoint"; dns-check only said
+  `1 endpoint(s) failed first`, so the fix had to start in the shell
+  (accumulate the failed URLs per pass) and the existing test that pinned
+  the count string had to be rewritten. That test failing under the negative
+  control is the cross-language pin working, not a regression — and the retry
+  note stayed verbatim for exactly the same reason (the ledger's `retry=`
+  column keys on it). Before changing a producer's prose, list every reader
+  that keys on it.
+
+- 2026-11-24 — **A live drill can produce the right exit code for the wrong
+  reason: read the note word, not just rc.** The dead-first-endpoint drill
+  with the default 6 s timeout printed `retry; first attempt failed` twice
+  and exited 0 — the live endpoint's *first* attempt timed out at 6 s and
+  only the second pass answered, so the "fallback" demonstration was a
+  retry. A dead port on localhost (instant refusal) plus
+  `DNS_CHECK_TIMEOUT=12` produced the fallback note in 0.09 s. Both cases
+  are rc 0 / healthy, so only the wording distinguishes them.
+
 - 2026-11-23 — **A fault verdict printed only on stderr is invisible through a
   helper that returns stdout.** pi-doctor's `run()` returns `(rc, stdout)` and
   drops stderr, and `dns-watch --stale` prints both STALE and UNMEASURABLE
