@@ -14,31 +14,6 @@ found by web research and keep their source URL.
 ## Proposed
 
 - **radar — give the ledger's unresolvable refs a verdict** *(S; repo
-  evidence, measured 2026-11-22)* — with `--repo pi-cicd=/home/ev/pi-cicd`
-  the pointer lint faults **19** refs across the Done ledger (c2915de and
-  82be823 at :1683, 4a3795d at :1747 …) as "not in pi-cicd history",
-  and CI supplies only radar's own checkout, so the gate never sees them.
-  Next: classify each — wrong repo binding, a sha from before the repo was
-  recreated, or a typo — by asking GitHub (`gh api
-  repos/pkia/pi-cicd/commits/<sha>`) and the other owned repos, then
-  annotate the row (append-only) or correct the binding. **Acceptance:
-  `check_board.py --repo` for all five owned checkouts exits 0 with the
-  resolved count named, or every remaining unverified ref carries a written
-  reason; no Done row is deleted or rewritten, only annotated.**
-
-- **pi-cicd — make a silent fallback visible** *(S; new in
-  posts/2026-11-22.html)* — the two-endpoint change made a dead address
-  survivable and, on the evidence, invisible: a fallback leaves no record
-  anywhere. Next: record each fallback as its own countable event — a
-  marked ledger line or a counter in the state file naming the endpoint
-  that failed — and have `--history` print it beside the page count,
-  without touching the retry column. **Acceptance: a fallback with an
-  unchanged verdict produces exactly one countable record naming the
-  failed endpoint; a plain healthy run still writes nothing; both refused
-  twice is still one page; `--history` prints the fallback count and
-  writes nothing itself; cap rotation still holds; an existing ledger
-  parses unchanged.**
-
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
   fix (`units_done` bumped in `post_result`) is on disk and not in the
@@ -4513,6 +4488,34 @@ Append-only, one line per run — including failures and no-ops.
   intermediate commit (`33afb4e` — the new ledger-refs row's backticked shas
   bound to radar and faulted, and a `| tail` had masked the checker's exit
   code) and is green on the tip (`e01dce6`). ≈45 tool calls; no gate blocks.
+
+- 2026-11-23 — implementer run: synced the 11-23 devlog's radar list — three
+  items, **one genuinely new** (put the stale verdict in front of the audit:
+  the daily audit should call dns-watch --stale), and the other two (the
+  11-22 fallback-visibility row, the radar ledger-refs row) were already on
+  the board. **Something was added: the audit row — and it was picked and
+  shipped the same run**, because it is the one-line closure of yesterday's
+  ship (a reader nothing read) and every clause of its acceptance verifies
+  here in one session. Repo evidence added nothing (TODO/FIXME counts 1 in
+  pi-cicd, 0 in cluster-prototype and personal-website, 7 in radar — no
+  clusters, no failing tests, clean trees), and nine actionable Proposed
+  rows meant no external search. Shipped pi-cicd `6486a62`: `check_dns_watch`
+  runs `dns-watch --stale` and turns rc 1 into `sys:dns-watch-stale`
+  (age, limit, state path) and rc 2 into `sys:dns-watch-unmeasurable`
+  (path named) — never a pass; tool resolution is override → PATH →
+  sibling via realpath, run as `sys.executable <tool>`; a new `run_full()`
+  keeps stderr, where both fault verdicts are printed. Evidence:
+  `tests/test_pi_doctor.py` 45 passed, 1 skipped (8 new, all driving the
+  real dns-watch), full suite **467 passed, 1 skipped**; negative control
+  by execution — 7 of 8 fail against the pre-change pi-doctor, the eighth
+  the `_key` control passing vacuously; **CI green** (45201730193; all
+  eight new tests PASSED by name, runner 464 passed / 4 skipped). Live:
+  fresh state → no finding; a copy of the live state aged 3.5 h →
+  `newest run 3.7 h ago, limit 2 h (<copy path>)`; the Hermes cron job
+  (`30 6 * * *`, next 2026-11-24T06:30) will run this code tomorrow.
+  Not claimed: the real WhatsApp/ntfy alert path (send_alert is stubbed in
+  tests) and a restart of the timer — the audit reports, the owner's
+  install.sh pass fixes. ≈35 tool calls; no gate blocks.
 
 ## Notes
 
