@@ -391,7 +391,7 @@ its measured premise first) — all under Proposed.)*
     answered=https://8.8.8.8/` — with **no page** (`pages` still 6),
     **no** `pages.log` created, and the next hour's direct OK adding
     nothing. So the row's headline clause is proven on the live unit, an
-    hour after the code landed, not only in the drill below; and the live
+    hour after the code landed, not only in a scratch drill; and the live
     `--history` reads `0 page(s) … / 1 fallback(s) in the last 24 h`.
     Repo: <https://github.com/pkia/pi-cicd>.
 
@@ -4629,8 +4629,12 @@ Append-only, one line per run — including failures and no-ops.
   first endpoint → `OK (fallback; http://127.0.0.1:1/ failed first)` in
   0.09 s; two runs on an unchanged healthy verdict → two fallback lines, no
   `pages.log`, `--history` `2 fallback(s)` with files byte-identical
-  afterwards. Not claimed: the live state dir's first real fallback line,
-  and any alerting on fallbacks (the record is for `--history`/journal).
+  afterwards. Then, before the run closed, the **real hourly unit** produced
+  the first live line: at 14:47:21 UTC its OK came from 8.8.8.8 after
+  1.1.1.1/cdn-cgi/trace failed, one record, no page (`pages` still 6), no
+  `pages.log`, and the next hour added nothing — so the headline clause is
+  proven live, not only in the drill. Not claimed: any alerting on fallbacks
+  (the record is for `--history`/journal) and per-run retry records.
   ≈30 tool calls; no gate blocks.
 
 ## Notes
