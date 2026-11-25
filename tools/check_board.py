@@ -276,10 +276,12 @@ def commit_refs(text):
 
 
 def lint_board(text, repos=None):
-    """Return (faults, counts).
+    """Return (faults, counts, unverified).
 
     faults: (line_no, label, problem) — ``problem`` completes the
-    sentence ``row "<label>" <problem>``.
+    sentence ``row "<label>" <problem>``. unverified: (line_no, sha,
+    repo_name, reason) for every ref the supplied checkouts could not
+    answer for.
     """
     repos = repos or {}
     sections = split_sections(text)
@@ -290,12 +292,14 @@ def lint_board(text, repos=None):
         for lines in rows
     }
     faults = []
+    unverified = []
     counts = {
         "actionable": 0,
         "ledger": 0,
         "shipped": 0,
         "refs_checked": 0,
         "refs_unverified": 0,
+        "unverified": {},
         "out_of_scope": 0,
     }
     lines_all = text.splitlines()
@@ -428,6 +432,12 @@ def parse_args(argv):
         help="a checked-out repo whose commit refs can be resolved "
         "(repeatable; 'radar' defaults to this checkout)",
     )
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="print one line per commit ref the supplied checkouts could "
+        "not answer for, naming the ref, its repo and the reason",
+    )
     args = parser.parse_args(argv[1:])
     repos = {"radar": REPO_ROOT}
     for item in args.repo:
@@ -435,12 +445,12 @@ def parse_args(argv):
         if not name.strip() or not path.strip():
             parser.error(f"--repo wants NAME=PATH, got {item!r}")
         repos[name.strip()] = Path(path.strip()).expanduser()
-    return Path(args.board), repos
+    return Path(args.board), repos, args.explain
 
 
 def main(argv):
     try:
-        path, repos = parse_args(argv)
+        path, repos, explain = parse_args(argv)
     except SystemExit as exc:  # argparse already printed the reason
         return 2 if exc.code else 0
     try:
@@ -452,7 +462,11 @@ def main(argv):
     if not any(name.strip().lower() == "proposed" for name in sections):
         print(f"board-lint: no '## Proposed' section in {path}")
         return 2
-    faults, counts = lint_board(text, repos)
+    faults, counts, unverified = lint_board(text, repos)
+    if explain:
+        for line_no, sha, repo_name, reason in unverified:
+            where = f"bound to {repo_name}" if repo_name else "no repo named"
+            print(f"UNVERIFIED {path}:{line_no} — ref `{sha}` ({where}): {reason}")
     for line_no, label, problem in faults:
         print(f'FAIL {path}:{line_no} — row "{label}" {problem}')
     if faults:
@@ -462,12 +476,20 @@ def main(argv):
         )
         return 1
     checked_repos = ", ".join(sorted(repos)) or "none"
+    if counts["refs_unverified"]:
+        parts = [
+            f"{n} {reason}" if len(counts["unverified"]) > 1 else reason
+            for reason, n in sorted(counts["unverified"].items())
+        ]
+        unverified_text = f"{counts['refs_unverified']} unverified ({', '.join(parts)})"
+    else:
+        unverified_text = "0 unverified"
     print(
         f"OK — board lint: {counts['actionable']} actionable Proposed row(s) "
         f"checked, {counts['ledger']} ledger row(s) exempt, "
         f"{counts['shipped']} SHIPPED marker(s) matched to Done, "
         f"{counts['refs_checked']} commit ref(s) resolved in {checked_repos}, "
-        f"{counts['refs_unverified']} unverified (repo not supplied), "
+        f"{unverified_text}, "
         f"{counts['out_of_scope']} out-of-scope Proposed row(s)"
     )
     return 0
