@@ -295,7 +295,7 @@ def resolve_commit(repo_path, sha):
 
 
 def commit_refs(text):
-    return [sha for sha in COMMIT_REF.findall(text) if any(c.isdigit() for c in sha)]
+    return [sha for sha, _repo in bind_refs(text, None)]
 
 
 def lint_board(text, repos=None):

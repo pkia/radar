@@ -179,9 +179,10 @@ def test_checker_is_readonly_source():
                    "rmtree", "rename(", "'w'", '"w"', "'a'", '"a"',
                    "shutil", "shell=True"):
         assert banned not in src, f"checker source must not contain {banned!r}"
-    # subprocess is allowed for exactly one read-only question: does this
-    # commit exist? Every invocation names git, and only cat-file.
-    assert "subprocess" in src  # the commit resolver
+    # subprocess is allowed for exactly one read-only call site — does this
+    # commit exist, and what kind of checkout is this? Every invocation
+    # names git, and the site asserts its own verb against an allow-list.
+    assert "subprocess" in src  # the git reader
     subprocess_calls = [
         block for block in src.split("subprocess.")[1:]
         if block.lstrip().startswith("run(")
@@ -189,10 +190,11 @@ def test_checker_is_readonly_source():
     assert len(subprocess_calls) == 1, "one git call site, not a toolbox"
     call = subprocess_calls[0]
     assert '["git", "-C"' in call
+    assert 'GIT_READ_VERBS = ("cat-file", "rev-parse")' in src
+    assert "args[0] in GIT_READ_VERBS" in call
     for verb in ("commit", "add", "push", "reset", "checkout", "clean",
                  "gc", "prune", "update-ref", "fetch"):
         assert f'"{verb}"' not in call, f"git call site must stay read-only ({verb})"
-    assert "cat-file" in call
 
 
 def test_board_unmodified_by_run(tmp_path):
