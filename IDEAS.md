@@ -376,13 +376,14 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
     fixtures built in the same second with identical content, identity and
     message were *the same commit* — so the fixture now seeds by
     directory name and the tests assert the two shas differ.
-  - **CI green on the tip** (run 45652946562, 8f7a8f3): the runner's own
-    Board lint step printed the new OK line (`9 commit ref(s) resolved in
-    radar, 172 unverified (134 repo not supplied, 38 row names no repo)`)
-    and the suite at **37 passed, 1 skipped** — the skip is the
-    five-checkout acceptance, which CI cannot run.
+  - **CI green on both tips** — the code commit (run 45652946562,
+    8f7a8f3) and the board commit carrying this entry (run 45660713420):
+    the runner's own Board lint step printed the new OK line (`9 commit
+    ref(s) resolved in radar, 172 unverified (134 repo not supplied, 38 row
+    names no repo)`) and the suite at **37 passed, 1 skipped** — the skip is
+    the five-checkout acceptance, which CI cannot run.
   - **Not claimed:** 38 refs sit in pre-September Done rows whose titles
-    name no project at all, and 27 point at retired or off-box repos —
+    name no project at all, and 29 point at retired or off-box repos —
     they are *named* now, not proven, and `--explain` is opt-in. The tool
     still cannot judge prose: a first-time citation whose repo is separated
     by a whole clause (e.g. "pi-cicd run 41651791432 (`sha`)") binds
