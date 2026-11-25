@@ -303,13 +303,13 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-24: the fallback-visibility row shipped this run, see
-Done. Pickable next: the radar ledger-refs verdict row (its own top-of-list
-slot in both devlogs), the 11-18 coordinator-restart row (its console-page
-clause is owner-gated), the personal-website findings allowlist and
-Currently-panel rows, the pi-cicd freshness gauge, the fingerprint-demo
-deploy, the switch-l4t-gpu GPU baseline, and the 11-18 devlog-card gate (fix
-its measured premise first) — all under Proposed.)*
+*(none — 2026-11-25: the ledger-refs verdict row shipped this run, see
+Done. Pickable next: the new 11-25 repeating-fallback row, the 11-18
+coordinator-restart row (its console-page clause is owner-gated), the
+personal-website findings allowlist and Currently-panel rows, the pi-cicd
+freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU
+baseline, and the 11-18 devlog-card gate (fix its measured premise first)
+— all under Proposed.)*
 
 ## Done
 
@@ -362,10 +362,12 @@ its measured premise first) — all under Proposed.)*
     (`pkia.github.io=~/personal-website`, `pi-cicd=~/pi-cicd`,
     `cluster-prototype=~/cluster-prototype`,
     `switch-l4t-gpu=~/switch-l4t-gpu-clone`, radar default) exits **0**
-    naming **116 commit ref(s) resolved**, 0 faults, **65 unverified (27
+    naming **120 commit ref(s) resolved**, 0 faults, **67 unverified (29
     repo not supplied, 38 row names no repo)** — and `--explain` names
     each one with its reason, so the remainder is a written ledger, not a
-    count. **Negative-controlled by execution:** against the pre-change
+    count. (Before this entry joined the board the same run read 116 / 65;
+    the refs this entry cites were added by it.) **Negative-controlled by
+    execution:** against the pre-change
     checker (`git stash push -- tools/check_board.py`, under `timeout -s
     KILL`) **6 of the 7 new tests fail**; the seventh (a distant repo
     mention must not steal a ref) passes there vacuously, because the old
@@ -374,13 +376,14 @@ its measured premise first) — all under Proposed.)*
     fixtures built in the same second with identical content, identity and
     message were *the same commit* — so the fixture now seeds by
     directory name and the tests assert the two shas differ.
-  - **CI green on the tip** (run 45652946562, 8f7a8f3): the runner's own
-    Board lint step printed the new OK line (`9 commit ref(s) resolved in
-    radar, 172 unverified (134 repo not supplied, 38 row names no repo)`)
-    and the suite at **37 passed, 1 skipped** — the skip is the
-    five-checkout acceptance, which CI cannot run.
+  - **CI green on both tips** — the code commit (run 45652946562,
+    8f7a8f3) and the board commit carrying this entry (run 45660713420):
+    the runner's own Board lint step printed the new OK line (`9 commit
+    ref(s) resolved in radar, 172 unverified (134 repo not supplied, 38 row
+    names no repo)`) and the suite at **37 passed, 1 skipped** — the skip is
+    the five-checkout acceptance, which CI cannot run.
   - **Not claimed:** 38 refs sit in pre-September Done rows whose titles
-    name no project at all, and 27 point at retired or off-box repos —
+    name no project at all, and 29 point at retired or off-box repos —
     they are *named* now, not proven, and `--explain` is opt-in. The tool
     still cannot judge prose: a first-time citation whose repo is separated
     by a whole clause (e.g. "pi-cicd run 41651791432 (`sha`)") binds
@@ -4712,6 +4715,24 @@ Append-only, one line per run — including failures and no-ops.
   proven live, not only in the drill. Not claimed: any alerting on fallbacks
   (the record is for `--history`/journal) and per-run retry records.
   ≈30 tool calls; no gate blocks.
+
+- 2026-11-25 — implementer run: synced the 11-25 devlog's radar list (its
+  top row was the ledger-refs one; item 2, a repeating fallback becoming a
+  finding, is genuinely new and filed as Proposed; item 3 is the known
+  coordinator-restart row). Picked **radar — give the ledger's unresolvable
+  refs a verdict** and shipped it in radar `8f7a8f3`: a ref now binds to the
+  repo named beside it (with a repeated sha keeping its in-row binding), and
+  a checkout that is shallow or not a checkout is a *reason*, not a fault —
+  `--explain` names every unverified ref. Measured before building: 28
+  faults at run start, 21 of them caused by a **shallow pi-cicd checkout**
+  (27 commits), which `git fetch --unshallow` fixed to 103 commits with
+  nothing pushed; of the rest, 38c65ce and 881e597 are pi-cicd commits
+  mis-bound to a cluster prefix and df68069 is a project-hub commit (GitHub:
+  422 no such commit in pi-cicd). Five checkouts supplied: exit 0, 116 refs
+  resolved, 65 unverified each with a written reason. Tests 38 passed (7
+  new); 6 of the 7 fail against the pre-change checker. CI green (run
+  45652946562, 37 passed 1 skipped on the runner). ≈35 tool calls; no gate
+  blocked.
 
 ## Notes
 
