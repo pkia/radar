@@ -220,6 +220,29 @@ def bind_repo(line, ref_start, fallback):
     return bound or fallback
 
 
+def bind_refs(text, fallback):
+    """[(sha, repo_name)] for every commit ref in one row's text.
+
+    A ref binds to the repo named beside it; a sha *repeated* in the same
+    row (the board names a commit once and then cites it again in prose,
+    often on a line with no repo name) binds to the repo it was already
+    bound to in that row. Everything else falls back to the title prefix.
+    """
+    bound = {}
+    out = []
+    for match in COMMIT_REF.finditer(text):
+        sha = match.group(1)
+        if not any(c.isdigit() for c in sha):
+            continue
+        repo = bind_repo(text, match.start(), None)
+        if repo is None:
+            repo = bound.get(sha, fallback)
+        else:
+            bound[sha] = repo
+        out.append((sha, repo))
+    return out
+
+
 # The only git questions this tool may ask: both read-only, both answer a
 # fact about objects already on disk.
 GIT_READ_VERBS = ("cat-file", "rev-parse")
