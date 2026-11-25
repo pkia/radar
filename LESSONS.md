@@ -4,6 +4,39 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-25 — **A shallow checkout answers "absent" for every commit older
+  than its cut, so a repo-wide fault sweep is the signal to ask what the
+  checkout is.** The ledger lint faulted 19–28 refs as "not in history" for
+  three runs; `git -C ~/pi-cicd rev-parse --is-shallow-repository` said
+  **true** (27 commits), and `git fetch --unshallow` (103 commits, nothing
+  pushed) cleared 21 of them. Before believing any "ref not in repo"
+  verdict — lint, CI, drill — ask the repo whether it holds the history it
+  is being asked about, and make the tool name that reason instead of
+  faulting: `unverified (repo is shallow)`, `(repo path is not a usable
+  checkout)`. Same for a `--repo PATH` that is not a checkout at all
+  (this run first passed a directory that did not exist) and for a `--repo
+  NAME` that is the checkout's directory rather than the repo name the
+  board's map yields (`pkia.github.io`, not `personal-website`).
+
+- 2026-11-25 — **A row can name two repos, so a ref's repo is the name
+  written beside it, not the row's title prefix.** `cluster — …` rows
+  legitimately ship "cluster-prototype X + pi-cicd Y", and Done history
+  cites "**project-hub** Z" inside a pi-cicd row; prefix-only binding
+  faults each second-repo sha as unknown. Bind to the nearest project name
+  separated from the ref by markup alone (a tight gap — a passing mention
+  must not steal a ref), let a sha repeated in the same row keep the
+  binding it already got there, and fall back to the prefix only when
+  neither applies. A gate that faults what it cannot see teaches its reader
+  to skip the gate.
+
+- 2026-11-25 — **Two fixtures built the same way in the same second are the
+  same commit.** Two `git init` + one-file commit fixture repos with
+  identical content, author/committer and message produced one sha, so a
+  cross-repo test resolved its "other repo's" ref out of the first repo and
+  **passed against the pre-change code** — a vacuous negative control. Seed
+  fixtures with something unique to their path and assert the two shas
+  differ, or the test proves nothing about binding.
+
 - 2026-11-24 — **A record of a success that changes nothing belongs in its
   own file, not in the ledger keyed on change.** `pages.log` is written only
   when the verdict moves, so a fallback (same verdict, different endpoint)
