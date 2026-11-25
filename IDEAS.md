@@ -13,18 +13,16 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **radar — give the ledger's unresolvable refs a verdict** *(S; repo
-  evidence, measured 2026-11-22)* — with `--repo pi-cicd=/home/ev/pi-cicd`
-  the pointer lint faults **19** refs across the Done ledger (c2915de and
-  82be823 at :1683, 4a3795d at :1747 …) as "not in pi-cicd history",
-  and CI supplies only radar's own checkout, so the gate never sees them.
-  Next: classify each — wrong repo binding, a sha from before the repo was
-  recreated, or a typo — by asking GitHub (`gh api
-  repos/pkia/pi-cicd/commits/<sha>`) and the other owned repos, then
-  annotate the row (append-only) or correct the binding. **Acceptance:
-  `check_board.py --repo` for all five owned checkouts exits 0 with the
-  resolved count named, or every remaining unverified ref carries a written
-  reason; no Done row is deleted or rewritten, only annotated.**
+- **pi-cicd — make a repeating fallback a finding** *(S; new in
+  posts/2026-11-25.html)* — the ledger can now count what the phone cannot
+  hear: two consecutive fallbacks to the same endpoint, verdict healthy,
+  nobody told. Next: `dns-watch` reads `fallbacks.log` beside its state and
+  treats a *run of the same failed endpoint* as a finding of its own.
+  **Acceptance: the third consecutive fallback on one endpoint pages once,
+  naming the endpoint and the count, and stays silent on the next one; a
+  single fallback stays a ledger line with no page; the count resets on a
+  run that reached the OK through no fallback, so a repair clears it
+  naturally; `--history` shows the streak beside the fallback count.**
 
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
@@ -314,6 +312,84 @@ deploy, the switch-l4t-gpu GPU baseline, and the 11-18 devlog-card gate (fix
 its measured premise first) — all under Proposed.)*
 
 ## Done
+
+- **radar — give the ledger's unresolvable refs a verdict** — done
+  2026-11-25 (the top pickable row of both the 11-24 and 11-25 devlogs;
+  picked because every clause of its acceptance verifies on this box in one
+  session, and the "19 refs" it named had been read past for three runs).
+  The premise was measured first, and was wrong in a way worth the row:
+  - **Most of the faults were a shallow checkout, not bad shas.** With all
+    five checkouts named the lint printed **28** faults (19 of them pi-cicd
+    refs, as filed). `git -C ~/pi-cicd rev-parse --is-shallow-repository`
+    answered **true**, with 27 commits — a shallow clone's `cat-file -e`
+    says "absent" for every commit older than its cut, which is
+    indistinguishable from a bogus sha. `git fetch --unshallow` (no history
+    rewrite, nothing pushed) took it to **103** commits and cleared 21 of
+    the 28 faults by itself; `gh api repos/pkia/pi-cicd/commits/<sha>`
+    confirmed those shas are real (c2915de, 82be823, 4a3795d, 6bb0186,
+    0b32bb7, 99ad0ec all answered with a sha).
+  - **Three refs were genuinely mis-bound, not missing.** 38c65ce and
+    881e597 are **pi-cicd** commits cited *inside* cluster-titled rows
+    ("Shipped in cluster-prototype `5c52715` + pi-cicd `38c65ce`"), and the
+    old binding sent every ref in a row to the title's prefix. The third,
+    df68069, is a **project-hub** commit written as "**project-hub**
+    `df68069`" in a pi-cicd row; `gh api
+    repos/pkia/pi-cicd/commits/df68069` answers **422 "No commit found for
+    SHA"**, so it was never a pi-cicd typo — it belongs to a repo that is
+    not on this box (out of scope), which is a reason, not a fault.
+  - **A fourth false-fault class fell out of the first run:** passing a
+    path that is not a checkout (this run first passed
+    `/home/ev/switch-l4t-gpu`, which does not exist; the clone is
+    `~/switch-l4t-gpu-clone`) faulted every ref bound to it.
+  - **The fix, in `tools/check_board.py`:** a ref binds to the project
+    name written *beside* it — `pi-cicd `38c65ce``, `**project-hub**
+    `df68069``, `cluster-prototype `5c52715`` — with markup alone between
+    the two (≤ 8 chars); a sha repeated later in the same row keeps the
+    binding it already got there (the board names a commit once and cites
+    it again in prose); everything else still falls back to the title
+    prefix. `repo_state()` asks each checkout whether it is **ok /
+    shallow / unusable** before believing its silence, and the three
+    outcomes plus "repo not supplied" and "row names no repo" are counted
+    by reason in the OK line. `--explain` prints one line per unverified
+    ref with its repo and reason, which is what "every remaining
+    unverified ref carries a written reason" means. project-hub and
+    maritime-dashboard joined PROJECT_REPOS as *binding* names only.
+  - **Acceptance, executed:** `tests/test_check_board.py` **36 passed**
+    (7 new), full suite **38 passed**; the suite also passes under
+    `PATH=/usr/bin:/bin` (the 11-18 lesson, and this tool now shells out
+    to two git verbs). The acceptance clause itself:
+    `check_board.py` with all five owned checkouts
+    (`pkia.github.io=~/personal-website`, `pi-cicd=~/pi-cicd`,
+    `cluster-prototype=~/cluster-prototype`,
+    `switch-l4t-gpu=~/switch-l4t-gpu-clone`, radar default) exits **0**
+    naming **116 commit ref(s) resolved**, 0 faults, **65 unverified (27
+    repo not supplied, 38 row names no repo)** — and `--explain` names
+    each one with its reason, so the remainder is a written ledger, not a
+    count. **Negative-controlled by execution:** against the pre-change
+    checker (`git stash push -- tools/check_board.py`, under `timeout -s
+    KILL`) **6 of the 7 new tests fail**; the seventh (a distant repo
+    mention must not steal a ref) passes there vacuously, because the old
+    prefix binding faults that row too. The first version of the
+    cross-repo test **passed against the old tool** — two `make_git_repo`
+    fixtures built in the same second with identical content, identity and
+    message were *the same commit* — so the fixture now seeds by
+    directory name and the tests assert the two shas differ.
+  - **CI green on the tip** (run 45652946562, 8f7a8f3): the runner's own
+    Board lint step printed the new OK line (`9 commit ref(s) resolved in
+    radar, 172 unverified (134 repo not supplied, 38 row names no repo)`)
+    and the suite at **37 passed, 1 skipped** — the skip is the
+    five-checkout acceptance, which CI cannot run.
+  - **Not claimed:** 38 refs sit in pre-September Done rows whose titles
+    name no project at all, and 27 point at retired or off-box repos —
+    they are *named* now, not proven, and `--explain` is opt-in. The tool
+    still cannot judge prose: a first-time citation whose repo is separated
+    by a whole clause (e.g. "pi-cicd run 41651791432 (`sha`)") binds
+    correctly only because that sha repeats elsewhere in the row. No Done
+    row was rewritten — the binding was corrected in the tool, which is
+    the other half of the row's own "annotate or correct the binding" —
+    and the only environment change is the local unshallow: nothing in
+    pi-cicd was committed or pushed. Repo:
+    <https://github.com/pkia/radar>.
 
 - **pi-cicd — make a silent fallback visible** — done 2026-11-24 (the 11-22
   row, named again the top pickable row in both the 11-22 and 11-24 devlogs;

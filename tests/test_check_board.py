@@ -252,7 +252,10 @@ def make_git_repo(path):
         return subprocess.run(["git", "-C", str(path), *args], check=True,
                               capture_output=True, text=True, env=env)
     git("init", "-q")
-    (path / "seed.txt").write_text("seed\n", encoding="utf-8")
+    # the seed names the directory: two fixtures made in the same second
+    # with identical content and identity would otherwise be the SAME
+    # commit, and a cross-repo test would pass without resolving anything
+    (path / "seed.txt").write_text(f"seed {path.name}\n", encoding="utf-8")
     git("add", "seed.txt")
     git("commit", "-q", "-m", "seed")
     return path, git("rev-parse", "HEAD").stdout.strip()
@@ -555,6 +558,7 @@ def test_cross_repo_refs_bind_to_the_repo_named_beside_them(tmp_path):
     """A cluster row citing pi-cicd shas resolves each in its own repo."""
     cluster, sha_a = make_git_repo(tmp_path / "farm-a")
     piped, sha_b = make_git_repo(tmp_path / "farm-b")
+    assert sha_a != sha_b  # two fixtures, two commits — not one sha twice
     board = done_board(
         tmp_path,
         "cluster — planted cross repo",
@@ -579,6 +583,7 @@ def test_repeated_ref_keeps_the_binding_it_got_in_the_row(tmp_path):
     """
     cluster, sha_a = make_git_repo(tmp_path / "farm-a")
     piped, sha_b = make_git_repo(tmp_path / "farm-b")
+    assert sha_a != sha_b
     board = done_board(
         tmp_path,
         "cluster — planted repeat",
