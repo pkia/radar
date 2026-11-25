@@ -23,13 +23,17 @@ Ledger **pointers** are checked, though (added 2026-11-12):
   title verbatim; punctuation, bold and backticks are ignored in the
   comparison) — a stamp pointing at a row that is not there is a fault;
 - a backticked commit reference (``abc1234``) must resolve in the
-  history of the repo its row names. A row is bound to a repo by its
-  title's project prefix (``radar — …``, ``personal-website — …``,
-  ``cluster — …``, …) — the board's established spelling. Only repos
-  supplied with ``--repo NAME=PATH`` are checked (the checker's own
-  radar repo by default, which is all a CI checkout has); a ref bound
-  to any other repo is reported as unverified, never faulted, because
-  the checker cannot see a repository it was not handed.
+  history of the repo its row names. The repo is the project name
+  written beside the ref — ``pi-cicd `38c65ce```, ``**project-hub**
+  `df68069``` inside a pi-cicd row — falling back to the row title's
+  project prefix (``radar — …``, ``cluster — …``) when no name sits
+  next to it. Only repos supplied with ``--repo NAME=PATH`` are checked
+  (the checker's own radar repo by default, which is all a CI checkout
+  has). A ref the checker cannot answer for is *unverified* with its
+  reason named — repo not supplied, the checkout is shallow (a shallow
+  clone cannot prove a commit absent), or the path is not a usable
+  repository — never faulted: a gate that faults on what it cannot see
+  would be red forever, and a false fault costs a run to disprove.
 
 Deployment scope is checked too (added 2026-11-15): the owner's directive
 of 2026-11-02 limits the loop to the current Pi 5 deployment. An
@@ -46,7 +50,7 @@ is only ever asked ``cat-file`` (asserted by tests/test_check_board.py).
 Exit codes: 0 clean, 1 faults (each fault names file, line, the row and
 the broken part), 2 structural (unreadable file, no Proposed section).
 
-Usage: check_board.py [BOARD] [--repo NAME=PATH ...]
+Usage: check_board.py [BOARD] [--repo NAME=PATH ...] [--explain]
 """
 
 import argparse
@@ -86,7 +90,7 @@ ROW_TITLE = re.compile(r"^- \*\*(.+?)\*\*")
 # word like `__pycache__` is not hex).
 COMMIT_REF = re.compile(r"`([0-9a-f]{7,40})`")
 
-# Row title prefix → the repo whose history its commit refs live in.
+# Row title prefix → the repo whose history its commit refs belong in.
 # The board names a project before the dash/colon, and this map is that
 # convention made explicit. An unknown prefix means "cannot bind": its
 # refs stay unverified rather than guessed at.
@@ -105,7 +109,28 @@ PROJECT_REPOS = {
     "copybot": "forex-copybot",
     "train": "cs2-train",
     "cs2-train": "cs2-train",
+    # Ledger history cites a retired project's commits inside an in-scope
+    # row ("**project-hub** `df68069`"); the ref still has a repo, even
+    # though the project can never be picked again.
+    "project-hub": "project-hub",
+    "maritime-dashboard": "maritime-dashboard",
 }
+
+# Names a ref can be bound to *beside itself* in a row: every prefix above
+# plus every repo name those prefixes map to (a row writes the repo, not
+# the prefix, next to its sha).
+BIND_REPOS = dict(PROJECT_REPOS)
+BIND_REPOS.update({repo: repo for repo in PROJECT_REPOS.values()})
+BIND_NAME = re.compile(
+    r"(?<![a-z0-9._-])(?:"
+    + "|".join(re.escape(n) for n in sorted(BIND_REPOS, key=len, reverse=True))
+    + r")(?![a-z0-9._-])"
+)
+# Only markup may sit between the repo name and the ref it binds: the
+# board's spellings are `pi-cicd `abc1234``, `**project-hub** `abc`` and
+# `cluster-prototype `abc`, pi-cicd `def``.
+BIND_GAP = re.compile(r"^[\s`*_:+,]*$")
+BIND_GAP_MAX = 8
 
 # Owner deployment scope (AGENTS.md "Deployment scope", directive
 # 2026-11-02): the loop serves the current Pi 5 deployment only. A row
@@ -177,32 +202,109 @@ def project_repo(label):
     return PROJECT_REPOS.get(title_prefix(label))
 
 
+def bind_repo(line, ref_start, fallback):
+    """The repo named beside the ref, else the row's title prefix.
+
+    The board puts a ref's repo next to it — ``pi-cicd `38c65ce```,
+    ``**project-hub** `df68069``` inside a pi-cicd row — and a row can
+    legitimately cite two repos. The nearest preceding project name
+    separated from the ref by markup alone is the binding. Anything
+    looser (any mention anywhere in the row) would let a passing mention
+    steal a ref from the repo that really holds it.
+    """
+    bound = None
+    for match in BIND_NAME.finditer(line, 0, ref_start):
+        gap = line[match.end():ref_start]
+        if len(gap) <= BIND_GAP_MAX and BIND_GAP.match(gap):
+            bound = BIND_REPOS[match.group(0).lower()]
+    return bound or fallback
+
+
+def bind_refs(text, fallback):
+    """[(sha, repo_name)] for every commit ref in one row's text.
+
+    A ref binds to the repo named beside it; a sha *repeated* in the same
+    row (the board names a commit once and then cites it again in prose,
+    often on a line with no repo name) binds to the repo it was already
+    bound to in that row. Everything else falls back to the title prefix.
+    """
+    bound = {}
+    out = []
+    for match in COMMIT_REF.finditer(text):
+        sha = match.group(1)
+        if not any(c.isdigit() for c in sha):
+            continue
+        repo = bind_repo(text, match.start(), None)
+        if repo is None:
+            repo = bound.get(sha, fallback)
+        else:
+            bound[sha] = repo
+        out.append((sha, repo))
+    return out
+
+
+# The only git questions this tool may ask: both read-only, both answer a
+# fact about objects already on disk.
+GIT_READ_VERBS = ("cat-file", "rev-parse")
+
+
+def git_read(repo_path, *args):
+    """Run one read-only git question; None when git itself is unavailable.
+
+    The verb is asserted here, at the single call site, so a future
+    addition cannot quietly turn the checker into something that writes.
+    """
+    assert args and args[0] in GIT_READ_VERBS, f"not a read-only verb: {args[:1]}"
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_path), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+
+
+def repo_state(repo_path):
+    """'ok' | 'shallow' | 'unusable' — what this checkout can answer.
+
+    ``cat-file -e`` answers "absent" for a commit older than a shallow
+    clone's cut, which is indistinguishable from a bogus sha — so the
+    checker asks the checkout what it is before believing its silence.
+    """
+    probe = git_read(repo_path, "rev-parse", "--git-dir")
+    if probe is None or probe.returncode != 0:
+        return "unusable"
+    shallow = git_read(repo_path, "rev-parse", "--is-shallow-repository")
+    if shallow is None or shallow.returncode != 0:
+        return "unusable"
+    return "shallow" if shallow.stdout.strip() == "true" else "ok"
+
+
 def resolve_commit(repo_path, sha):
     """True/False as git answers; None when git itself is unavailable.
 
     ``cat-file -e`` is the read-only question "does this object exist" —
     it fetches nothing, writes nothing, and touches no ref.
     """
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(repo_path), "cat-file", "-e", sha + "^{commit}"],
-            capture_output=True,
-            check=False,
-        )
-    except OSError:
+    proc = git_read(repo_path, "cat-file", "-e", sha + "^{commit}")
+    if proc is None:
         return None
     return proc.returncode == 0
 
 
 def commit_refs(text):
-    return [sha for sha in COMMIT_REF.findall(text) if any(c.isdigit() for c in sha)]
+    return [sha for sha, _repo in bind_refs(text, None)]
 
 
 def lint_board(text, repos=None):
-    """Return (faults, counts).
+    """Return (faults, counts, unverified).
 
     faults: (line_no, label, problem) — ``problem`` completes the
-    sentence ``row "<label>" <problem>``.
+    sentence ``row "<label>" <problem>``. unverified: (line_no, sha,
+    repo_name, reason) for every ref the supplied checkouts could not
+    answer for.
     """
     repos = repos or {}
     sections = split_sections(text)
@@ -213,12 +315,14 @@ def lint_board(text, repos=None):
         for lines in rows
     }
     faults = []
+    unverified = []
     counts = {
         "actionable": 0,
         "ledger": 0,
         "shipped": 0,
         "refs_checked": 0,
         "refs_unverified": 0,
+        "unverified": {},
         "out_of_scope": 0,
     }
     lines_all = text.splitlines()
@@ -278,18 +382,46 @@ def lint_board(text, repos=None):
                     )
 
             # ledger pointer: commit refs resolve in the repo the row names
-            refs = commit_refs(joined)
-            if not refs:
+            bound_refs = bind_refs(joined, project_repo(label))
+            if not bound_refs:
                 continue
-            repo_name = project_repo(label)
-            repo_path = repos.get(repo_name) if repo_name else None
-            for sha in refs:
+            states = {}
+            for sha, repo_name in bound_refs:
+                repo_path = repos.get(repo_name) if repo_name else None
                 if repo_path is None:
+                    reason = (
+                        "row names no repo" if repo_name is None
+                        else "repo not supplied"
+                    )
                     counts["refs_unverified"] += 1
+                    counts["unverified"][reason] = (
+                        counts["unverified"].get(reason, 0) + 1
+                    )
+                    unverified.append((start_line, sha, repo_name, reason))
+                    continue
+                if repo_name not in states:
+                    states[repo_name] = repo_state(repo_path)
+                state = states[repo_name]
+                if state != "ok":
+                    reason = (
+                        "repo is shallow" if state == "shallow"
+                        else "repo path is not a usable checkout"
+                    )
+                    counts["refs_unverified"] += 1
+                    counts["unverified"][reason] = (
+                        counts["unverified"].get(reason, 0) + 1
+                    )
+                    unverified.append((start_line, sha, repo_name, reason))
                     continue
                 verdict = resolve_commit(repo_path, sha)
                 if verdict is None:
                     counts["refs_unverified"] += 1
+                    counts["unverified"]["git unavailable"] = (
+                        counts["unverified"].get("git unavailable", 0) + 1
+                    )
+                    unverified.append(
+                        (start_line, sha, repo_name, "git unavailable")
+                    )
                     continue
                 counts["refs_checked"] += 1
                 if not verdict:
@@ -300,7 +432,7 @@ def lint_board(text, repos=None):
                             f"cites `{sha}`, which is not in {repo_name} history",
                         )
                     )
-    return faults, counts
+    return faults, counts, unverified
 
 
 def parse_args(argv):
@@ -317,6 +449,12 @@ def parse_args(argv):
         help="a checked-out repo whose commit refs can be resolved "
         "(repeatable; 'radar' defaults to this checkout)",
     )
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        help="print one line per commit ref the supplied checkouts could "
+        "not answer for, naming the ref, its repo and the reason",
+    )
     args = parser.parse_args(argv[1:])
     repos = {"radar": REPO_ROOT}
     for item in args.repo:
@@ -324,12 +462,12 @@ def parse_args(argv):
         if not name.strip() or not path.strip():
             parser.error(f"--repo wants NAME=PATH, got {item!r}")
         repos[name.strip()] = Path(path.strip()).expanduser()
-    return Path(args.board), repos
+    return Path(args.board), repos, args.explain
 
 
 def main(argv):
     try:
-        path, repos = parse_args(argv)
+        path, repos, explain = parse_args(argv)
     except SystemExit as exc:  # argparse already printed the reason
         return 2 if exc.code else 0
     try:
@@ -341,7 +479,11 @@ def main(argv):
     if not any(name.strip().lower() == "proposed" for name in sections):
         print(f"board-lint: no '## Proposed' section in {path}")
         return 2
-    faults, counts = lint_board(text, repos)
+    faults, counts, unverified = lint_board(text, repos)
+    if explain:
+        for line_no, sha, repo_name, reason in unverified:
+            where = f"bound to {repo_name}" if repo_name else "no repo named"
+            print(f"UNVERIFIED {path}:{line_no} — ref `{sha}` ({where}): {reason}")
     for line_no, label, problem in faults:
         print(f'FAIL {path}:{line_no} — row "{label}" {problem}')
     if faults:
@@ -351,12 +493,20 @@ def main(argv):
         )
         return 1
     checked_repos = ", ".join(sorted(repos)) or "none"
+    if counts["refs_unverified"]:
+        parts = [
+            f"{n} {reason}" if len(counts["unverified"]) > 1 else reason
+            for reason, n in sorted(counts["unverified"].items())
+        ]
+        unverified_text = f"{counts['refs_unverified']} unverified ({', '.join(parts)})"
+    else:
+        unverified_text = "0 unverified"
     print(
         f"OK — board lint: {counts['actionable']} actionable Proposed row(s) "
         f"checked, {counts['ledger']} ledger row(s) exempt, "
         f"{counts['shipped']} SHIPPED marker(s) matched to Done, "
         f"{counts['refs_checked']} commit ref(s) resolved in {checked_repos}, "
-        f"{counts['refs_unverified']} unverified (repo not supplied), "
+        f"{unverified_text}, "
         f"{counts['out_of_scope']} out-of-scope Proposed row(s)"
     )
     return 0

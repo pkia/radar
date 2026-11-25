@@ -22,6 +22,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 CHECKER = REPO / "tools" / "check_board.py"
 BOARD = REPO / "IDEAS.md"
@@ -179,9 +181,10 @@ def test_checker_is_readonly_source():
                    "rmtree", "rename(", "'w'", '"w"', "'a'", '"a"',
                    "shutil", "shell=True"):
         assert banned not in src, f"checker source must not contain {banned!r}"
-    # subprocess is allowed for exactly one read-only question: does this
-    # commit exist? Every invocation names git, and only cat-file.
-    assert "subprocess" in src  # the commit resolver
+    # subprocess is allowed for exactly one read-only call site — does this
+    # commit exist, and what kind of checkout is this? Every invocation
+    # names git, and the site asserts its own verb against an allow-list.
+    assert "subprocess" in src  # the git reader
     subprocess_calls = [
         block for block in src.split("subprocess.")[1:]
         if block.lstrip().startswith("run(")
@@ -189,10 +192,11 @@ def test_checker_is_readonly_source():
     assert len(subprocess_calls) == 1, "one git call site, not a toolbox"
     call = subprocess_calls[0]
     assert '["git", "-C"' in call
+    assert 'GIT_READ_VERBS = ("cat-file", "rev-parse")' in src
+    assert "args[0] in GIT_READ_VERBS" in src
     for verb in ("commit", "add", "push", "reset", "checkout", "clean",
                  "gc", "prune", "update-ref", "fetch"):
         assert f'"{verb}"' not in call, f"git call site must stay read-only ({verb})"
-    assert "cat-file" in call
 
 
 def test_board_unmodified_by_run(tmp_path):
@@ -248,10 +252,27 @@ def make_git_repo(path):
         return subprocess.run(["git", "-C", str(path), *args], check=True,
                               capture_output=True, text=True, env=env)
     git("init", "-q")
-    (path / "seed.txt").write_text("seed\n", encoding="utf-8")
+    # the seed names the directory: two fixtures made in the same second
+    # with identical content and identity would otherwise be the SAME
+    # commit, and a cross-repo test would pass without resolving anything
+    (path / "seed.txt").write_text(f"seed {path.name}\n", encoding="utf-8")
     git("add", "seed.txt")
     git("commit", "-q", "-m", "seed")
     return path, git("rev-parse", "HEAD").stdout.strip()
+
+
+def commit_file(path, name, message):
+    """Add and commit one file in a fixture repo (returns the new sha)."""
+    env = {"GIT_AUTHOR_NAME": "radar", "GIT_AUTHOR_EMAIL": "radar@example.invalid",
+           "GIT_COMMITTER_NAME": "radar", "GIT_COMMITTER_EMAIL": "radar@example.invalid",
+           "PATH": "/usr/bin:/bin", "HOME": str(path)}
+    (path / name).write_text(name + "\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(path), "add", name], check=True,
+                   capture_output=True, env=env)
+    subprocess.run(["git", "-C", str(path), "commit", "-q", "-m", message],
+                   check=True, capture_output=True, env=env)
+    return subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+                          check=True, capture_output=True, text=True).stdout.strip()
 
 
 def test_planted_dangling_shipped_pointer_fails(tmp_path):
@@ -494,3 +515,182 @@ def test_real_board_skipped_section_is_not_judged(tmp_path):
     board = write_board(tmp_path, text)
     proc = run_checker(board)
     assert proc.returncode == 0, proc.stdout
+
+
+# --- a ref's repo is the one named beside it (2026-11-25) ---------------
+#
+# Acceptance (board row, radar — give the ledger's unresolvable refs a
+# verdict): `check_board.py --repo` for all five owned checkouts exits 0
+# with the resolved count named, or every remaining unverified ref carries
+# a written reason. The row's premise was measured: the 28 faults were 21
+# refs lost to a shallow pi-cicd checkout and 3 shas mis-bound to the
+# title's prefix even though the row names their repo in the same breath.
+
+DONE_BOARD = """# Radar — idea board
+
+## Proposed
+
+*(none)*
+
+## In progress
+
+*(none)*
+
+## Done
+
+- **{title}** — done 2026-01-01 ({body})
+
+## Skipped
+
+*(none)*
+
+## Run log
+
+*(empty)*
+"""
+
+
+def done_board(tmp_path, title, body):
+    return write_board(tmp_path, DONE_BOARD.format(title=title, body=body))
+
+
+def test_cross_repo_refs_bind_to_the_repo_named_beside_them(tmp_path):
+    """A cluster row citing pi-cicd shas resolves each in its own repo."""
+    cluster, sha_a = make_git_repo(tmp_path / "farm-a")
+    piped, sha_b = make_git_repo(tmp_path / "farm-b")
+    assert sha_a != sha_b  # two fixtures, two commits — not one sha twice
+    board = done_board(
+        tmp_path,
+        "cluster — planted cross repo",
+        f"shipped in cluster-prototype `{sha_a}` + pi-cicd `{sha_b}`:",
+    )
+    proc = run_checker(
+        board,
+        "--repo", f"cluster-prototype={cluster}",
+        "--repo", f"pi-cicd={piped}",
+    )
+    assert proc.returncode == 0, proc.stdout
+    assert "2 commit ref(s) resolved in cluster-prototype, pi-cicd, radar" in proc.stdout
+    assert "0 unverified" in proc.stdout
+
+
+def test_repeated_ref_keeps_the_binding_it_got_in_the_row(tmp_path):
+    """A sha cited again later in the row stays with the repo it came from.
+
+    The board names a commit once and then refers back to it in prose,
+    often on a line with no repo name beside it; the old prefix-only
+    binding sent that second mention to the title's repo and faulted.
+    """
+    cluster, sha_a = make_git_repo(tmp_path / "farm-a")
+    piped, sha_b = make_git_repo(tmp_path / "farm-b")
+    assert sha_a != sha_b
+    board = done_board(
+        tmp_path,
+        "cluster — planted repeat",
+        f"shipped in cluster-prototype `{sha_a}` + pi-cicd `{sha_b}`:\n"
+        f"    CI runs for the second half (`{sha_b}`) were green.",
+    )
+    proc = run_checker(
+        board,
+        "--repo", f"cluster-prototype={cluster}",
+        "--repo", f"pi-cicd={piped}",
+    )
+    assert proc.returncode == 0, proc.stdout
+    assert "3 commit ref(s) resolved" in proc.stdout
+    assert "not in cluster-prototype history" not in proc.stdout
+
+
+def test_a_distant_repo_mention_does_not_steal_a_ref(tmp_path):
+    """Only a name sitting beside the ref binds it; prose does not."""
+    repo, _sha = make_git_repo(tmp_path / "farm")
+    board = done_board(
+        tmp_path,
+        "radar — planted distant mention",
+        "unlike the cluster work generally, this pointer `0abc123` is ours.",
+    )
+    proc = run_checker(board, "--repo", f"radar={repo}")
+    assert proc.returncode == 1, proc.stdout
+    assert "cites `0abc123`, which is not in radar history" in proc.stdout
+
+
+def test_shallow_checkout_is_unverified_not_faulted(tmp_path):
+    """A shallow clone cannot prove a commit absent, so it says so."""
+    full, parent = make_git_repo(tmp_path / "farm")
+    commit_file(full, "second.txt", "second")
+    shallow = tmp_path / "shallow"
+    subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{full}", str(shallow)],
+                   check=True, capture_output=True)
+    assert parent not in subprocess.run(
+        ["git", "-C", str(shallow), "rev-list", "--all"], check=True,
+        capture_output=True, text=True).stdout  # the parent really is missing
+    board = done_board(tmp_path, "radar — planted shallow",
+                       f"shipped in `{parent}`.")
+    proc = run_checker(board, "--repo", f"radar={shallow}", "--explain")
+    assert proc.returncode == 0, proc.stdout
+    assert "1 unverified (repo is shallow)" in proc.stdout
+    assert f"ref `{parent}` (bound to radar): repo is shallow" in proc.stdout
+    # control 1: the same sha against the full checkout resolves, so the
+    # sha is real and the shallow verdict is about what the clone holds
+    full_proc = run_checker(board, "--repo", f"radar={full}")
+    assert full_proc.returncode == 0, full_proc.stdout
+    assert "1 commit ref(s) resolved in radar" in full_proc.stdout
+    # control 2: a sha that is nowhere still faults against the full repo,
+    # so the fault path above the shallow branch is alive
+    bogus = done_board(tmp_path, "radar — planted bogus", "shipped in `0abc1234`.")
+    bogus_proc = run_checker(bogus, "--repo", f"radar={full}")
+    assert bogus_proc.returncode == 1, bogus_proc.stdout
+    assert "`0abc1234`, which is not in radar history" in bogus_proc.stdout
+
+
+def test_unusable_repo_path_is_unverified_and_named(tmp_path):
+    """A --repo path that is not a checkout is a reason, not 40 faults."""
+    board = done_board(tmp_path, "radar — planted path", "shipped in `abc1234`.")
+    proc = run_checker(board, "--repo", f"radar={tmp_path / 'nope'}", "--explain")
+    assert proc.returncode == 0, proc.stdout
+    assert "1 unverified (repo path is not a usable checkout)" in proc.stdout
+    assert "ref `abc1234` (bound to radar): repo path is not a usable checkout" in proc.stdout
+
+
+def test_explain_names_every_unverified_ref_and_is_silent_when_clean(tmp_path):
+    """Each unverified ref gets a line with its repo and reason."""
+    board = done_board(tmp_path, "cluster — planted explain",
+                       "shipped in cluster-prototype `abc1234`.")
+    proc = run_checker(board, "--explain")
+    assert proc.returncode == 0, proc.stdout
+    assert f"UNVERIFIED {board}:13 — ref `abc1234` (bound to cluster-prototype): repo not supplied" in proc.stdout
+    cluster, sha = make_git_repo(tmp_path / "farm")
+    clean = done_board(tmp_path, "cluster — planted explained clean",
+                       f"shipped in cluster-prototype `{sha}`.")
+    proc = run_checker(clean, "--repo", f"cluster-prototype={cluster}", "--explain")
+    assert proc.returncode == 0, proc.stdout
+    assert "UNVERIFIED" not in proc.stdout
+
+
+OWNED_CHECKOUTS = {
+    "radar": REPO,
+    "pkia.github.io": Path("/home/ev/personal-website"),
+    "pi-cicd": Path("/home/ev/pi-cicd"),
+    "cluster-prototype": Path("/home/ev/cluster-prototype"),
+    "switch-l4t-gpu": Path("/home/ev/switch-l4t-gpu-clone"),
+}
+
+
+def test_real_board_with_every_owned_checkout_exits_zero():
+    """The row's acceptance: five checkouts supplied, resolved count named.
+
+    CI only has radar's own checkout, so this runs on the box (and skips
+    where the others are absent rather than pretending they are clean).
+    """
+    missing = [n for n, p in OWNED_CHECKOUTS.items() if not (p / ".git").exists()]
+    if missing:
+        pytest.skip(f"not checked out here: {', '.join(missing)}")
+    extra = []
+    for name, path in OWNED_CHECKOUTS.items():
+        if name != "radar":
+            extra += ["--repo", f"{name}={path}"]
+    proc = run_checker(BOARD, *extra)
+    assert proc.returncode == 0, proc.stdout
+    assert "0 fault(s)" not in proc.stdout
+    resolved = proc.stdout.split(" commit ref(s) resolved in ")[0].rsplit(", ", 1)[1]
+    assert int(resolved) > 0
+    assert "unverified (" in proc.stdout  # the remainder carries reasons
