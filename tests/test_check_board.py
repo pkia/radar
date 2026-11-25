@@ -624,11 +624,17 @@ def test_shallow_checkout_is_unverified_not_faulted(tmp_path):
     assert proc.returncode == 0, proc.stdout
     assert "1 unverified (repo is shallow)" in proc.stdout
     assert f"ref `{parent}` (bound to radar): repo is shallow" in proc.stdout
-    # control: the same sha against the full checkout faults, so the test
-    # is measuring the shallow verdict and not a lenient default
+    # control 1: the same sha against the full checkout resolves, so the
+    # sha is real and the shallow verdict is about what the clone holds
     full_proc = run_checker(board, "--repo", f"radar={full}")
-    assert full_proc.returncode == 1, full_proc.stdout
-    assert f"`{parent}`, which is not in radar history" in full_proc.stdout
+    assert full_proc.returncode == 0, full_proc.stdout
+    assert "1 commit ref(s) resolved in radar" in full_proc.stdout
+    # control 2: a sha that is nowhere still faults against the full repo,
+    # so the fault path above the shallow branch is alive
+    bogus = done_board(tmp_path, "radar — planted bogus", "shipped in `0abc1234`.")
+    bogus_proc = run_checker(bogus, "--repo", f"radar={full}")
+    assert bogus_proc.returncode == 1, bogus_proc.stdout
+    assert "`0abc1234`, which is not in radar history" in bogus_proc.stdout
 
 
 def test_unusable_repo_path_is_unverified_and_named(tmp_path):
