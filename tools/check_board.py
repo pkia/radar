@@ -382,62 +382,56 @@ def lint_board(text, repos=None):
                     )
 
             # ledger pointer: commit refs resolve in the repo the row names
-            refs = commit_refs(joined)
-            if not refs:
+            bound_refs = bind_refs(joined, project_repo(label))
+            if not bound_refs:
                 continue
-            fallback_repo = project_repo(label)
             states = {}
-            for line in lines:
-                for match in COMMIT_REF.finditer(line):
-                    sha = match.group(1)
-                    if not any(c.isdigit() for c in sha):
-                        continue
-                    repo_name = bind_repo(line, match.start(), fallback_repo)
-                    repo_path = repos.get(repo_name) if repo_name else None
-                    if repo_path is None:
-                        reason = (
-                            "row names no repo" if repo_name is None
-                            else "repo not supplied"
+            for sha, repo_name in bound_refs:
+                repo_path = repos.get(repo_name) if repo_name else None
+                if repo_path is None:
+                    reason = (
+                        "row names no repo" if repo_name is None
+                        else "repo not supplied"
+                    )
+                    counts["refs_unverified"] += 1
+                    counts["unverified"][reason] = (
+                        counts["unverified"].get(reason, 0) + 1
+                    )
+                    unverified.append((start_line, sha, repo_name, reason))
+                    continue
+                if repo_name not in states:
+                    states[repo_name] = repo_state(repo_path)
+                state = states[repo_name]
+                if state != "ok":
+                    reason = (
+                        "repo is shallow" if state == "shallow"
+                        else "repo path is not a usable checkout"
+                    )
+                    counts["refs_unverified"] += 1
+                    counts["unverified"][reason] = (
+                        counts["unverified"].get(reason, 0) + 1
+                    )
+                    unverified.append((start_line, sha, repo_name, reason))
+                    continue
+                verdict = resolve_commit(repo_path, sha)
+                if verdict is None:
+                    counts["refs_unverified"] += 1
+                    counts["unverified"]["git unavailable"] = (
+                        counts["unverified"].get("git unavailable", 0) + 1
+                    )
+                    unverified.append(
+                        (start_line, sha, repo_name, "git unavailable")
+                    )
+                    continue
+                counts["refs_checked"] += 1
+                if not verdict:
+                    faults.append(
+                        (
+                            start_line,
+                            label,
+                            f"cites `{sha}`, which is not in {repo_name} history",
                         )
-                        counts["refs_unverified"] += 1
-                        counts["unverified"][reason] = (
-                            counts["unverified"].get(reason, 0) + 1
-                        )
-                        unverified.append((start_line, sha, repo_name, reason))
-                        continue
-                    if repo_name not in states:
-                        states[repo_name] = repo_state(repo_path)
-                    state = states[repo_name]
-                    if state != "ok":
-                        reason = (
-                            "repo is shallow" if state == "shallow"
-                            else "repo path is not a usable checkout"
-                        )
-                        counts["refs_unverified"] += 1
-                        counts["unverified"][reason] = (
-                            counts["unverified"].get(reason, 0) + 1
-                        )
-                        unverified.append((start_line, sha, repo_name, reason))
-                        continue
-                    verdict = resolve_commit(repo_path, sha)
-                    if verdict is None:
-                        counts["refs_unverified"] += 1
-                        counts["unverified"]["git unavailable"] = (
-                            counts["unverified"].get("git unavailable", 0) + 1
-                        )
-                        unverified.append(
-                            (start_line, sha, repo_name, "git unavailable")
-                        )
-                        continue
-                    counts["refs_checked"] += 1
-                    if not verdict:
-                        faults.append(
-                            (
-                                start_line,
-                                label,
-                                f"cites `{sha}`, which is not in {repo_name} history",
-                            )
-                        )
+                    )
     return faults, counts, unverified
 
 
