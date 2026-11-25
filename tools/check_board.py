@@ -23,13 +23,17 @@ Ledger **pointers** are checked, though (added 2026-11-12):
   title verbatim; punctuation, bold and backticks are ignored in the
   comparison) — a stamp pointing at a row that is not there is a fault;
 - a backticked commit reference (``abc1234``) must resolve in the
-  history of the repo its row names. A row is bound to a repo by its
-  title's project prefix (``radar — …``, ``personal-website — …``,
-  ``cluster — …``, …) — the board's established spelling. Only repos
-  supplied with ``--repo NAME=PATH`` are checked (the checker's own
-  radar repo by default, which is all a CI checkout has); a ref bound
-  to any other repo is reported as unverified, never faulted, because
-  the checker cannot see a repository it was not handed.
+  history of the repo its row names. The repo is the project name
+  written beside the ref — ``pi-cicd `38c65ce```, ``**project-hub**
+  `df68069``` inside a pi-cicd row — falling back to the row title's
+  project prefix (``radar — …``, ``cluster — …``) when no name sits
+  next to it. Only repos supplied with ``--repo NAME=PATH`` are checked
+  (the checker's own radar repo by default, which is all a CI checkout
+  has). A ref the checker cannot answer for is *unverified* with its
+  reason named — repo not supplied, the checkout is shallow (a shallow
+  clone cannot prove a commit absent), or the path is not a usable
+  repository — never faulted: a gate that faults on what it cannot see
+  would be red forever, and a false fault costs a run to disprove.
 
 Deployment scope is checked too (added 2026-11-15): the owner's directive
 of 2026-11-02 limits the loop to the current Pi 5 deployment. An
@@ -46,7 +50,7 @@ is only ever asked ``cat-file`` (asserted by tests/test_check_board.py).
 Exit codes: 0 clean, 1 faults (each fault names file, line, the row and
 the broken part), 2 structural (unreadable file, no Proposed section).
 
-Usage: check_board.py [BOARD] [--repo NAME=PATH ...]
+Usage: check_board.py [BOARD] [--repo NAME=PATH ...] [--explain]
 """
 
 import argparse
@@ -86,7 +90,7 @@ ROW_TITLE = re.compile(r"^- \*\*(.+?)\*\*")
 # word like `__pycache__` is not hex).
 COMMIT_REF = re.compile(r"`([0-9a-f]{7,40})`")
 
-# Row title prefix → the repo whose history its commit refs live in.
+# Row title prefix → the repo whose history its commit refs belong in.
 # The board names a project before the dash/colon, and this map is that
 # convention made explicit. An unknown prefix means "cannot bind": its
 # refs stay unverified rather than guessed at.
@@ -105,7 +109,28 @@ PROJECT_REPOS = {
     "copybot": "forex-copybot",
     "train": "cs2-train",
     "cs2-train": "cs2-train",
+    # Ledger history cites a retired project's commits inside an in-scope
+    # row ("**project-hub** `df68069`"); the ref still has a repo, even
+    # though the project can never be picked again.
+    "project-hub": "project-hub",
+    "maritime-dashboard": "maritime-dashboard",
 }
+
+# Names a ref can be bound to *beside itself* in a row: every prefix above
+# plus every repo name those prefixes map to (a row writes the repo, not
+# the prefix, next to its sha).
+BIND_REPOS = dict(PROJECT_REPOS)
+BIND_REPOS.update({repo: repo for repo in PROJECT_REPOS.values()})
+BIND_NAME = re.compile(
+    r"(?<![a-z0-9._-])(?:"
+    + "|".join(re.escape(n) for n in sorted(BIND_REPOS, key=len, reverse=True))
+    + r")(?![a-z0-9._-])"
+)
+# Only markup may sit between the repo name and the ref it binds: the
+# board's spellings are `pi-cicd `abc1234``, `**project-hub** `abc`` and
+# `cluster-prototype `abc`, pi-cicd `def``.
+BIND_GAP = re.compile(r"^[\s`*_:+,]*$")
+BIND_GAP_MAX = 8
 
 # Owner deployment scope (AGENTS.md "Deployment scope", directive
 # 2026-11-02): the loop serves the current Pi 5 deployment only. A row
@@ -177,19 +202,73 @@ def project_repo(label):
     return PROJECT_REPOS.get(title_prefix(label))
 
 
+def bind_repo(line, ref_start, fallback):
+    """The repo named beside the ref, else the row's title prefix.
+
+    The board puts a ref's repo next to it — ``pi-cicd `38c65ce```,
+    ``**project-hub** `df68069``` inside a pi-cicd row — and a row can
+    legitimately cite two repos. The nearest preceding project name
+    separated from the ref by markup alone is the binding. Anything
+    looser (any mention anywhere in the row) would let a passing mention
+    steal a ref from the repo that really holds it.
+    """
+    bound = None
+    for match in BIND_NAME.finditer(line, 0, ref_start):
+        gap = line[match.end():ref_start]
+        if len(gap) <= BIND_GAP_MAX and BIND_GAP.match(gap):
+            bound = BIND_REPOS[match.group(0).lower()]
+    return bound or fallback
+
+
+# The only git questions this tool may ask: both read-only, both answer a
+# fact about objects already on disk.
+GIT_READ_VERBS = ("cat-file", "rev-parse")
+
+
+def git_read(repo_path, *args):
+    """Run one read-only git question; None when git itself is unavailable.
+
+    The verb is asserted here, at the single call site, so a future
+    addition cannot quietly turn the checker into something that writes.
+    """
+    assert args and args[0] in GIT_READ_VERBS, f"not a read-only verb: {args[:1]}"
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_path), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+
+
+def repo_state(repo_path):
+    """'ok' | 'shallow' | 'unusable' — what this checkout can answer.
+
+    ``cat-file -e`` answers "absent" for a commit older than a shallow
+    clone's cut, which is indistinguishable from a bogus sha — so the
+    checker asks the checkout what it is before believing its silence.
+    """
+    if git_read(repo_path, "rev-parse", "--git-dir") is None:
+        return "unusable"
+    probe = git_read(repo_path, "rev-parse", "--git-dir")
+    if probe is None or probe.returncode != 0:
+        return "unusable"
+    shallow = git_read(repo_path, "rev-parse", "--is-shallow-repository")
+    if shallow is None or shallow.returncode != 0:
+        return "unusable"
+    return "shallow" if shallow.stdout.strip() == "true" else "ok"
+
+
 def resolve_commit(repo_path, sha):
     """True/False as git answers; None when git itself is unavailable.
 
     ``cat-file -e`` is the read-only question "does this object exist" —
     it fetches nothing, writes nothing, and touches no ref.
     """
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(repo_path), "cat-file", "-e", sha + "^{commit}"],
-            capture_output=True,
-            check=False,
-        )
-    except OSError:
+    proc = git_read(repo_path, "cat-file", "-e", sha + "^{commit}")
+    if proc is None:
         return None
     return proc.returncode == 0
 
