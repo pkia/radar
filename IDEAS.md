@@ -307,15 +307,96 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-25: the ledger-refs verdict row shipped this run, see
-Done. Pickable next: the new 11-25 repeating-fallback row, the 11-18
-coordinator-restart row (its console-page clause is owner-gated), the
+*(none — 2026-11-27: the repeating-fallback row shipped this run, see
+Done. Pickable next: the new radar repo-stamp row (this run's sync), the
+11-18 coordinator-restart row (its console-page clause is owner-gated), the
 personal-website findings allowlist and Currently-panel rows, the pi-cicd
 freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU
 baseline, and the 11-18 devlog-card gate (fix its measured premise first)
 — all under Proposed.)*
 
 ## Done
+
+- **pi-cicd — make a repeating fallback a finding** — done 2026-11-27 (the
+  top pickable row of the 11-27 devlog, named again the top row of 11-26;
+  picked because every clause of its acceptance verifies on this box in one
+  session, and the ledger already held the case it was filed for). Shipped in
+  pi-cicd `d97c5d2`:
+  - **The run of fallbacks lives in the state, not the ledger's tail.** A
+    fallback writes a ledger line; a run that reaches its OK with no fallback
+    writes nothing at all — so no reader of `fallbacks.log` can tell a
+    three-line streak from three lines either side of a repair. `state.json`
+    now carries `fallback_streak` (`failed`, `runs`, `since`, `paged`): a run
+    on the same failed endpoint set extends it, a run on a different set
+    starts a new one, and **any** run that used no fallback clears it, so a
+    repair resets the count with no state edit.
+  - **The third run pages once, and only once.** At
+    `FALLBACK_STREAK_PAGES_AT` (config, default 3) the page names the failing
+    endpoint, the count, the endpoint that answered and when the streak
+    started; later runs in that streak stay silent because `paged` is set.
+    A single fallback stays a ledger line with no page.
+  - **The page is a page, and the count stays true.** It is written to
+    `pages.log` under its own verdict word `fallback-streak` (so no reader
+    mistakes it for a changed probe) and counted in `pages`, so `--history`'s
+    page count is the number of messages the phone got, not just the number
+    of verdict changes.
+  - **`--history` reads the streak from the state** and appends it to the
+    fallback-count line — `… 3 fallback(s) in the last 24 h — 3 line(s) in
+    <path>; streak: <endpoint> failed on 3 consecutive run(s), since <stamp>
+    (paged)` — or `streak: none — the newest run used no fallback` after a
+    repair. It still runs no probe and writes nothing.
+  - **Acceptance, executed:** `tests/test_dns_watch.py` **60 passed** (6
+    new), full suite **482 passed, 1 skipped**; the file also passes under
+    `PATH=/usr/bin:/bin` (the 11-18 lesson). Clause by clause, each an
+    executed test driving the real CLI through a loopback ntfy sink: two
+    identical fallback runs → no page, no `pages.log`, `runs` 2; the third →
+    exactly one page whose title names the endpoint and `failed 3 run(s) in a
+    row` and whose body names the answering endpoint, one `fallback-streak`
+    line in `pages.log`, `pages` 1; the fourth → still one page, `runs` 4; a
+    single fallback → one ledger line, `runs` 1, `paged` false; a direct-OK
+    run → the streak dict exactly zeroed and a new streak needs three fresh
+    runs; a *different* dead endpoint → a new streak (`runs` 1), not a fourth
+    on the old one; broken→recovery-through-fallback→two more → three pages
+    and `pages` 3; `--history` → the count line carrying the streak and
+    `(paged)`, both ledgers byte-identical after, and `streak: none` after a
+    direct run. **Negative-controlled by execution:** against the pre-change
+    `dns-watch` (`git stash push -- dns-watch`, under `timeout -s KILL`)
+    **all 6 new tests fail** — five on the missing `fallback_streak` key,
+    the sixth because the old tool pages nothing and writes no
+    `fallback-streak` line. **CI green on the tip** (run 46032836396,
+    `d97c5d2`): the runner printed all six new tests PASSED by name and the
+    suite at **479 passed, 4 skipped** (the three extra skips are the
+    Prometheus drills).
+  - **Live on this box:** a scratch state + loopback sink with the first
+    endpoint pointed at a dead port (`DNS_CHECK_URLS="http://127.0.0.1:1/
+    https://1.1.1.1/cdn-cgi/trace"`, `DNS_CHECK_TIMEOUT=12` — the 11-24
+    lesson about not confusing a retry with a fallback) produced **no page on
+    runs 1–2**, exactly **one** page on run 3 (`dns-watch: fallback streak —
+    http://127.0.0.1:1/ failed 3 run(s) in a row`), **none on run 4**, and a
+    direct run then cleared the state to `runs: 0` with `--history` printing
+    `streak: none`. The **real hourly unit** picked the new code up from the
+    repo symlink with no restart: its 16:48 UTC run wrote `fallback_streak`
+    into the live `state.json` (`runs` 0 — that run's OK came directly).
+  - **The case the row was filed for is already in the live ledger, one day
+    early:** the real `fallbacks.log` holds three consecutive entries at
+    2026-11-26 20:47, 21:47 and 23:47 naming
+    `https://1.1.1.1/cdn-cgi/trace` failed with `https://8.8.8.8/`
+    answering — a run of three that no page ever mentioned, which is exactly
+    this row's finding.
+  - **Not claimed:** the streak counter is **prospective** — those three
+    pre-change lines do not count toward a streak now that the newest run
+    used no fallback, and nothing replays them; no streak page has gone
+    through the real ntfy (the drill's page went to a loopback sink); the
+    threshold 3 is a judgement about hourly timers, not a measurement, and
+    moving `FALLBACK_STREAK_PAGES_AT` moves when the phone hears; the page is
+    **once per streak by design**, so a streak that grows from 3 to 30 stays
+    one page; and an unconfigured or failing ntfy means the page is
+    re-attempted on every run past the threshold (with a named stderr
+    warning) until `paged` can be set. One existing test changed meaning and
+    was rewritten rather than weakened: the fallback-rotation test used three
+    identical fallbacks, which now *is* the streak trigger, so it runs two at
+    a cap of one to keep rotation single-purpose. Repo:
+    <https://github.com/pkia/pi-cicd>.
 
 - **radar — give the ledger's unresolvable refs a verdict** — done
   2026-11-25 (the top pickable row of both the 11-24 and 11-25 devlogs;
@@ -4737,6 +4818,34 @@ Append-only, one line per run — including failures and no-ops.
   new); 6 of the 7 fail against the pre-change checker. CI green (run
   45652946562, 37 passed 1 skipped on the runner). ≈35 tool calls; no gate
   blocked.
+
+- 2026-11-27 — implementer run: synced the 11-27 devlog's radar list (top
+  row: the repeating-fallback finding, already Proposed; item 2: the
+  Currently panel, already Proposed; item 3: a radar repo stamp for nameless
+  Done rows, filed from the 11-26 post and restated today — added as one
+  Proposed row with the post's acceptance and the 11-25 five-checkout
+  numbers). **No run happened on 11-26** — no commit in this repo and no
+  Run-log line for that date, so the 11-26 post's items (the same repo stamp,
+  the fallback row, the Currently panel) were synced tonight instead. Picked
+  **pi-cicd — make a repeating fallback a finding** and shipped it in pi-cicd
+  `d97c5d2`: `state.json` now carries `fallback_streak` (endpoint set, count,
+  since, paged), a run on the same failed endpoint extends it, a different
+  set starts a new one and any run with no fallback clears it; at
+  `FALLBACK_STREAK_PAGES_AT` (default 3) one page names the endpoint, the
+  count and the endpoint that answered; the page lands in `pages.log` under
+  `fallback-streak` and is counted; `--history` prints the streak beside the
+  fallback count from the state. Evidence: `tests/test_dns_watch.py` 60
+  passed (6 new), full suite **482 passed, 1 skipped**, green under
+  `PATH=/usr/bin:/bin`; negative control by execution — all 6 new tests fail
+  against the pre-change tool. **CI green** (46032836396; every new test
+  PASSED by name, runner 479 passed / 4 skipped). Live: the hourly unit ran
+  the new code from the symlink at 16:48 UTC and wrote the key (runs 0); a
+  scratch drill with a dead first endpoint and a loopback sink paged exactly
+  once on the third run, stayed silent on the fourth, and cleared on a direct
+  run. The live `fallbacks.log` already held the filed-for case — three
+  consecutive 1.1.1.1 failures on 11-26 (20:47, 21:47, 23:47) that no page
+  mentioned. ≈45 tool calls; gh's API timed out twice before the run list
+  answered — no gate blocked.
 
 ## Notes
 

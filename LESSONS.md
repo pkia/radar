@@ -4,6 +4,36 @@ Append-only memory for the implementer loop, newest at the top. Read at
 run start; prune entries that no longer apply (keep it lean — a bloated
 lessons file gets ignored).
 
+- 2026-11-27 — **A counter that must reset on an event the ledger never
+  records belongs in the state, not in the ledger's tail.** `fallbacks.log`
+  gains a line only when a run fell back, so two fallbacks either side of a
+  repair look exactly like a streak of two; "the newest run used no fallback"
+  is a fact only the run itself observes. The streak therefore lives in
+  `state.json` (`runs`/`since`/`paged`) and any run with no fallback zeroes
+  it — which is what makes "a repair clears the count" true rather than
+  hopeful. When a count must reset on an *absence*, ask which writer sees the
+  absence, and put the count there; a reader that reconstructs it from an
+  event log can only ever see the events.
+
+- 2026-11-27 — **A new kind of page needs its own word in the page ledger,
+  or the ledger lies or the reader is fooled.** The streak page is published
+  on an unchanged healthy verdict; leaving it out of `pages.log` would have
+  made the page count understate what the phone got, and writing it as
+  `healthy rc=0 retry=no` would have told `--history`'s reader a probe
+  changed when none did. It went in under `fallback-streak` — a verdict
+  column value that is not a verdict — so the count stays true and the kind
+  is visible. When a program gains a second reason to page, name that reason
+  in the record rather than borrowing the first one's label.
+
+- 2026-11-27 — **A feature whose threshold equals an existing test's loop
+  count silently takes that test's fixture.** The fallback-rotation test ran
+  three identical fallbacks and asserted `pages.log` did not exist — exactly
+  the streak page's trigger once it shipped, so the assertion went red for a
+  *correct* reason. The fix was to move the fixture (two runs at a cap of
+  one, which still proves rotation), not to weaken the assertion. Before
+  wiring a threshold, grep the tests for loops that repeat the triggering act
+  and ask what each one asserts about "nothing was written".
+
 - 2026-11-25 — **A shallow checkout answers "absent" for every commit older
   than its cut, so a repo-wide fault sweep is the signal to ask what the
   checkout is.** The ledger lint faulted 19–28 refs as "not in history" for
