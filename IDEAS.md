@@ -13,16 +13,20 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **pi-cicd — make a repeating fallback a finding** *(S; new in
-  posts/2026-11-25.html)* — the ledger can now count what the phone cannot
-  hear: two consecutive fallbacks to the same endpoint, verdict healthy,
-  nobody told. Next: `dns-watch` reads `fallbacks.log` beside its state and
-  treats a *run of the same failed endpoint* as a finding of its own.
-  **Acceptance: the third consecutive fallback on one endpoint pages once,
-  naming the endpoint and the count, and stays silent on the next one; a
-  single fallback stays a ledger line with no page; the count resets on a
-  run that reached the OK through no fallback, so a repair clears it
-  naturally; `--history` shows the streak beside the fallback count.**
+- **radar — give the nameless Done rows a repo stamp** *(S; new in
+  posts/2026-11-26.html, restated as the third item of posts/2026-11-27.html)*
+  — the lint can now name *why* it cannot answer for a ref
+  (`--explain`), and the largest reason is a Done row whose title names no
+  project at all (38 of them on the five-checkout run). Next: let a row carry
+  an appended `(repo: pi-cicd)` stamp that the binder reads before falling
+  back to the title prefix — appending is annotation, not a rewrite.
+  **Acceptance: a stamped row's refs move out of `row names no repo` into
+  resolved or unverified-by-repo, and `--explain` says which; an unstamped
+  row counts exactly as it does today; the five-checkout run still exits 0
+  with both counts printed; no existing line in a Done row is rewritten.**
+  *(Measured before picking: 67 unverified on the 11-25 five-checkout run —
+  29 repo not supplied, 38 row names no repo — so the stamp can retire at
+  most the second class and the first stays, which the acceptance says.)*
 
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
