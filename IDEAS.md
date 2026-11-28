@@ -337,9 +337,10 @@ measured premise first) — all under Proposed.)*
     repo)**, exit 0 both times. The 12 refs the stamps took out of the class
     went 11 to resolved and 1 to a named repo; the rest of the resolved gain
     is this entry's own two citations, and the unstamped remainder counts
-    exactly as it did. **No existing line was
-    rewritten:** the board diff is ten added lines and zero deletions, and
-    the test counts whole-line stamps in the file rather than the token.
+    exactly as it did. **No existing line was rewritten:** the stamping
+    pass was ten added lines and zero deletions on the working tree before
+    any prose changed, and the test counts whole-line stamps in the file
+    rather than the token.
     **Negative-controlled by execution:** against the pre-change checker
     (`git stash push -- tools/check_board.py`, under `timeout -s KILL`) **8
     of the 9 new tests fail**; the ninth (a ref named beside its repo is not
@@ -349,7 +350,11 @@ measured premise first) — all under Proposed.)*
     `test_real_board_stamps_are_honoured_on_the_five_checkout_run` read the
     board before the stamps were committed (`assert 0 >= 10`; 45 passed, 1
     skipped on the runner). The board commit that carries this entry is the
-    green tip (run cited below).
+    green tip (**run 46165080037**): the runner's own Board lint step
+    printed `10 row stamp(s) honoured … 26 row names no repo`, the eight
+    non-skipped new tests PASSED by name, and the suite ran 45 passed, 2
+    skipped — both skips are the five-checkout tests, which no runner can
+    run.
   - **Not claimed:** 26 refs in nine Done rows are still *row names no
     repo*. Their shas (the dead-man's-switch and architecture-reference
     commits among them) answer on GitHub's commit API but are not objects in
@@ -4917,7 +4922,9 @@ Append-only, one line per run — including failures and no-ops.
   zero-deletion board diff; negative control — 8 of the 9 new tests fail
   against the pre-change checker. The code checkpoint `a8209bd` was pushed
   alone and came back **red** (the real-board test wanted the stamps, which
-  were still uncommitted); the board commit is the green tip. Left honestly
+  were still uncommitted); the board commit is the green tip (run
+  46165080037, 45 passed / 2 skipped there, `10 row stamp(s) honoured` in
+  the lint step). Left honestly
   unstamped: 26 refs whose shas exist on GitHub but not in the local
   pi-cicd clone (pre-migration objects, not fetchable by sha). ≈55 tool
   calls; gh's API needed several retries (TLS handshake timeouts) — no gate
