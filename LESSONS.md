@@ -693,3 +693,22 @@ still means "this row" after the next conversion. A scan/gate that pins a
   together. Also, when negative-controlling a tolerant checker, name which
   new tests pass against the old code and why: here 2 of 7 pass because
   the old checker never read scope at all, which is a control, not coverage.
+
+- 2026-11-28 — **a syntax the board itself describes must be matched
+  structurally, and a test that asserts the repo's own data belongs in the
+  commit that changes it.** Two traps, one run each. The new repo stamp is
+  written `(repo: pi-cicd)`, and the board row that *filed* the work quotes
+  that token inside backticks — so a substring regex counted 11 stamps where
+  the file had 10, and would have let the row that ships the feature bind
+  its own refs to whatever its prose mentioned. Match the whole line
+  (`^\s*\*?\(repo: …\)\*?\s*$`), then plant a test whose row quotes the token
+  in a sentence and assert it binds nothing. Second: pushing the tool + tests
+  checkpoint on its own turned CI red, because the new test reads this
+  repo's board and the stamps were still in the working tree. If a test's
+  fixture is the tracked file itself, ship the file change in the same
+  commit (or the checkpoint is red for a reason that is not a defect).
+  Related environment fact, measured: `gh api repos/pkia/pi-cicd/commits/<sha>`
+  resolves August commits that the clone does not have and cannot fetch —
+  the repo's pre-migration history hangs off no branch or tag, and
+  `git fetch origin <sha>` answers *couldn't find remote ref*. An API answer
+  is not evidence the checkout can verify the ref.

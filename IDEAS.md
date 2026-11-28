@@ -13,21 +13,6 @@ found by web research and keep their source URL.
 
 ## Proposed
 
-- **radar — give the nameless Done rows a repo stamp** *(S; new in
-  posts/2026-11-26.html, restated as the third item of posts/2026-11-27.html)*
-  — the lint can now name *why* it cannot answer for a ref
-  (`--explain`), and the largest reason is a Done row whose title names no
-  project at all (38 of them on the five-checkout run). Next: let a row carry
-  an appended `(repo: pi-cicd)` stamp that the binder reads before falling
-  back to the title prefix — appending is annotation, not a rewrite.
-  **Acceptance: a stamped row's refs move out of `row names no repo` into
-  resolved or unverified-by-repo, and `--explain` says which; an unstamped
-  row counts exactly as it does today; the five-checkout run still exits 0
-  with both counts printed; no existing line in a Done row is rewritten.**
-  *(Measured before picking: 67 unverified on the 11-25 five-checkout run —
-  29 repo not supplied, 38 row names no repo — so the stamp can retire at
-  most the second class and the first stays, which the acceptance says.)*
-
 - **cluster-prototype — restart the coordinator and prove the counter
   moves** *(S; on-box; new in posts/2026-11-18.html)* — the 11-17 store
   fix (`units_done` bumped in `post_result`) is on disk and not in the
@@ -307,15 +292,75 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-27: the repeating-fallback row shipped this run, see
-Done. Pickable next: the new radar repo-stamp row (this run's sync), the
-11-18 coordinator-restart row (its console-page clause is owner-gated), the
-personal-website findings allowlist and Currently-panel rows, the pi-cicd
-freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU
-baseline, and the 11-18 devlog-card gate (fix its measured premise first)
-— all under Proposed.)*
+*(none — 2026-11-28: the repo-stamp row shipped this run, see Done.
+Pickable next: the 11-18 coordinator-restart row (its console-page clause is
+owner-gated), the personal-website Currently-panel and findings-allowlist
+rows, the pi-cicd freshness gauge, the fingerprint-demo deploy, the
+switch-l4t-gpu GPU baseline, and the 11-18 devlog-card gate (fix its
+measured premise first) — all under Proposed.)*
 
 ## Done
+
+- **radar — give the nameless Done rows a repo stamp** — done 2026-11-28 (the
+  top pickable row of the 11-28 devlog, filed from 11-26 and restated on
+  11-27 and 11-28; picked because every clause of its acceptance verifies on
+  this box in one session and the class it names was the largest *named*
+  blindness left on the board). Shipped in radar `a8209bd`:
+  - **A row can say which repo its refs belong to.** A continuation line
+    that is nothing but `*(repo: pi-cicd)*` (italics optional) is a stamp;
+    the binder reads it before the title prefix falls back and **after** a
+    repo name written beside a ref, so `radar \`abc\`` keeps its radar
+    binding and the stamp only fills the silence. Whole-line on purpose: the
+    board *describes* this token in prose — the row that filed this work
+    quotes it inside backticks — and an inline mention must not become a
+    claim. A test plants exactly that prose and asserts it binds nothing.
+  - **A stamp is checked like any other claim.** One stamp naming an
+    unknown repo, or two stamps naming different repos, is a fault and binds
+    nothing (the row then counts as an unstamped one, exactly as today).
+    `--explain` appends `via row stamp` to the binding it reports, so a
+    reader can tell the annotation from a nearby name, and the OK line
+    counts `row stamp(s) honoured` beside the resolved/unverified numbers.
+  - **Ten rows stamped, each proved by its checkout:** nine (the
+    pi-cicd/pi-doctor dark window, service-probe's funnel probes,
+    project-guard, four Prom-stack entries, two Mine-the-heal-ledger
+    entries) carry `(repo: pi-cicd)` and every ref in them resolves in the
+    local pi-cicd clone; the cs2-train CI-storm row carries
+    `(repo: cs2-train)` and its third ref now reads *repo not supplied* —
+    the acceptance's "unverified-by-repo" arm, on an off-box repo that will
+    never be here.
+  - **Acceptance, executed:** `tests/test_check_board.py` **45 passed** (9
+    new), full suite **47 passed**; the file also passes under
+    `PATH=/usr/bin:/bin`. The five-checkout run measured on the board
+    before the stamps and before this entry: **122 resolved / 67 unverified
+    (29 repo not supplied, 38 row names no repo)**; on the board as shipped:
+    **135 resolved / 56 unverified (30 repo not supplied, 26 row names no
+    repo)**, exit 0 both times. The 12 refs the stamps took out of the class
+    went 11 to resolved and 1 to a named repo; the rest of the resolved gain
+    is this entry's own two citations, and the unstamped remainder counts
+    exactly as it did. **No existing line was
+    rewritten:** the board diff is ten added lines and zero deletions, and
+    the test counts whole-line stamps in the file rather than the token.
+    **Negative-controlled by execution:** against the pre-change checker
+    (`git stash push -- tools/check_board.py`, under `timeout -s KILL`) **8
+    of the 9 new tests fail**; the ninth (a ref named beside its repo is not
+    taken by the stamp) passes there because that precedence already
+    existed — the control, not coverage.
+  - **CI:** the checkpoint commit `a8209bd`, pushed alone, was **red** —
+    `test_real_board_stamps_are_honoured_on_the_five_checkout_run` read the
+    board before the stamps were committed (`assert 0 >= 10`; 45 passed, 1
+    skipped on the runner). The board commit that carries this entry is the
+    green tip (run cited below).
+  - **Not claimed:** 26 refs in nine Done rows are still *row names no
+    repo*. Their shas (the dead-man's-switch and architecture-reference
+    commits among them) answer on GitHub's commit API but are not objects in
+    the local pi-cicd clone — that pre-migration history hangs off no branch
+    or tag, and a fetch by sha answers *couldn't find remote ref* — so
+    stamping those rows would turn an honest "unanswered" into nine hard
+    faults. They stay unstamped until a checkout can prove them. The stamp
+    names a repo; it does not verify one: a stamped repo that is supplied
+    but lacks the sha still faults. A row citing two repos needs the second
+    named beside its ref, as before; and nothing replays or re-binds refs
+    retrospectively. Repo: <https://github.com/pkia/radar>.
 
 - **pi-cicd — make a repeating fallback a finding** — done 2026-11-27 (the
   top pickable row of the 11-27 devlog, named again the top row of 11-26;
@@ -2718,6 +2763,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
     owner's purchase decision, not a build. And a window missed because the box
     powered on before the unit was installed stays missed: after the first NTP
     sync the daily audit cannot recover it.
+  *(repo: pi-cicd)*
 
 - **Train: wire the corpus reconciler to the upstream pin (T-077)** — done
   2026-09-24 (item 2 of the 09-24 devlog radar list, tagged **S** and on-box; it
@@ -2991,6 +3037,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
     35307438413)** on `0c29fc2`. Negative-controlled by
     execution: both new tests fail against the pre-change script read out
     of git (`/tmp/nc`). Repo: <https://github.com/pkia/pi-cicd>.
+  *(repo: pi-cicd)*
 
 - **pi-cicd: sync the unit and layer docs with the retirements** — done
   2026-09-17 (new in posts/2026-09-16.html; picked as the only Proposed **S**
@@ -3127,6 +3174,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   config file created on the Pi (comment-only, so behaviour is unchanged
   until the owner adds a pattern). Repo:
   <https://github.com/pkia/pi-cicd> commit `b9fe069`.
+  *(repo: pi-cicd)*
 
 - **Prom stack step 3b: `metric-alert` (stdlib rule-check alerting)** —
   done 2026-09-10. The item's two open questions, both decided: the
@@ -3157,6 +3205,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   is now ev-owned 600 and load_config says so loudly when it is missing
   or unreadable (see LESSONS). Repo: <https://github.com/pkia/pi-cicd>
   commit `e1b72da`.
+  *(repo: pi-cicd)*
 
 - **Prom stack step 3a: the ntfy `/metrics` scrape** — done 2026-09-09
   (picked from the 09-09 devlog radar list — "still the queued half of
@@ -3176,6 +3225,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   push). Remaining step-3b (metric alerting) is a decision item — see
   Proposed. docs/prometheus.md refreshed to match (step-3a shipped,
   step-3b remaining).
+  *(repo: pi-cicd)*
 
 - **Mine the heal ledger — cs2-train CI storm retired, heal has no job
   left** — done 2026-09-08 (09-07 shipped the ruff root-cause fix
@@ -3199,6 +3249,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   <https://github.com/pkia/cs2-train> commit `aa54bd4`. The
   `ci-rerun-queued` heal should retire on the next pipeline-check
   sweeps — confirm via the ledger next run.
+  *(repo: cs2-train)*
 
 - **Prom stack step 2: the pinned dashboard (`prom-dash`, pi-cicd
   native)** — code done 2026-09-05, board recorded 2026-09-06 (the 09-05
@@ -3224,6 +3275,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   docs/prometheus.md step-2 section refreshed to match (2026-09-06,
   board run). Remaining step-3 scope is a Proposed item (ntfy
   `/metrics` + metric-alerting consumer decision).
+  *(repo: pi-cicd)*
 
 - **Mine-the-heal-ledger blocker re-verified — the 09-03 "never
   deployable" verdict was wrong; the healers were live all along** — done
@@ -3248,6 +3300,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   PATH). 216/216 pytest locally. Repo: <https://github.com/pkia/pi-cicd>
   commit `f925967` (CI pending at write time). The mining item stays
   Proposed — it becomes actionable once heals accrue.
+  *(repo: pi-cicd)*
 
 - **Mine-the-heal-ledger blocker: self-healer was never deployable** —
   done 2026-09-03 (pick was mine the heal ledger, Proposed S; repo
@@ -3265,6 +3318,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   write time). *09-04: this verdict was partially wrong — see the
   correction entry above; the systemd-only check missed the Hermes-cron
   scheduling units.md documents.*
+  *(repo: pi-cicd)*
 
 - **Prometheus + node_exporter scrape (Prom stack, step 1)** — done
   2026-09-02 (the 09-02 devlog named the stack "the next pick" and asked
@@ -3283,6 +3337,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   loopback-only targets, 15 s interval, docs naming). Repo:
   <https://github.com/pkia/pi-cicd> commit `bd7d54f` (CI run pending at
   write time). Docs: docs/prometheus.md (layer map + step-2 scope).
+  *(repo: pi-cicd)*
 
 - **Make the self-healer show its work** — done 2026-09-01 (first seen in
   the 08-31 devlog radar list, its explicit "pick I'd make next"). 
@@ -4846,6 +4901,27 @@ Append-only, one line per run — including failures and no-ops.
   consecutive 1.1.1.1 failures on 11-26 (20:47, 21:47, 23:47) that no page
   mentioned. ≈45 tool calls; gh's API timed out twice before the run list
   answered — no gate blocked.
+
+- 2026-11-28 — implementer run: synced the 11-28 devlog's radar list (top
+  row: the repo stamp, already Proposed; item 2: the Currently panel,
+  proposed; item 3: the freshness gauge, proposed — no new idea, no external
+  search needed with eight actionable rows open). Picked **radar — give the
+  nameless Done rows a repo stamp** and shipped it in radar `a8209bd`: a row
+  may now carry a whole-line `*(repo: X)*` stamp that the ref binder reads
+  before the title prefix falls back and after a name beside a ref; an
+  unknown or conflicting stamp is a fault. Ten rows were stamped — nine
+  pi-cicd, one cs2-train — all proved by the local checkouts. Evidence:
+  `tests/test_check_board.py` 45 passed (9 new), suite **47 passed**, also
+  under `PATH=/usr/bin:/bin`; the five-checkout run went 122 resolved / 67
+  unverified (29+38) to 133 / 56 (30+26), exit 0, with a ten-line,
+  zero-deletion board diff; negative control — 8 of the 9 new tests fail
+  against the pre-change checker. The code checkpoint `a8209bd` was pushed
+  alone and came back **red** (the real-board test wanted the stamps, which
+  were still uncommitted); the board commit is the green tip. Left honestly
+  unstamped: 26 refs whose shas exist on GitHub but not in the local
+  pi-cicd clone (pre-migration objects, not fetchable by sha). ≈55 tool
+  calls; gh's API needed several retries (TLS handshake timeouts) — no gate
+  blocked.
 
 ## Notes
 
