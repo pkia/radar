@@ -370,6 +370,7 @@ def lint_board(text, repos=None):
         "actionable": 0,
         "ledger": 0,
         "shipped": 0,
+        "stamped": 0,
         "refs_checked": 0,
         "refs_unverified": 0,
         "unverified": {},
@@ -393,6 +394,14 @@ def lint_board(text, repos=None):
                     break
             joined = row_text(lines)
             label = row_label(lines)
+
+            # the row's own repo stamp, read before the title prefix falls
+            # back; a bad stamp is a fault and binds nothing.
+            stamp_repo, stamp_faults = row_stamp(joined)
+            for problem in stamp_faults:
+                faults.append((start_line, label, problem))
+            if stamp_repo:
+                counts["stamped"] += 1
 
             is_ledger = bool(LEDGER_STAMP.search(joined) or LEDGER_SEE.search(joined))
             if is_ledger:
@@ -432,11 +441,14 @@ def lint_board(text, repos=None):
                     )
 
             # ledger pointer: commit refs resolve in the repo the row names
-            bound_refs = bind_refs(joined, project_repo(label))
+            fallback = stamp_repo or project_repo(label)
+            bound_refs = bind_refs(
+                joined, fallback, "stamp" if stamp_repo else "prefix"
+            )
             if not bound_refs:
                 continue
             states = {}
-            for sha, repo_name in bound_refs:
+            for sha, repo_name, source in bound_refs:
                 repo_path = repos.get(repo_name) if repo_name else None
                 if repo_path is None:
                     reason = (
@@ -447,7 +459,7 @@ def lint_board(text, repos=None):
                     counts["unverified"][reason] = (
                         counts["unverified"].get(reason, 0) + 1
                     )
-                    unverified.append((start_line, sha, repo_name, reason))
+                    unverified.append((start_line, sha, repo_name, reason, source))
                     continue
                 if repo_name not in states:
                     states[repo_name] = repo_state(repo_path)
@@ -461,7 +473,7 @@ def lint_board(text, repos=None):
                     counts["unverified"][reason] = (
                         counts["unverified"].get(reason, 0) + 1
                     )
-                    unverified.append((start_line, sha, repo_name, reason))
+                    unverified.append((start_line, sha, repo_name, reason, source))
                     continue
                 verdict = resolve_commit(repo_path, sha)
                 if verdict is None:
@@ -470,7 +482,7 @@ def lint_board(text, repos=None):
                         counts["unverified"].get("git unavailable", 0) + 1
                     )
                     unverified.append(
-                        (start_line, sha, repo_name, "git unavailable")
+                        (start_line, sha, repo_name, "git unavailable", source)
                     )
                     continue
                 counts["refs_checked"] += 1
