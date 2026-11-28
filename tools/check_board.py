@@ -35,6 +35,18 @@ Ledger **pointers** are checked, though (added 2026-11-12):
   repository — never faulted: a gate that faults on what it cannot see
   would be red forever, and a false fault costs a run to disprove.
 
+A row may also carry a **repo stamp** (added 2026-11-28): a line of its
+own reading ``*(repo: pi-cicd)*`` names the repo the row's commit refs
+belong to when the title names no project at all — the ledger's oldest rows are titled after
+the thing that was built (``Dead-man's switch on the loop itself``), not
+after the repo. The stamp is read *before* the title prefix falls back and
+*after* a repo name written beside a ref: an explicit binding stays
+strongest, and the stamp only fills the silence. Only a line that is the
+stamp counts — a prose mention inside a row (this rule's own board row
+quotes the token) is not a claim. A stamp naming an unknown
+repo, or two stamps naming different repos in one row, is a fault — a
+stamp is a claim, and a claim nobody can resolve is worse than none.
+
 Deployment scope is checked too (added 2026-11-15): the owner's directive
 of 2026-11-02 limits the loop to the current Pi 5 deployment. An
 **actionable** Proposed row naming a retired project — the old Pi
@@ -89,6 +101,15 @@ ROW_TITLE = re.compile(r"^- \*\*(.+?)\*\*")
 # a commit reference (a run id is 11 digits and is never backticked; a
 # word like `__pycache__` is not hex).
 COMMIT_REF = re.compile(r"`([0-9a-f]{7,40})`")
+
+# A row's own repo stamp: a continuation line of its own carrying nothing
+# but ``*(repo: pi-cicd)*`` (italics optional). Whole-line, because the
+# board *describes* this mechanism in prose — "an appended `(repo: X)`
+# stamp" sits inside a backticked phrase in the row that filed this work,
+# and an inline mention must not become a claim.
+ROW_STAMP = re.compile(
+    r"^[ \t]*\*?\(repo:\s*([A-Za-z0-9._-]+)\)\*?[ \t]*$", re.MULTILINE
+)
 
 # Row title prefix → the repo whose history its commit refs belong in.
 # The board names a project before the dash/colon, and this map is that
@@ -220,13 +241,43 @@ def bind_repo(line, ref_start, fallback):
     return bound or fallback
 
 
-def bind_refs(text, fallback):
-    """[(sha, repo_name)] for every commit ref in one row's text.
+def row_stamp(text):
+    """(repo_name or None, faults) — the row's own ``(repo: X)`` stamp.
+
+    Returns the stamped repo (as BIND_REPOS spells it) when the row
+    carries exactly one stamp and it names a known repo, plus the fault
+    texts for a stamp that names nothing this tool knows or for two
+    stamps that disagree. With any fault the stamp binds nothing and the
+    row falls back to its title prefix, exactly as an unstamped row does.
+    """
+    names = [m.group(1).lower() for m in ROW_STAMP.finditer(text)]
+    if not names:
+        return None, []
+    distinct = sorted(set(names))
+    faults = []
+    if len(distinct) > 1:
+        faults.append(
+            "carries conflicting repo stamps (" + ", ".join(distinct) + ")"
+        )
+    unknown = [n for n in distinct if n not in BIND_REPOS]
+    for name in unknown:
+        faults.append(f"repo stamp names unknown repo {name}")
+    if faults:
+        return None, faults
+    return BIND_REPOS[distinct[0]], []
+
+
+def bind_refs(text, fallback, fallback_source="prefix"):
+    """[(sha, repo_name, source)] for every commit ref in one row's text.
 
     A ref binds to the repo named beside it; a sha *repeated* in the same
     row (the board names a commit once and then cites it again in prose,
     often on a line with no repo name) binds to the repo it was already
-    bound to in that row. Everything else falls back to the title prefix.
+    bound to in that row. Everything else falls back to whatever the row
+    offered — its repo stamp, then its title prefix — and ``source`` says
+    which of the four bound it (``beside``, ``repeat``, ``stamp``,
+    ``prefix``), or None when nothing did. ``--explain`` reads the source
+    so a stamped row's reader can see the stamp at work.
     """
     bound = {}
     out = []
@@ -235,11 +286,14 @@ def bind_refs(text, fallback):
         if not any(c.isdigit() for c in sha):
             continue
         repo = bind_repo(text, match.start(), None)
-        if repo is None:
-            repo = bound.get(sha, fallback)
-        else:
+        if repo is not None:
             bound[sha] = repo
-        out.append((sha, repo))
+            out.append((sha, repo, "beside"))
+            continue
+        if sha in bound:
+            out.append((sha, bound[sha], "repeat"))
+            continue
+        out.append((sha, fallback, fallback_source if fallback else None))
     return out
 
 
@@ -295,7 +349,7 @@ def resolve_commit(repo_path, sha):
 
 
 def commit_refs(text):
-    return [sha for sha, _repo in bind_refs(text, None)]
+    return [sha for sha, _repo, _source in bind_refs(text, None)]
 
 
 def lint_board(text, repos=None):
@@ -320,6 +374,7 @@ def lint_board(text, repos=None):
         "actionable": 0,
         "ledger": 0,
         "shipped": 0,
+        "stamped": 0,
         "refs_checked": 0,
         "refs_unverified": 0,
         "unverified": {},
@@ -343,6 +398,14 @@ def lint_board(text, repos=None):
                     break
             joined = row_text(lines)
             label = row_label(lines)
+
+            # the row's own repo stamp, read before the title prefix falls
+            # back; a bad stamp is a fault and binds nothing.
+            stamp_repo, stamp_faults = row_stamp(joined)
+            for problem in stamp_faults:
+                faults.append((start_line, label, problem))
+            if stamp_repo:
+                counts["stamped"] += 1
 
             is_ledger = bool(LEDGER_STAMP.search(joined) or LEDGER_SEE.search(joined))
             if is_ledger:
@@ -382,11 +445,14 @@ def lint_board(text, repos=None):
                     )
 
             # ledger pointer: commit refs resolve in the repo the row names
-            bound_refs = bind_refs(joined, project_repo(label))
+            fallback = stamp_repo or project_repo(label)
+            bound_refs = bind_refs(
+                joined, fallback, "stamp" if stamp_repo else "prefix"
+            )
             if not bound_refs:
                 continue
             states = {}
-            for sha, repo_name in bound_refs:
+            for sha, repo_name, source in bound_refs:
                 repo_path = repos.get(repo_name) if repo_name else None
                 if repo_path is None:
                     reason = (
@@ -397,7 +463,9 @@ def lint_board(text, repos=None):
                     counts["unverified"][reason] = (
                         counts["unverified"].get(reason, 0) + 1
                     )
-                    unverified.append((start_line, sha, repo_name, reason))
+                    unverified.append(
+                        (start_line, sha, repo_name, reason, source)
+                    )
                     continue
                 if repo_name not in states:
                     states[repo_name] = repo_state(repo_path)
@@ -411,7 +479,9 @@ def lint_board(text, repos=None):
                     counts["unverified"][reason] = (
                         counts["unverified"].get(reason, 0) + 1
                     )
-                    unverified.append((start_line, sha, repo_name, reason))
+                    unverified.append(
+                        (start_line, sha, repo_name, reason, source)
+                    )
                     continue
                 verdict = resolve_commit(repo_path, sha)
                 if verdict is None:
@@ -420,7 +490,7 @@ def lint_board(text, repos=None):
                         counts["unverified"].get("git unavailable", 0) + 1
                     )
                     unverified.append(
-                        (start_line, sha, repo_name, "git unavailable")
+                        (start_line, sha, repo_name, "git unavailable", source)
                     )
                     continue
                 counts["refs_checked"] += 1
@@ -481,8 +551,10 @@ def main(argv):
         return 2
     faults, counts, unverified = lint_board(text, repos)
     if explain:
-        for line_no, sha, repo_name, reason in unverified:
+        for line_no, sha, repo_name, reason, source in unverified:
             where = f"bound to {repo_name}" if repo_name else "no repo named"
+            if source == "stamp":
+                where += " via row stamp"
             print(f"UNVERIFIED {path}:{line_no} — ref `{sha}` ({where}): {reason}")
     for line_no, label, problem in faults:
         print(f'FAIL {path}:{line_no} — row "{label}" {problem}')
@@ -505,6 +577,7 @@ def main(argv):
         f"OK — board lint: {counts['actionable']} actionable Proposed row(s) "
         f"checked, {counts['ledger']} ledger row(s) exempt, "
         f"{counts['shipped']} SHIPPED marker(s) matched to Done, "
+        f"{counts['stamped']} row stamp(s) honoured, "
         f"{counts['refs_checked']} commit ref(s) resolved in {checked_repos}, "
         f"{unverified_text}, "
         f"{counts['out_of_scope']} out-of-scope Proposed row(s)"
