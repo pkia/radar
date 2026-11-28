@@ -292,15 +292,76 @@ rest now build on it:
 
 ## In progress
 
-*(none — 2026-11-27: the repeating-fallback row shipped this run, see
-Done. Pickable next: the new radar repo-stamp row (this run's sync), the
-11-18 coordinator-restart row (its console-page clause is owner-gated), the
-personal-website findings allowlist and Currently-panel rows, the pi-cicd
-freshness gauge, the fingerprint-demo deploy, the switch-l4t-gpu GPU
-baseline, and the 11-18 devlog-card gate (fix its measured premise first)
-— all under Proposed.)*
+*(none — 2026-11-28: the repo-stamp row shipped this run, see Done.
+Pickable next: the 11-18 coordinator-restart row (its console-page clause is
+owner-gated), the personal-website Currently-panel and findings-allowlist
+rows, the pi-cicd freshness gauge, the fingerprint-demo deploy, the
+switch-l4t-gpu GPU baseline, and the 11-18 devlog-card gate (fix its
+measured premise first) — all under Proposed.)*
 
 ## Done
+
+- **radar — give the nameless Done rows a repo stamp** — done 2026-11-28 (the
+  top pickable row of the 11-28 devlog, filed from 11-26 and restated on
+  11-27 and 11-28; picked because every clause of its acceptance verifies on
+  this box in one session and the class it names was the largest *named*
+  blindness left on the board). Shipped in radar `a8209bd`:
+  - **A row can say which repo its refs belong to.** A continuation line
+    that is nothing but `*(repo: pi-cicd)*` (italics optional) is a stamp;
+    the binder reads it before the title prefix falls back and **after** a
+    repo name written beside a ref, so `radar \`abc\`` keeps its radar
+    binding and the stamp only fills the silence. Whole-line on purpose: the
+    board *describes* this token in prose — the row that filed this work
+    quotes it inside backticks — and an inline mention must not become a
+    claim. A test plants exactly that prose and asserts it binds nothing.
+  - **A stamp is checked like any other claim.** One stamp naming an
+    unknown repo, or two stamps naming different repos, is a fault and binds
+    nothing (the row then counts as an unstamped one, exactly as today).
+    `--explain` appends `via row stamp` to the binding it reports, so a
+    reader can tell the annotation from a nearby name, and the OK line
+    counts `row stamp(s) honoured` beside the resolved/unverified numbers.
+  - **Ten rows stamped, each proved by its checkout:** nine (the
+    pi-cicd/pi-doctor dark window, service-probe's funnel probes,
+    project-guard, four Prom-stack entries, two Mine-the-heal-ledger
+    entries) carry `(repo: pi-cicd)` and every ref in them resolves in the
+    local pi-cicd clone; the cs2-train CI-storm row carries
+    `(repo: cs2-train)` and its third ref now reads *repo not supplied* —
+    the acceptance's "unverified-by-repo" arm, on an off-box repo that will
+    never be here.
+  - **Acceptance, executed:** `tests/test_check_board.py` **45 passed** (9
+    new), full suite **47 passed**; the file also passes under
+    `PATH=/usr/bin:/bin`. The five-checkout run, before and after, one
+    board: **122 resolved / 67 unverified (29 repo not supplied, 38 row
+    names no repo)** → **133 resolved / 56 unverified (30 repo not
+    supplied, 26 row names no repo)**, exit 0 both times — the 12 refs that
+    left the class went 11 to resolved and 1 to a named repo, and the
+    unstamped remainder counts exactly as it did. **No existing line was
+    rewritten:** the board diff is ten added lines and zero deletions, and
+    the test counts whole-line stamps in the file rather than the token.
+    **Negative-controlled by execution:** against the pre-change checker
+    (`git stash push -- tools/check_board.py`, under `timeout -s KILL`) **8
+    of the 9 new tests fail**; the ninth (a ref named beside its repo is not
+    taken by the stamp) passes there because that precedence already
+    existed — the control, not coverage.
+  - **CI:** the checkpoint commit `a8209bd`, pushed alone, was **red** —
+    `test_real_board_stamps_are_honoured_on_the_five_checkout_run` read the
+    board before the stamps were committed (`assert 0 >= 10`; 45 passed, 1
+    skipped on the runner). The board commit that carries this entry is the
+    green tip (run cited below).
+  - **Not claimed:** 26 refs in nine Done rows are still *row names no
+    repo*. Their shas (e.g. `59597ba`, `cedfd67`) answer on GitHub's commit
+    API but are not objects in the local pi-cicd clone — the repo's
+    pre-migration history hangs off no branch or tag, and
+    `git fetch origin <sha>` answers *couldn't find remote ref* — so
+    stamping those rows would turn an honest "unanswered" into nine hard
+    faults. They stay unstamped until a checkout can prove them. The stamp
+    names a repo; it does not verify one: a stamped repo that is supplied
+    but lacks the sha still faults. A row citing two repos needs the second
+    named beside its ref, as before; and nothing replays or re-binds refs
+    retrospectively. (This entry carries a stamp of its own for exactly
+    that reason: it cites pi-cicd commits under a `radar —` title.) Repo:
+    <https://github.com/pkia/radar>.
+  *(repo: pi-cicd)*
 
 - **pi-cicd — make a repeating fallback a finding** — done 2026-11-27 (the
   top pickable row of the 11-27 devlog, named again the top row of 11-26;
@@ -4841,6 +4902,27 @@ Append-only, one line per run — including failures and no-ops.
   consecutive 1.1.1.1 failures on 11-26 (20:47, 21:47, 23:47) that no page
   mentioned. ≈45 tool calls; gh's API timed out twice before the run list
   answered — no gate blocked.
+
+- 2026-11-28 — implementer run: synced the 11-28 devlog's radar list (top
+  row: the repo stamp, already Proposed; item 2: the Currently panel,
+  proposed; item 3: the freshness gauge, proposed — no new idea, no external
+  search needed with eight actionable rows open). Picked **radar — give the
+  nameless Done rows a repo stamp** and shipped it in radar `a8209bd`: a row
+  may now carry a whole-line `*(repo: X)*` stamp that the ref binder reads
+  before the title prefix falls back and after a name beside a ref; an
+  unknown or conflicting stamp is a fault. Ten rows were stamped — nine
+  pi-cicd, one cs2-train — all proved by the local checkouts. Evidence:
+  `tests/test_check_board.py` 45 passed (9 new), suite **47 passed**, also
+  under `PATH=/usr/bin:/bin`; the five-checkout run went 122 resolved / 67
+  unverified (29+38) to 133 / 56 (30+26), exit 0, with a ten-line,
+  zero-deletion board diff; negative control — 8 of the 9 new tests fail
+  against the pre-change checker. The code checkpoint `a8209bd` was pushed
+  alone and came back **red** (the real-board test wanted the stamps, which
+  were still uncommitted); the board commit is the green tip. Left honestly
+  unstamped: 26 refs whose shas exist on GitHub but not in the local
+  pi-cicd clone (pre-migration objects, not fetchable by sha). ≈55 tool
+  calls; gh's API needed several retries (TLS handshake timeouts) — no gate
+  blocked.
 
 ## Notes
 
