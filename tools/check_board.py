@@ -35,6 +35,16 @@ Ledger **pointers** are checked, though (added 2026-11-12):
   repository — never faulted: a gate that faults on what it cannot see
   would be red forever, and a false fault costs a run to disprove.
 
+A row may also carry a **repo stamp** (added 2026-11-28): an appended
+``(repo: pi-cicd)`` names the repo a row's commit refs belong to when the
+title names no project at all — the ledger's oldest rows are titled after
+the thing that was built (``Dead-man's switch on the loop itself``), not
+after the repo. The stamp is read *before* the title prefix falls back and
+*after* a repo name written beside a ref: an explicit binding stays
+strongest, and the stamp only fills the silence. A stamp naming an unknown
+repo, or two stamps naming different repos in one row, is a fault — a
+stamp is a claim, and a claim nobody can resolve is worse than none.
+
 Deployment scope is checked too (added 2026-11-15): the owner's directive
 of 2026-11-02 limits the loop to the current Pi 5 deployment. An
 **actionable** Proposed row naming a retired project — the old Pi
@@ -89,6 +99,12 @@ ROW_TITLE = re.compile(r"^- \*\*(.+?)\*\*")
 # a commit reference (a run id is 11 digits and is never backticked; a
 # word like `__pycache__` is not hex).
 COMMIT_REF = re.compile(r"`([0-9a-f]{7,40})`")
+
+# A row's own repo stamp: an appended ``(repo: pi-cicd)`` on a ledger row
+# whose title names no project. The board spells it in italics
+# (``*(repo: pi-cicd)*``) or bare; either way the parenthesised token is
+# what the binder reads.
+ROW_STAMP = re.compile(r"\(repo:\s*([A-Za-z0-9._-]+)\s*\)")
 
 # Row title prefix → the repo whose history its commit refs belong in.
 # The board names a project before the dash/colon, and this map is that
@@ -220,13 +236,43 @@ def bind_repo(line, ref_start, fallback):
     return bound or fallback
 
 
-def bind_refs(text, fallback):
-    """[(sha, repo_name)] for every commit ref in one row's text.
+def row_stamp(text):
+    """(repo_name or None, faults) — the row's own ``(repo: X)`` stamp.
+
+    Returns the stamped repo (as BIND_REPOS spells it) when the row
+    carries exactly one stamp and it names a known repo, plus the fault
+    texts for a stamp that names nothing this tool knows or for two
+    stamps that disagree. With any fault the stamp binds nothing and the
+    row falls back to its title prefix, exactly as an unstamped row does.
+    """
+    names = [m.group(1).lower() for m in ROW_STAMP.finditer(text)]
+    if not names:
+        return None, []
+    distinct = sorted(set(names))
+    faults = []
+    if len(distinct) > 1:
+        faults.append(
+            "carries conflicting repo stamps (" + ", ".join(distinct) + ")"
+        )
+    unknown = [n for n in distinct if n not in BIND_REPOS]
+    for name in unknown:
+        faults.append(f"repo stamp names unknown repo {name}")
+    if faults:
+        return None, faults
+    return BIND_REPOS[distinct[0]], []
+
+
+def bind_refs(text, fallback, fallback_source="prefix"):
+    """[(sha, repo_name, source)] for every commit ref in one row's text.
 
     A ref binds to the repo named beside it; a sha *repeated* in the same
     row (the board names a commit once and then cites it again in prose,
     often on a line with no repo name) binds to the repo it was already
-    bound to in that row. Everything else falls back to the title prefix.
+    bound to in that row. Everything else falls back to whatever the row
+    offered — its repo stamp, then its title prefix — and ``source`` says
+    which of the four bound it (``beside``, ``repeat``, ``stamp``,
+    ``prefix``), or None when nothing did. ``--explain`` reads the source
+    so a stamped row's reader can see the stamp at work.
     """
     bound = {}
     out = []
@@ -235,12 +281,16 @@ def bind_refs(text, fallback):
         if not any(c.isdigit() for c in sha):
             continue
         repo = bind_repo(text, match.start(), None)
-        if repo is None:
-            repo = bound.get(sha, fallback)
-        else:
+        if repo is not None:
             bound[sha] = repo
-        out.append((sha, repo))
+            out.append((sha, repo, "beside"))
+            continue
+        if sha in bound:
+            out.append((sha, bound[sha], "repeat"))
+            continue
+        out.append((sha, fallback, fallback_source if fallback else None))
     return out
+
 
 
 # The only git questions this tool may ask: both read-only, both answer a
@@ -295,7 +345,7 @@ def resolve_commit(repo_path, sha):
 
 
 def commit_refs(text):
-    return [sha for sha, _repo in bind_refs(text, None)]
+    return [sha for sha, _repo, _source in bind_refs(text, None)]
 
 
 def lint_board(text, repos=None):
