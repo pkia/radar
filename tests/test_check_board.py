@@ -772,7 +772,7 @@ def test_row_stamp_for_an_unsupplied_repo_is_unverified_and_explained(tmp_path):
     assert "1 row stamp(s) honoured" in proc.stdout
     assert "1 unverified (repo not supplied)" in proc.stdout
     assert (
-        f"UNVERIFIED {board}:12 — ref `0abc123` "
+        f"UNVERIFIED {board}:13 — ref `0abc123` "
         "(bound to cs2-train via row stamp): repo not supplied"
     ) in proc.stdout
 

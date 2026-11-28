@@ -2718,6 +2718,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
     owner's purchase decision, not a build. And a window missed because the box
     powered on before the unit was installed stays missed: after the first NTP
     sync the daily audit cannot recover it.
+  *(repo: pi-cicd)*
 
 - **Train: wire the corpus reconciler to the upstream pin (T-077)** — done
   2026-09-24 (item 2 of the 09-24 devlog radar list, tagged **S** and on-box; it
@@ -2991,6 +2992,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
     35307438413)** on `0c29fc2`. Negative-controlled by
     execution: both new tests fail against the pre-change script read out
     of git (`/tmp/nc`). Repo: <https://github.com/pkia/pi-cicd>.
+  *(repo: pi-cicd)*
 
 - **pi-cicd: sync the unit and layer docs with the retirements** — done
   2026-09-17 (new in posts/2026-09-16.html; picked as the only Proposed **S**
@@ -3127,6 +3129,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   config file created on the Pi (comment-only, so behaviour is unchanged
   until the owner adds a pattern). Repo:
   <https://github.com/pkia/pi-cicd> commit `b9fe069`.
+  *(repo: pi-cicd)*
 
 - **Prom stack step 3b: `metric-alert` (stdlib rule-check alerting)** —
   done 2026-09-10. The item's two open questions, both decided: the
@@ -3157,6 +3160,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   is now ev-owned 600 and load_config says so loudly when it is missing
   or unreadable (see LESSONS). Repo: <https://github.com/pkia/pi-cicd>
   commit `e1b72da`.
+  *(repo: pi-cicd)*
 
 - **Prom stack step 3a: the ntfy `/metrics` scrape** — done 2026-09-09
   (picked from the 09-09 devlog radar list — "still the queued half of
@@ -3176,6 +3180,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   push). Remaining step-3b (metric alerting) is a decision item — see
   Proposed. docs/prometheus.md refreshed to match (step-3a shipped,
   step-3b remaining).
+  *(repo: pi-cicd)*
 
 - **Mine the heal ledger — cs2-train CI storm retired, heal has no job
   left** — done 2026-09-08 (09-07 shipped the ruff root-cause fix
@@ -3199,6 +3204,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   <https://github.com/pkia/cs2-train> commit `aa54bd4`. The
   `ci-rerun-queued` heal should retire on the next pipeline-check
   sweeps — confirm via the ledger next run.
+  *(repo: cs2-train)*
 
 - **Prom stack step 2: the pinned dashboard (`prom-dash`, pi-cicd
   native)** — code done 2026-09-05, board recorded 2026-09-06 (the 09-05
@@ -3224,6 +3230,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   docs/prometheus.md step-2 section refreshed to match (2026-09-06,
   board run). Remaining step-3 scope is a Proposed item (ntfy
   `/metrics` + metric-alerting consumer decision).
+  *(repo: pi-cicd)*
 
 - **Mine-the-heal-ledger blocker re-verified — the 09-03 "never
   deployable" verdict was wrong; the healers were live all along** — done
@@ -3248,6 +3255,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   PATH). 216/216 pytest locally. Repo: <https://github.com/pkia/pi-cicd>
   commit `f925967` (CI pending at write time). The mining item stays
   Proposed — it becomes actionable once heals accrue.
+  *(repo: pi-cicd)*
 
 - **Mine-the-heal-ledger blocker: self-healer was never deployable** —
   done 2026-09-03 (pick was mine the heal ledger, Proposed S; repo
@@ -3265,6 +3273,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   write time). *09-04: this verdict was partially wrong — see the
   correction entry above; the systemd-only check missed the Hermes-cron
   scheduling units.md documents.*
+  *(repo: pi-cicd)*
 
 - **Prometheus + node_exporter scrape (Prom stack, step 1)** — done
   2026-09-02 (the 09-02 devlog named the stack "the next pick" and asked
@@ -3283,6 +3292,7 @@ baseline, and the 11-18 devlog-card gate (fix its measured premise first)
   loopback-only targets, 15 s interval, docs naming). Repo:
   <https://github.com/pkia/pi-cicd> commit `bd7d54f` (CI run pending at
   write time). Docs: docs/prometheus.md (layer map + step-2 scope).
+  *(repo: pi-cicd)*
 
 - **Make the self-healer show its work** — done 2026-09-01 (first seen in
   the 08-31 devlog radar list, its explicit "pick I'd make next"). 
