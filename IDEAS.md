@@ -349,19 +349,16 @@ measured premise first) — all under Proposed.)*
     skipped on the runner). The board commit that carries this entry is the
     green tip (run cited below).
   - **Not claimed:** 26 refs in nine Done rows are still *row names no
-    repo*. Their shas (e.g. `59597ba`, `cedfd67`) answer on GitHub's commit
-    API but are not objects in the local pi-cicd clone — the repo's
-    pre-migration history hangs off no branch or tag, and
-    `git fetch origin <sha>` answers *couldn't find remote ref* — so
+    repo*. Their shas (the dead-man's-switch and architecture-reference
+    commits among them) answer on GitHub's commit API but are not objects in
+    the local pi-cicd clone — that pre-migration history hangs off no branch
+    or tag, and a fetch by sha answers *couldn't find remote ref* — so
     stamping those rows would turn an honest "unanswered" into nine hard
     faults. They stay unstamped until a checkout can prove them. The stamp
     names a repo; it does not verify one: a stamped repo that is supplied
     but lacks the sha still faults. A row citing two repos needs the second
     named beside its ref, as before; and nothing replays or re-binds refs
-    retrospectively. (This entry carries a stamp of its own for exactly
-    that reason: it cites pi-cicd commits under a `radar —` title.) Repo:
-    <https://github.com/pkia/radar>.
-  *(repo: pi-cicd)*
+    retrospectively. Repo: <https://github.com/pkia/radar>.
 
 - **pi-cicd — make a repeating fallback a finding** — done 2026-11-27 (the
   top pickable row of the 11-27 devlog, named again the top row of 11-26;
