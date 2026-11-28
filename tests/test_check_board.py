@@ -18,6 +18,7 @@ pointers, 2026-11-12):
   faulted; the real board passes clean; git is only asked cat-file.
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -777,6 +778,20 @@ def test_row_stamp_for_an_unsupplied_repo_is_unverified_and_explained(tmp_path):
     ) in proc.stdout
 
 
+def test_a_prose_mention_of_a_stamp_is_not_a_stamp(tmp_path):
+    """The board describes this mechanism in prose; that must not bind."""
+    repo, sha = make_git_repo(tmp_path / "farm")
+    board = stamped_board(
+        tmp_path, "Nameless build",
+        f"shipped in `{sha}`; a later row may carry an appended `(repo: radar)` "
+        "stamp, but this line is prose.",
+    )
+    proc = run_checker(board, "--repo", f"radar={repo}")
+    assert proc.returncode == 0, proc.stdout
+    assert "0 row stamp(s) honoured" in proc.stdout
+    assert "1 unverified (row names no repo)" in proc.stdout
+
+
 def test_row_stamp_naming_an_unknown_repo_faults(tmp_path):
     """A stamp is a claim; a claim naming nothing this board knows is a fault."""
     board = stamped_board(
@@ -835,7 +850,7 @@ def test_row_stamp_beats_the_title_prefix(tmp_path):
 def test_real_board_stamps_are_honoured_on_the_five_checkout_run():
     """The real board's stamps bind, and only a real line is rewritten."""
     text = BOARD.read_text(encoding="utf-8")
-    n_stamps = text.count("(repo: ")
+    n_stamps = len(re.findall(r"^[ \t]*\*?\(repo: ", text, re.MULTILINE))
     assert n_stamps >= 10, "this row stamped the rows its checkouts can prove"
     missing = [n for n, p in OWNED_CHECKOUTS.items() if not (p / ".git").exists()]
     if missing:

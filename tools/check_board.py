@@ -35,13 +35,15 @@ Ledger **pointers** are checked, though (added 2026-11-12):
   repository — never faulted: a gate that faults on what it cannot see
   would be red forever, and a false fault costs a run to disprove.
 
-A row may also carry a **repo stamp** (added 2026-11-28): an appended
-``(repo: pi-cicd)`` names the repo a row's commit refs belong to when the
-title names no project at all — the ledger's oldest rows are titled after
+A row may also carry a **repo stamp** (added 2026-11-28): a line of its
+own reading ``*(repo: pi-cicd)*`` names the repo the row's commit refs
+belong to when the title names no project at all — the ledger's oldest rows are titled after
 the thing that was built (``Dead-man's switch on the loop itself``), not
 after the repo. The stamp is read *before* the title prefix falls back and
 *after* a repo name written beside a ref: an explicit binding stays
-strongest, and the stamp only fills the silence. A stamp naming an unknown
+strongest, and the stamp only fills the silence. Only a line that is the
+stamp counts — a prose mention inside a row (this rule's own board row
+quotes the token) is not a claim. A stamp naming an unknown
 repo, or two stamps naming different repos in one row, is a fault — a
 stamp is a claim, and a claim nobody can resolve is worse than none.
 
@@ -100,11 +102,14 @@ ROW_TITLE = re.compile(r"^- \*\*(.+?)\*\*")
 # word like `__pycache__` is not hex).
 COMMIT_REF = re.compile(r"`([0-9a-f]{7,40})`")
 
-# A row's own repo stamp: an appended ``(repo: pi-cicd)`` on a ledger row
-# whose title names no project. The board spells it in italics
-# (``*(repo: pi-cicd)*``) or bare; either way the parenthesised token is
-# what the binder reads.
-ROW_STAMP = re.compile(r"\(repo:\s*([A-Za-z0-9._-]+)\s*\)")
+# A row's own repo stamp: a continuation line of its own carrying nothing
+# but ``*(repo: pi-cicd)*`` (italics optional). Whole-line, because the
+# board *describes* this mechanism in prose — "an appended `(repo: X)`
+# stamp" sits inside a backticked phrase in the row that filed this work,
+# and an inline mention must not become a claim.
+ROW_STAMP = re.compile(
+    r"^[ \t]*\*?\(repo:\s*([A-Za-z0-9._-]+)\)\*?[ \t]*$", re.MULTILINE
+)
 
 # Row title prefix → the repo whose history its commit refs belong in.
 # The board names a project before the dash/colon, and this map is that
