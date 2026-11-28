@@ -292,7 +292,6 @@ def bind_refs(text, fallback, fallback_source="prefix"):
     return out
 
 
-
 # The only git questions this tool may ask: both read-only, both answer a
 # fact about objects already on disk.
 GIT_READ_VERBS = ("cat-file", "rev-parse")
@@ -459,7 +458,9 @@ def lint_board(text, repos=None):
                     counts["unverified"][reason] = (
                         counts["unverified"].get(reason, 0) + 1
                     )
-                    unverified.append((start_line, sha, repo_name, reason, source))
+                    unverified.append(
+                        (start_line, sha, repo_name, reason, source)
+                    )
                     continue
                 if repo_name not in states:
                     states[repo_name] = repo_state(repo_path)
@@ -473,7 +474,9 @@ def lint_board(text, repos=None):
                     counts["unverified"][reason] = (
                         counts["unverified"].get(reason, 0) + 1
                     )
-                    unverified.append((start_line, sha, repo_name, reason, source))
+                    unverified.append(
+                        (start_line, sha, repo_name, reason, source)
+                    )
                     continue
                 verdict = resolve_commit(repo_path, sha)
                 if verdict is None:
@@ -543,8 +546,10 @@ def main(argv):
         return 2
     faults, counts, unverified = lint_board(text, repos)
     if explain:
-        for line_no, sha, repo_name, reason in unverified:
+        for line_no, sha, repo_name, reason, source in unverified:
             where = f"bound to {repo_name}" if repo_name else "no repo named"
+            if source == "stamp":
+                where += " via row stamp"
             print(f"UNVERIFIED {path}:{line_no} — ref `{sha}` ({where}): {reason}")
     for line_no, label, problem in faults:
         print(f'FAIL {path}:{line_no} — row "{label}" {problem}')
@@ -567,6 +572,7 @@ def main(argv):
         f"OK — board lint: {counts['actionable']} actionable Proposed row(s) "
         f"checked, {counts['ledger']} ledger row(s) exempt, "
         f"{counts['shipped']} SHIPPED marker(s) matched to Done, "
+        f"{counts['stamped']} row stamp(s) honoured, "
         f"{counts['refs_checked']} commit ref(s) resolved in {checked_repos}, "
         f"{unverified_text}, "
         f"{counts['out_of_scope']} out-of-scope Proposed row(s)"

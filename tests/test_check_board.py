@@ -694,3 +694,158 @@ def test_real_board_with_every_owned_checkout_exits_zero():
     resolved = proc.stdout.split(" commit ref(s) resolved in ")[0].rsplit(", ", 1)[1]
     assert int(resolved) > 0
     assert "unverified (" in proc.stdout  # the remainder carries reasons
+
+
+# --- a row stamps its repo when its title names none (2026-11-28) --------
+#
+# Acceptance (board row, radar — give the nameless Done rows a repo stamp):
+# a stamped row's refs move out of "row names no repo" into resolved or
+# unverified-by-repo, and --explain says which; an unstamped row counts
+# exactly as it does today; the five-checkout run still exits 0 with both
+# counts printed; no existing line in a Done row is rewritten.
+
+STAMPED_BOARD = """# Radar — idea board
+
+## Proposed
+
+*(none)*
+
+## In progress
+
+*(none)*
+
+## Done
+
+- **{title}** — done 2026-01-01.
+{body}
+{stamp}
+
+## Skipped
+
+*(none)*
+
+## Run log
+
+*(empty)*
+"""
+
+
+def stamped_board(tmp_path, title, body, stamp=None):
+    body = "\n".join("  " + line for line in body.splitlines())
+    stamp_line = f"  {stamp}" if stamp else ""
+    text = STAMPED_BOARD.format(title=title, body=body, stamp=stamp_line)
+    return write_board(tmp_path, text)
+
+
+def test_row_stamp_binds_a_nameless_rows_refs(tmp_path):
+    """A (repo: X) stamp turns "row names no repo" into a real answer."""
+    repo, sha = make_git_repo(tmp_path / "farm")
+    board = stamped_board(
+        tmp_path, "Nameless build", f"shipped in `{sha}`.", "*(repo: radar)*"
+    )
+    proc = run_checker(board, "--repo", f"radar={repo}")
+    assert proc.returncode == 0, proc.stdout
+    assert "1 row stamp(s) honoured" in proc.stdout
+    assert "1 commit ref(s) resolved in radar" in proc.stdout
+    assert "0 unverified" in proc.stdout
+
+
+def test_unstamped_nameless_row_counts_exactly_as_before(tmp_path):
+    """Control: without the stamp the same row is still unverified."""
+    repo, sha = make_git_repo(tmp_path / "farm")
+    board = stamped_board(tmp_path, "Nameless build", f"shipped in `{sha}`.")
+    proc = run_checker(board, "--repo", f"radar={repo}")
+    assert proc.returncode == 0, proc.stdout
+    assert "0 row stamp(s) honoured" in proc.stdout
+    assert "0 commit ref(s) resolved" in proc.stdout
+    assert "1 unverified (row names no repo)" in proc.stdout
+
+
+def test_row_stamp_for_an_unsupplied_repo_is_unverified_and_explained(tmp_path):
+    """A stamp naming a repo the checker was not handed is a reason, not a fault."""
+    board = stamped_board(
+        tmp_path, "Old off-box build", "shipped in `0abc123`.",
+        "*(repo: cs2-train)*",
+    )
+    proc = run_checker(board, "--explain")
+    assert proc.returncode == 0, proc.stdout
+    assert "1 row stamp(s) honoured" in proc.stdout
+    assert "1 unverified (repo not supplied)" in proc.stdout
+    assert (
+        f"UNVERIFIED {board}:12 — ref `0abc123` "
+        "(bound to cs2-train via row stamp): repo not supplied"
+    ) in proc.stdout
+
+
+def test_row_stamp_naming_an_unknown_repo_faults(tmp_path):
+    """A stamp is a claim; a claim naming nothing this board knows is a fault."""
+    board = stamped_board(
+        tmp_path, "Nameless build", "shipped in `0abc123`.", "*(repo: wat)*"
+    )
+    proc = run_checker(board)
+    assert proc.returncode == 1, proc.stdout
+    assert 'row "Nameless build" repo stamp names unknown repo wat' in proc.stdout
+
+
+def test_two_conflicting_row_stamps_fault(tmp_path):
+    """One row, two repos: neither stamp is believed."""
+    board = stamped_board(
+        tmp_path, "Nameless build", "shipped in `0abc123`.\n*(repo: py)*",
+        "*(repo: pi-cicd)*",
+    )
+    proc = run_checker(board)
+    assert proc.returncode == 1, proc.stdout
+    assert (
+        'row "Nameless build" carries conflicting repo stamps (pi-cicd, py)'
+        in proc.stdout
+    )
+
+
+def test_a_ref_named_beside_its_repo_is_not_taken_by_the_stamp(tmp_path):
+    """The explicit binding stays strongest; the stamp only fills silence."""
+    radar_repo, sha = make_git_repo(tmp_path / "farm-radar")
+    other, _other_sha = make_git_repo(tmp_path / "farm-other")
+    board = stamped_board(
+        tmp_path, "Nameless build", f"shipped in radar `{sha}`.",
+        "*(repo: pi-cicd)*",
+    )
+    proc = run_checker(
+        board, "--repo", f"radar={radar_repo}", "--repo", f"pi-cicd={other}"
+    )
+    assert proc.returncode == 0, proc.stdout
+    assert "1 commit ref(s) resolved in pi-cicd, radar" in proc.stdout
+    assert "0 unverified" in proc.stdout
+
+
+def test_row_stamp_beats_the_title_prefix(tmp_path):
+    """The stamp is read before the prefix falls back, as the row asked."""
+    piped, sha = make_git_repo(tmp_path / "farm-pi")
+    radar_repo, _radar_sha = make_git_repo(tmp_path / "farm-radar")
+    board = stamped_board(
+        tmp_path, "radar — planted stamped", f"shipped in `{sha}`.",
+        "*(repo: pi-cicd)*",
+    )
+    proc = run_checker(
+        board, "--repo", f"radar={radar_repo}", "--repo", f"pi-cicd={piped}"
+    )
+    assert proc.returncode == 0, proc.stdout
+    assert "1 commit ref(s) resolved in pi-cicd, radar" in proc.stdout
+
+
+def test_real_board_stamps_are_honoured_on_the_five_checkout_run():
+    """The real board's stamps bind, and only a real line is rewritten."""
+    text = BOARD.read_text(encoding="utf-8")
+    n_stamps = text.count("(repo: ")
+    assert n_stamps >= 10, "this row stamped the rows its checkouts can prove"
+    missing = [n for n, p in OWNED_CHECKOUTS.items() if not (p / ".git").exists()]
+    if missing:
+        pytest.skip(f"not checked out here: {', '.join(missing)}")
+    extra = []
+    for name, path in OWNED_CHECKOUTS.items():
+        if name != "radar":
+            extra += ["--repo", f"{name}={path}"]
+    proc = run_checker(BOARD, *extra, "--explain")
+    assert proc.returncode == 0, proc.stdout
+    assert f"{n_stamps} row stamp(s) honoured" in proc.stdout
+    # the one stamp whose repo is off this box is named as bound by the stamp
+    assert "(bound to cs2-train via row stamp): repo not supplied" in proc.stdout
